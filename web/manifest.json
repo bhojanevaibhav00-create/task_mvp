@@ -1,6 +1,6 @@
 {
-    "name": "task_mvp",
-    "short_name": "task_mvp",
+    "name": "app_data_demo",
+    "short_name": "app_data_demo",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
