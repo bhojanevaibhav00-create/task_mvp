@@ -1,16 +1,6 @@
-# app_data_demo
+# Database Integration and Models
 
-A new Flutter project.
+So, I have created a demo app to just check the models and CRUD operations, DB integration of the app.
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+I have created a simple data and domains folder in which i have the main logic.
+If you guys wanna inetegrated it jsut copy past the folders into your app and add dependencies.
