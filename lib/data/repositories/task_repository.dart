@@ -1,76 +1,68 @@
-import 'package:uuid/uuid.dart';
-import 'package:drift/drift.dart';
-import '../../domains/entities/task_entity.dart';
-import '../../domains/enums/task_priority.dart';
-import '../../domains/enums/task_status.dart';
-import '../database/app_database.dart';
+import 'package:app_data_demo/data/database/database.dart';
 
 class TaskRepository {
-  final AppDatabase db;
-  final _uuid = const Uuid();
+  final AppDatabase _db;
 
-  TaskRepository(this.db);
+  TaskRepository(this._db);
 
-  // CREATE
-  Future<void> createTask({
-    required String title,
-    required String projectId,
-    String? assigneeId,
-    TaskPriority priority = TaskPriority.medium,
-  }) async {
-    await db
-        .into(db.tasks)
-        .insert(
-          TasksCompanion.insert(
-            id: _uuid.v4(),
-            title: title,
-            status: TaskStatus.todo.value,
-            priority: priority.value,
-            projectId: projectId,
-            assigneeId: Value(assigneeId),
-            createdAt: DateTime.now(),
-          ),
-        );
+  // Create
+  Future<int> createTask(TasksCompanion task) async {
+    return await _db.into(_db.tasks).insert(task);
   }
 
-  // READ (STREAM)
-  Stream<List<TaskEntity>> watchTasks() {
-    return db
-        .select(db.tasks)
-        .watch()
-        .map((rows) => rows.map(_mapToEntity).toList());
+  // Read
+  Future<List<Task>> getAllTasks() async {
+    return await _db.select(_db.tasks).get();
   }
 
-  // UPDATE STATUS
-  Future<void> updateStatus(String taskId, TaskStatus status) async {
-    await (db.update(db.tasks)..where((t) => t.id.equals(taskId))).write(
-      TasksCompanion(status: Value(status.value)),
-    );
+  Stream<List<Task>> watchAllTasks() {
+    return _db.select(_db.tasks).watch();
   }
 
-  // DELETE
-  Future<void> deleteTask(String taskId) async {
-    await (db.delete(db.tasks)..where((t) => t.id.equals(taskId))).go();
+  Future<Task?> getTaskById(int id) async {
+    return await (_db.select(
+      _db.tasks,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  // FILTER BY STATUS
-  Stream<List<TaskEntity>> watchByStatus(TaskStatus status) {
-    return (db.select(db.tasks)..where((t) => t.status.equals(status.value)))
-        .watch()
-        .map((rows) => rows.map(_mapToEntity).toList());
+  // Update
+  Future<bool> updateTask(Task task) async {
+    return await _db.update(_db.tasks).replace(task);
   }
 
-  // MAPPER (IMPORTANT)
-  TaskEntity _mapToEntity(Task row) {
-    return TaskEntity(
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      status: TaskStatusX.fromString(row.status),
-      priority: TaskPriorityX.fromString(row.priority),
-      projectId: row.projectId,
-      assigneeId: row.assigneeId,
-      createdAt: row.createdAt,
-    );
+  // Delete
+  Future<int> deleteTask(int id) async {
+    return await (_db.delete(_db.tasks)..where((t) => t.id.equals(id))).go();
   }
 }
+
+/*
+How to use TaskRepository:
+
+1. Initialize the database and repository:
+   final db = AppDatabase();
+   final taskRepo = TaskRepository(db);
+
+2. Create a task:
+   await taskRepo.createTask(
+     TasksCompanion.insert(
+       title: 'New Task',
+       description: const Value('Task description'),
+       status: const Value('todo'),
+     ),
+   );
+
+3. Get all tasks:
+   final tasks = await taskRepo.getAllTasks();
+
+4. Watch tasks (for StreamBuilder):
+   Stream<List<Task>> taskStream = taskRepo.watchAllTasks();
+
+5. Update a task:
+   // Assuming you have a 'task' object from the DB
+   final updatedTask = task.copyWith(title: 'Updated Task Title');
+   await taskRepo.updateTask(updatedTask);
+
+6. Delete a task:
+   await taskRepo.deleteTask(taskId);
+*/

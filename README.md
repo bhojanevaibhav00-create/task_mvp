@@ -1,17 +1,16 @@
-# Database Integration and Models
+# app_data_demo
 
-## Hi Guys im Ajinkya working on this project as a backend developer.
+A new Flutter project.
 
+## Getting Started
 
-So, I have created a demo app to just check the models and CRUD operations, DB integration of the app.
+This project is a starting point for a Flutter application.
 
-I have created a simple data and domains folder in which i will write all the data and domain logic.
-If you guys wanna inetegrated it jsut copy past the folders into your app and add dependencies.
+A few resources to get you started if this is your first Flutter project:
 
-## Setup
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-After cloning or copying the files, you must run the build runner to generate the database code:
-
-```bash
-dart run build_runner build --delete-conflicting-outputs
-```
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
