@@ -1,16 +1,17 @@
-# app_data_demo
+# Database, Models & Offline CRUD
 
-A new Flutter project.
+## Hi im Ajinkya working on this project
 
-## Getting Started
+Task Completed :- 
+1) Finalise data models:
+    Users, Projects, Tasks, Status, Priority, Tags
+2) Implement offline-first local database layer.
+3)   Build repositories for CRUD operations.
 
-This project is a starting point for a Flutter application.
+Remaining TAsk :- 
+1) Implement task status flow and filtering.
+2) Provide seed/sample data for testing.
 
-A few resources to get you started if this is your first Flutter project:
+# ScreenShots of Completed task :
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
