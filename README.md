@@ -12,6 +12,8 @@ Remaining TAsk :-
 1) Implement task status flow and filtering.
 2) Provide seed/sample data for testing.
 
-# ScreenShots of Completed task :
+# Screenshots of Completed task :
+<img width="1919" height="1020" alt="Image" src="https://github.com/user-attachments/assets/39984aff-bbe2-495f-a97a-2ed68094ba6a" />
 
+<img width="1878" height="915" alt="Image" src="https://github.com/user-attachments/assets/34c063a9-4ed6-4a72-82fe-10be5d213615" />
 
