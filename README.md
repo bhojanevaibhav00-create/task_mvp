@@ -12,6 +12,7 @@ Task Completed :-
 5. Provide seed/sample data for testing.
 6. Integrate UI with new logic foir Testing.
 
+
 ## Database Schema Overview
 
 The application uses `drift` for the local SQLite database. Below is the schema definition:
@@ -137,6 +138,11 @@ The repository pattern is used to abstract the data source (Drift Database).
 
 
 # Screenshots of Completed task :
+<video src="https://github.com/user-attachments/assets/10fb0567-cc36-4ea6-9059-7ebd356d6734" width="230" height="1500" controls></video>
+
+
+<img width="230" height="1645" alt="Image" src="https://github.com/user-attachments/assets/a266c199-9aa8-4c25-ac55-135ed4b0598f" />
+<img width="230" height="1647" alt="Image" src="https://github.com/user-attachments/assets/2370d418-a0b1-4b5d-8d6b-73cfe1d18f80" />
 
 <img width="1919" height="1020" alt="Image" src="https://github.com/user-attachments/assets/39984aff-bbe2-495f-a97a-2ed68094ba6a" />
 
