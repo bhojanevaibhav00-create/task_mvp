@@ -1,7 +1,5 @@
 # Database, Models & Offline CRUD
 
-## Hi im Ajinkya working on this project.
-
 Task Completed :-
 
 1. Finalise data models:
