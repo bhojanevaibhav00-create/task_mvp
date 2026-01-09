@@ -98,7 +98,7 @@ lib/data/
 │   ├── project_repository.dart
 │   └── task_repository.dart
 ├── seed/
-└── seed_data.dart
+    └── seed_data.dart
 ```
 
 ## Project Structure & Implementation Details
