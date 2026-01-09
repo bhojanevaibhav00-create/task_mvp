@@ -2,7 +2,6 @@ import 'task_model.dart';
 import 'enums.dart';
 
 class TaskFilters {
-  /// Filters tasks based on multiple criteria.
   static List<Task> apply(
     List<Task> tasks, {
     TaskStatus? status,

@@ -12,7 +12,6 @@ Task Completed :-
 5. Provide seed/sample data for testing.
 6. Integrate UI with new logic foir Testing.
 
-
 ## Database Schema Overview
 
 The application uses `drift` for the local SQLite database. Below is the schema definition:
@@ -24,10 +23,9 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `id`: Integer (Primary Key, Auto Increment)
 - `title`: Text (1-50 chars)
 - `description`: Text (Nullable)
-- `status`: Text (Nullable)
+- `status`: Text (Nullable) - 'pending' or 'completed'
 - `dueDate`: DateTime (Nullable)
-- `priority`: Integer (Nullable)
-- `projectId`: Integer (Nullable, Foreign Key to Projects)
+- `priority`: Integer (Nullable) - 1 (Low), 2 (Medium), 3 (High)
 
 **2. Projects**
 
@@ -46,24 +44,14 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `label`: Text (1-30 chars)
 - `colorHex`: Integer
 
-## Integration Guide (How to use this backend in your project)
+## Development Setup
 
-Just follow this steps to integrate it to app :-
+### 1. Run Migrations / Code Generation
 
-### 1. Add Dependencies
+This project uses `drift` for the database. If you modify the schema in `lib/data/database/database.dart`, you must regenerate the code:
 
-Add the following packages to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  drift: ^2.24.0
-  sqlite3_flutter_libs: ^0.5.20
-  path_provider: ^2.1.2
-  path: ^1.9.0
-
-dev_dependencies:
-  drift_dev: ^2.24.0
-  build_runner: ^2.4.8
+```bash
+dart run build_runner build
 ```
 
 ### 2. Copy Backend Files
@@ -136,10 +124,9 @@ The repository pattern is used to abstract the data source (Drift Database).
 - **`SeedData`**: A utility class that generates a list of sample `Task` objects.
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
 
-
 # Screenshots of Completed task :
-<video src="https://github.com/user-attachments/assets/10fb0567-cc36-4ea6-9059-7ebd356d6734" width="230" height="1500" controls></video>
 
+<video src="https://github.com/user-attachments/assets/10fb0567-cc36-4ea6-9059-7ebd356d6734" width="230" height="1500" controls></video>
 
 <img width="230" height="1645" alt="Image" src="https://github.com/user-attachments/assets/a266c199-9aa8-4c25-ac55-135ed4b0598f" />
 <img width="230" height="1647" alt="Image" src="https://github.com/user-attachments/assets/2370d418-a0b1-4b5d-8d6b-73cfe1d18f80" />

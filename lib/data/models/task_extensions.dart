@@ -12,7 +12,7 @@ extension TaskStatusX on TaskStatus {
       case TaskStatus.review:
         return TaskStatus.done;
       case TaskStatus.done:
-        return TaskStatus.done; // No further state
+        return TaskStatus.done;
     }
   }
 
