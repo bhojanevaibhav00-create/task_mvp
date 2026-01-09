@@ -1,5 +1,8 @@
-import 'dart:developer';
+import 'dart:developer' as developer;
 
-void logInfo(String message) {
-  log(message);
+class AppLogger {
+  static void log(String message) {
+    developer.log(message);
+  }
 }
+
