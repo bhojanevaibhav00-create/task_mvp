@@ -125,7 +125,7 @@ The repository pattern is used to abstract the data source (Drift Database).
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
 
 # Screenshots of Completed task :
-   I have jsut created a app UI to test the working and you can change it as you see fit. 
+   I have just created a app UI to test the working and you can change it as you see fit. 
    In this the task stauts is shown as done and undone but the model provides a todo` -> `inProgress` -> `review` -> `done` so you can change it too. 
    and also i have added a comments on how to use the model and repo. so follow it. 
 
