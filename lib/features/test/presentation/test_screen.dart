@@ -6,6 +6,8 @@ import 'package:task_mvp/core/constants/app_routes.dart';
 import 'package:task_mvp/core/widgets/app_button.dart';
 import 'package:task_mvp/core/utils/logger.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:task_mvp/data/models/enums.dart';
+import 'package:task_mvp/data/models/task_extensions.dart';
 
 class TestScreen extends StatefulWidget {
   const TestScreen({super.key});
@@ -17,7 +19,6 @@ class TestScreen extends StatefulWidget {
 class _TestScreenState extends State<TestScreen> {
   late final AppDatabase _db;
   late final TaskRepository _taskRepo;
-  List<Task> _tasks = [];
   String _status = 'Ready';
 
   @override
@@ -25,27 +26,12 @@ class _TestScreenState extends State<TestScreen> {
     super.initState();
     _db = AppDatabase();
     _taskRepo = TaskRepository(_db);
-    _loadTasks();
   }
 
   @override
   void dispose() {
     _db.close();
     super.dispose();
-  }
-
-  Future<void> _loadTasks() async {
-    try {
-      final tasks = await _taskRepo.getAllTasks();
-      setState(() {
-        _tasks = tasks;
-        _status = 'Loaded ${tasks.length} tasks';
-      });
-    } catch (e) {
-      setState(() {
-        _status = 'Error loading tasks: $e';
-      });
-    }
   }
 
   Future<void> _addTask() async {
@@ -55,7 +41,7 @@ class _TestScreenState extends State<TestScreen> {
           'Test Task ${DateTime.now().millisecondsSinceEpoch}',
         ),
         description: const drift.Value('This is a test task'),
-        status: const drift.Value('pending'),
+        status: const drift.Value('todo'),
         priority: const drift.Value(1),
         dueDate: drift.Value(DateTime.now().add(const Duration(days: 1))),
       );
@@ -63,10 +49,35 @@ class _TestScreenState extends State<TestScreen> {
       setState(() {
         _status = 'Task added';
       });
-      _loadTasks();
     } catch (e) {
       setState(() {
         _status = 'Error adding task: $e';
+      });
+    }
+  }
+
+  Future<void> _advanceTaskStatus(Task task) async {
+    try {
+      final currentStatusString = task.status;
+      TaskStatus currentStatus = TaskStatus.todo;
+
+      if (currentStatusString != null) {
+        currentStatus = TaskStatus.values.firstWhere(
+          (e) => e.name == currentStatusString,
+          orElse: () => TaskStatus.todo,
+        );
+      }
+
+      final nextStatus = currentStatus.next;
+      final updatedTask = task.copyWith(status: drift.Value(nextStatus.name));
+
+      await _taskRepo.updateTask(updatedTask);
+      setState(() {
+        _status = 'Task updated: ${currentStatus.label} -> ${nextStatus.label}';
+      });
+    } catch (e) {
+      setState(() {
+        _status = 'Error updating task status: $e';
       });
     }
   }
@@ -77,7 +88,6 @@ class _TestScreenState extends State<TestScreen> {
       setState(() {
         _status = 'All tasks deleted';
       });
-      _loadTasks();
     } catch (e) {
       setState(() {
         _status = 'Error deleting tasks: $e';
@@ -124,7 +134,7 @@ class _TestScreenState extends State<TestScreen> {
                   child: const Text('Add Test Task'),
                 ),
                 ElevatedButton(
-                  onPressed: _loadTasks,
+                  onPressed: () => setState(() {}),
                   child: const Text('Refresh Tasks'),
                 ),
                 ElevatedButton(
@@ -135,10 +145,6 @@ class _TestScreenState extends State<TestScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Text(
-              'Tasks Count: ${_tasks.length}',
-              style: const TextStyle(fontSize: 14),
-            ),
             const SizedBox(height: 20),
 
             // Navigation Tests
@@ -229,13 +235,48 @@ class _TestScreenState extends State<TestScreen> {
             const SizedBox(height: 10),
             SizedBox(
               height: 200,
-              child: ListView.builder(
-                itemCount: _tasks.length,
-                itemBuilder: (context, index) {
-                  final task = _tasks[index];
-                  return ListTile(
-                    title: Text(task.title),
-                    subtitle: Text('ID: ${task.id}, Status: ${task.status}'),
+              child: StreamBuilder<List<Task>>(
+                stream: _taskRepo.watchAllTasks(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final tasks = snapshot.data!;
+                  if (tasks.isEmpty) {
+                    return const Text('No tasks found');
+                  }
+
+                  return ListView.builder(
+                    itemCount: tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = tasks[index];
+                      return ListTile(
+                        leading: Checkbox(
+                          value: task.status == TaskStatus.done.name,
+                          onChanged: (_) => _advanceTaskStatus(task),
+                        ),
+                        title: Text(
+                          task.title,
+                          style: TextStyle(
+                            decoration: task.status == TaskStatus.done.name
+                                ? TextDecoration.lineThrough
+                                : null,
+                            color: task.status == TaskStatus.done.name
+                                ? Colors.grey
+                                : null,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'ID: ${task.id}, Status: ${task.status}',
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () => _advanceTaskStatus(task),
+                      );
+                    },
                   );
                 },
               ),
