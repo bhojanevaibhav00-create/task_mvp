@@ -135,14 +135,6 @@ The repository pattern is used to abstract the data source (Drift Database).
 - **`SeedData`**: A utility class that generates a list of sample `Task` objects.
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
 
-### 4. Demo Application (`lib/demo_app.dart`)
-
-The `TaskDashboard` widget serves as the main UI to demonstrate the backend features:
-
-- **Real-time Updates**: Uses `StreamBuilder` with `taskRepo.watchAllTasks()`.
-- **Filtering & Sorting**: Applies `TaskFilters` and sorting logic to the data stream before rendering.
-- **State Management**: Tapping a task uses `task.status.next` to update the status in the database.
-- **Project Integration**: Allows creating projects and assigning them to tasks via the "New Task" dialog.
 
 # Screenshots of Completed task :
 
