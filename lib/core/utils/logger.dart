@@ -1,8 +1,9 @@
-import 'dart:developer' as developer;
+import 'dart:developer' as dev;
 
-class AppLogger {
-  static void log(String message) {
-    developer.log(message);
-  }
+void logInfo(String message) {
+  dev.log(message, name: 'INFO');
 }
 
+void logError(String message) {
+  dev.log(message, name: 'ERROR');
+}

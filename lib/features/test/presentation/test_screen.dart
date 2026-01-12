@@ -4,10 +4,10 @@ import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/task_repository.dart';
 import 'package:task_mvp/core/constants/app_routes.dart';
 import 'package:task_mvp/core/widgets/app_button.dart';
-import 'package:task_mvp/core/utils/logger.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/data/models/task_extensions.dart';
+import 'package:task_mvp/core/utils/logger.dart';
 
 class TestScreen extends StatefulWidget {
   const TestScreen({super.key});
@@ -169,10 +169,7 @@ class _TestScreenState extends State<TestScreen> {
                   onPressed: () => _navigateTo(AppRoutes.tasks),
                   child: const Text('Go to Tasks'),
                 ),
-                ElevatedButton(
-                  onPressed: () => _navigateTo(AppRoutes.demo),
-                  child: const Text('Go to Demo'),
-                ),
+               
               ],
             ),
             const SizedBox(height: 20),
