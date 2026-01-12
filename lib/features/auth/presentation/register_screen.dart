@@ -2,32 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_routes.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final confirm = _confirmController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty || confirm.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password')),
+        const SnackBar(content: Text('All fields are required')),
       );
       return;
     }
@@ -39,16 +42,24 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (password != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    // Simulate login API call
-    await Future.delayed(const Duration(seconds: 1));
+    // Simulate API call or database registration
+    await Future.delayed(const Duration(seconds: 2));
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Login successful!')),
+      const SnackBar(content: Text('Registration successful!')),
     );
 
-    context.go(AppRoutes.dashboard);
+    // Navigate to login after successful registration
+    context.go(AppRoutes.login);
 
     setState(() => _isLoading = false);
   }
@@ -77,25 +88,8 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // App icon
-                Container(
-                  height: 56,
-                  width: 56,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4F46E5).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.task_alt,
-                    size: 32,
-                    color: Color(0xFF4F46E5),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Welcome text
                 const Text(
-                  "Welcome back",
+                  "Create Account",
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -104,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  "Sign in to continue to your workspace",
+                  "Sign up to start your workspace",
                   style: TextStyle(
                     fontSize: 14,
                     color: Color(0xFF6B7280),
@@ -112,10 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Email field
+                // Email
                 TextField(
                   controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: "Email",
                     filled: true,
@@ -128,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Password field
+                // Password
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
@@ -142,11 +135,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Confirm Password
+                TextField(
+                  controller: _confirmController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: "Confirm Password",
+                    filled: true,
+                    fillColor: const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                  ),
+                ),
                 const SizedBox(height: 24),
 
-                // Login button
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
+                  onPressed: _isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4F46E5),
                     foregroundColor: Colors.white,
@@ -165,29 +173,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   )
                       : const Text(
-                    "Login",
+                    "Register",
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // Register link
                 Center(
                   child: TextButton(
-                    onPressed: () => context.go(AppRoutes.register),
+                    onPressed: () => context.go(AppRoutes.login),
                     child: const Text(
-                      "Don't have an account? Register here",
-                      style: TextStyle(color: Color(0xFF4F46E5)),
-                    ),
-                  ),
-                ),
-
-                // Skip login (demo)
-                Center(
-                  child: TextButton(
-                    onPressed: () => context.go(AppRoutes.dashboard),
-                    child: const Text(
-                      "Skip login (Demo)",
+                      "Already have an account? Login",
                       style: TextStyle(color: Color(0xFF4F46E5)),
                     ),
                   ),
