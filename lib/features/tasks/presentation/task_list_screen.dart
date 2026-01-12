@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' as drift;
 import '../../../core/providers/task_providers.dart';
 import '../../../data/database/database.dart';
+import '../../../data/models/enums.dart';
 
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
@@ -96,7 +98,9 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                         priority: _priority,
                         dueDate: _selectedDate,
                       );
-                  Navigator.of(context).pop();
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
                 }
               },
               child: const Text('Add'),
@@ -171,18 +175,20 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final updatedTask = Task(
-                  id: task.id,
+                final updatedTask = task.copyWith(
                   title: _titleController.text,
-                  description: _descriptionController.text.isEmpty
-                      ? null
-                      : _descriptionController.text,
-                  status: task.status,
-                  priority: _priority,
-                  dueDate: _selectedDate,
+                  description: drift.Value(
+                    _descriptionController.text.isEmpty
+                        ? null
+                        : _descriptionController.text,
+                  ),
+                  priority: drift.Value(_priority),
+                  dueDate: drift.Value(_selectedDate),
                 );
                 await ref.read(tasksProvider.notifier).updateTask(updatedTask);
-                Navigator.of(context).pop();
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               },
               child: const Text('Update'),
             ),
@@ -194,7 +200,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredTasks = ref.watch(filteredTasksProvider);
+    final filteredTasksAsync = ref.watch(filteredTasksProvider);
     final statusFilter = ref.watch(statusFilterProvider);
     final sortBy = ref.watch(sortByProvider);
     final overdueFilter = ref.watch(overdueFilterProvider);
@@ -245,12 +251,12 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                           items: const [
                             DropdownMenuItem(value: 'all', child: Text('All')),
                             DropdownMenuItem(
-                              value: 'pending',
-                              child: Text('Pending'),
+                              value: 'todo',
+                              child: Text('To Do'),
                             ),
                             DropdownMenuItem(
-                              value: 'completed',
-                              child: Text('Completed'),
+                              value: 'done',
+                              child: Text('Done'),
                             ),
                           ],
                           onChanged: (value) {
@@ -288,131 +294,128 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
           // Task List
           Expanded(
-            child: filteredTasks.isEmpty
-                ? const Center(child: Text('No tasks found'))
-                : ListView.builder(
-                    itemCount: filteredTasks.length,
-                    itemBuilder: (context, index) {
-                      final task = filteredTasks[index];
-                      final isOverdue =
-                          task.dueDate != null &&
-                          task.dueDate!.isBefore(DateTime.now()) &&
-                          task.status != 'completed';
-                      final priorityColor = _getPriorityColor(
-                        task.priority ?? 1,
-                      );
+            child: filteredTasksAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
+              data: (tasks) {
+                if (tasks.isEmpty)
+                  return const Center(child: Text('No tasks found'));
+                return ListView.builder(
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = tasks[index];
+                    final isOverdue =
+                        task.dueDate != null &&
+                        task.dueDate!.isBefore(DateTime.now()) &&
+                        task.status != TaskStatus.done.name;
+                    final priorityColor = _getPriorityColor(task.priority ?? 1);
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: ListTile(
-                          title: Text(task.title),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (task.description?.isNotEmpty ?? false)
-                                Text(task.description!),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: priorityColor.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: priorityColor),
-                                    ),
-                                    child: Text(
-                                      _getPriorityText(task.priority ?? 1),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: priorityColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: ListTile(
+                        title: Text(task.title),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (task.description?.isNotEmpty ?? false)
+                              Text(task.description!),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: priorityColor.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: priorityColor),
+                                  ),
+                                  child: Text(
+                                    _getPriorityText(task.priority ?? 1),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: priorityColor,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  if (task.dueDate != null)
-                                    Text(
-                                      'Due: ${_formatDate(task.dueDate)}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isOverdue
-                                            ? Colors.red
-                                            : Colors.grey,
-                                        fontWeight: isOverdue
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
+                                ),
+                                const SizedBox(width: 8),
+                                if (task.dueDate != null)
+                                  Text(
+                                    'Due: ${_formatDate(task.dueDate)}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isOverdue
+                                          ? Colors.red
+                                          : Colors.grey,
+                                      fontWeight: isOverdue
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
                                     ),
-                                ],
-                              ),
-                              if (isOverdue)
-                                const Text(
-                                  'OVERDUE',
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
                                   ),
-                                ),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  task.status == 'completed'
-                                      ? Icons.check_circle
-                                      : Icons.circle_outlined,
-                                  color: task.status == 'completed'
-                                      ? Colors.green
-                                      : null,
-                                ),
-                                onPressed: () async {
-                                  final newStatus = task.status == 'completed'
-                                      ? 'pending'
-                                      : 'completed';
-                                  final updatedTask = Task(
-                                    id: task.id,
-                                    title: task.title,
-                                    description: task.description,
-                                    status: newStatus,
-                                    priority: task.priority,
-                                    dueDate: task.dueDate,
-                                  );
-                                  await ref
-                                      .read(tasksProvider.notifier)
-                                      .updateTask(updatedTask);
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _showEditTaskDialog(task),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
+                              ],
+                            ),
+                            if (isOverdue)
+                              const Text(
+                                'OVERDUE',
+                                style: TextStyle(
                                   color: Colors.red,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                onPressed: () async {
-                                  await ref
-                                      .read(tasksProvider.notifier)
-                                      .deleteTask(task.id);
-                                },
                               ),
-                            ],
-                          ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                task.status == TaskStatus.done.name
+                                    ? Icons.check_circle
+                                    : Icons.circle_outlined,
+                                color: task.status == TaskStatus.done.name
+                                    ? Colors.green
+                                    : null,
+                              ),
+                              onPressed: () async {
+                                final newStatus =
+                                    task.status == TaskStatus.done.name
+                                    ? TaskStatus.todo.name
+                                    : TaskStatus.done.name;
+                                final updatedTask = task.copyWith(
+                                  status: drift.Value(newStatus),
+                                );
+                                await ref
+                                    .read(tasksProvider.notifier)
+                                    .updateTask(updatedTask);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () => _showEditTaskDialog(task),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () async {
+                                await ref
+                                    .read(tasksProvider.notifier)
+                                    .deleteTask(task.id);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../data/models/enums.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -12,9 +13,11 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasks = ref.watch(tasksProvider);
     final completedTasks = tasks
-        .where((task) => task.status == 'completed')
+        .where((task) => task.status == TaskStatus.done.name)
         .length;
-    final pendingTasks = tasks.where((task) => task.status == 'pending').length;
+    final pendingTasks = tasks
+        .where((task) => task.status != TaskStatus.done.name)
+        .length;
 
     return Scaffold(
       appBar: AppBar(
@@ -155,10 +158,10 @@ class DashboardScreen extends ConsumerWidget {
                         title: Text(task.title),
                         subtitle: Text('Status: ${task.status}'),
                         trailing: Icon(
-                          task.status == 'completed'
+                          task.status == TaskStatus.done.name
                               ? Icons.check_circle
                               : Icons.pending,
-                          color: task.status == 'completed'
+                          color: task.status == TaskStatus.done.name
                               ? Colors.green
                               : Colors.orange,
                         ),

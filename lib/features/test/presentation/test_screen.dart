@@ -1,38 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:task_mvp/data/database/database.dart';
-import 'package:task_mvp/data/repositories/task_repository.dart';
 import 'package:task_mvp/core/constants/app_routes.dart';
 import 'package:task_mvp/core/widgets/app_button.dart';
-import 'package:task_mvp/core/utils/logger.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:task_mvp/core/providers/task_providers.dart';
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/data/models/task_extensions.dart';
 
-class TestScreen extends StatefulWidget {
+class TestScreen extends ConsumerStatefulWidget {
   const TestScreen({super.key});
 
   @override
-  State<TestScreen> createState() => _TestScreenState();
+  ConsumerState<TestScreen> createState() => _TestScreenState();
 }
 
-class _TestScreenState extends State<TestScreen> {
-  late final AppDatabase _db;
-  late final TaskRepository _taskRepo;
+class _TestScreenState extends ConsumerState<TestScreen> {
   String _status = 'Ready';
-
-  @override
-  void initState() {
-    super.initState();
-    _db = AppDatabase();
-    _taskRepo = TaskRepository(_db);
-  }
-
-  @override
-  void dispose() {
-    _db.close();
-    super.dispose();
-  }
 
   Future<void> _addTask() async {
     try {
@@ -41,11 +26,11 @@ class _TestScreenState extends State<TestScreen> {
           'Test Task ${DateTime.now().millisecondsSinceEpoch}',
         ),
         description: const drift.Value('This is a test task'),
-        status: const drift.Value('todo'),
+        status: drift.Value(TaskStatus.todo.name),
         priority: const drift.Value(1),
         dueDate: drift.Value(DateTime.now().add(const Duration(days: 1))),
       );
-      await _taskRepo.createTask(companion);
+      await ref.read(taskRepositoryProvider).createTask(companion);
       setState(() {
         _status = 'Task added';
       });
@@ -71,7 +56,7 @@ class _TestScreenState extends State<TestScreen> {
       final nextStatus = currentStatus.next;
       final updatedTask = task.copyWith(status: drift.Value(nextStatus.name));
 
-      await _taskRepo.updateTask(updatedTask);
+      await ref.read(taskRepositoryProvider).updateTask(updatedTask);
       setState(() {
         _status = 'Task updated: ${currentStatus.label} -> ${nextStatus.label}';
       });
@@ -84,7 +69,7 @@ class _TestScreenState extends State<TestScreen> {
 
   Future<void> _deleteAllTasks() async {
     try {
-      await _taskRepo.deleteAllTasks();
+      await ref.read(taskRepositoryProvider).deleteAllTasks();
       setState(() {
         _status = 'All tasks deleted';
       });
@@ -96,10 +81,21 @@ class _TestScreenState extends State<TestScreen> {
   }
 
   void _testLogger() {
-    logInfo('Test log message from TestScreen');
+    debugPrint('Test log message from TestScreen');
     setState(() {
       _status = 'Logger tested - check console';
     });
+  }
+
+  Future<void> _checkDbVersion() async {
+    try {
+      final version = await ref.read(taskRepositoryProvider).getDatabaseVersion();
+      setState(() {
+        _status = 'Database Version: $version';
+      });
+    } catch (e) {
+      setState(() => _status = 'Error checking DB version: $e');
+    }
   }
 
   void _navigateTo(String route) {
@@ -141,6 +137,10 @@ class _TestScreenState extends State<TestScreen> {
                   onPressed: _deleteAllTasks,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   child: const Text('Delete All'),
+                ),
+                ElevatedButton(
+                  onPressed: _checkDbVersion,
+                  child: const Text('Check DB Version'),
                 ),
               ],
             ),
@@ -236,7 +236,7 @@ class _TestScreenState extends State<TestScreen> {
             SizedBox(
               height: 200,
               child: StreamBuilder<List<Task>>(
-                stream: _taskRepo.watchAllTasks(),
+                stream: ref.watch(taskRepositoryProvider).watchAllTasks(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return Text('Error: ${snapshot.error}');
