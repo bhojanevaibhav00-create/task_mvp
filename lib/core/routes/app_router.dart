@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+
 import '../constants/app_routes.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
@@ -23,7 +24,8 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.demo,
-      builder: (context, state) => const DemoScreen(title: 'Demo Home Page'),
+      builder: (context, state) =>
+          const DemoScreen(title: 'Demo Home Page'),
     ),
     GoRoute(
       path: AppRoutes.test,

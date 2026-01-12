@@ -1,181 +1,55 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../../core/constants/app_routes.dart';
-import '../../../core/providers/task_providers.dart';
-import '../../../core/widgets/app_button.dart';
 
-class DashboardScreen extends ConsumerWidget {
+import 'dashboard_home.dart';
+import '../../tasks/presentation/task_list_screen.dart';
+
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tasks = ref.watch(tasksProvider);
-    final completedTasks = tasks
-        .where((task) => task.status == 'completed')
-        .length;
-    final pendingTasks = tasks.where((task) => task.status == 'pending').length;
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
 
+class _DashboardScreenState extends State<DashboardScreen> {
+  int index = 0;
+
+  final pages = const [
+    DashboardHome(),
+    TaskListScreen(),
+    Center(child: Text("Profile")),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.refresh(tasksProvider.notifier).loadTasks(),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: pages[index],
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF6366F1),
+        onPressed: () {},
+        icon: const Icon(Icons.add),
+        label: const Text("New Task"),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: index,
+        onTap: (i) => setState(() => index = i),
+        selectedItemColor: const Color(0xFF6366F1),
+        unselectedItemColor: const Color(0xFF64748B),
+        backgroundColor: Colors.white,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.task_alt_outlined),
+            label: "Tasks",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: "Profile",
           ),
         ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Task Overview',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-
-            // Statistics Cards
-            Row(
-              children: [
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            tasks.length.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text('Total Tasks'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            pendingTasks.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          const Text('Pending'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            completedTasks.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const Text('Completed'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            // Quick Actions
-            const Text(
-              'Quick Actions',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                AppButton(
-                  text: 'View All Tasks',
-                  onPressed: () => context.go(AppRoutes.tasks),
-                ),
-                AppButton(
-                  text: 'Add New Task',
-                  onPressed: () =>
-                      context.go(AppRoutes.tasks), // Will open add dialog
-                ),
-                AppButton(
-                  text: 'Go to Test Screen',
-                  onPressed: () => context.go(AppRoutes.test),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            // Recent Tasks
-            if (tasks.isNotEmpty) ...[
-              const Text(
-                'Recent Tasks',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: tasks.length.clamp(
-                    0,
-                    5,
-                  ), // Show up to 5 recent tasks
-                  itemBuilder: (context, index) {
-                    final task = tasks[index];
-                    return Card(
-                      child: ListTile(
-                        title: Text(task.title),
-                        subtitle: Text('Status: ${task.status}'),
-                        trailing: Icon(
-                          task.status == 'completed'
-                              ? Icons.check_circle
-                              : Icons.pending,
-                          color: task.status == 'completed'
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
-                        onTap: () => context.go(AppRoutes.tasks),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ] else
-              const Expanded(
-                child: Center(
-                  child: Text('No tasks yet. Add your first task!'),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
