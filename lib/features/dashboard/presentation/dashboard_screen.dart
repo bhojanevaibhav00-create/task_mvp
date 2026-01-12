@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dashboard_home.dart';
 import '../../tasks/presentation/task_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -9,42 +10,43 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int currentIndex = 0;
+  int index = 0;
 
   final pages = const [
+    DashboardHome(),
     TaskListScreen(),
-    Center(child: Text('Projects')),
-    Center(child: Text('Profile')),
+    Center(child: Text("Profile")),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        elevation: 0,
-      ),
-      body: pages[currentIndex],
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: pages[index],
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF6366F1),
         onPressed: () {},
         icon: const Icon(Icons.add),
-        label: const Text('New Task'),
+        label: const Text("New Task"),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: (i) => setState(() => currentIndex = i),
+        currentIndex: index,
+        onTap: (i) => setState(() => index = i),
+        selectedItemColor: const Color(0xFF6366F1),
+        unselectedItemColor: const Color(0xFF64748B),
+        backgroundColor: Colors.white,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle_outline),
-            label: 'Tasks',
+            icon: Icon(Icons.home_outlined),
+            label: "Home",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.folder_outlined),
-            label: 'Projects',
+            icon: Icon(Icons.task_alt_outlined),
+            label: "Tasks",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
-            label: 'Profile',
+            label: "Profile",
           ),
         ],
       ),

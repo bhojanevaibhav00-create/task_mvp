@@ -13,7 +13,7 @@ class TaskListScreen extends StatefulWidget {
 class _TaskListScreenState extends State<TaskListScreen> {
   @override
   Widget build(BuildContext context) {
-    final tasks = TaskRepository.fetchTasks();
+    final tasks = TaskRepository.getAllTasks();
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -33,9 +33,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
             onTap: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => TaskDetailScreen(task: task),
-                ),
+                MaterialPageRoute(builder: (_) => TaskDetailScreen(task: task)),
               );
               setState(() {});
             },
