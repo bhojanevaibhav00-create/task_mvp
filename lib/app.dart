@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
       title: 'Task MVP',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      routerConfig: appRouter,
+      routerConfig: appRouter, // ✅ FIXED
     );
   }
 }
