@@ -1,6 +1,6 @@
 # Database, Models & Offline CRUD
 
-Task Completed :-
+Tasks Completed:
 
 1. Finalise data models:
    Users, Projects, Tasks, Status, Priority, Tags
@@ -8,7 +8,7 @@ Task Completed :-
 3. Build repositories for CRUD operations.
 4. Implement task status flow and filtering.
 5. Provide seed/sample data for testing.
-6. Integrate UI with new logic foir Testing.
+6. Integrate UI with new logic for Testing.
 
 ## Recent Updates (Activity Logs & Advanced Filtering)
 
@@ -135,6 +135,7 @@ lib/data/
 │   ├── task_model.dart
 │   └── user_model.dart
 ├── repositories/
+│   ├── i_task_repository.dart
 │   ├── project_repository.dart
 │   └── task_repository.dart
 ├── seed/
@@ -163,6 +164,11 @@ These files define the domain logic and data structures used throughout the app.
 
 The repository pattern is used to abstract the data source (Drift Database).
 
+- **`i_task_repository.dart`**:
+
+  - Defines the abstract contract for task operations.
+  - Decouples the UI from the specific database implementation, facilitating testing and future data source changes.
+
 - **`task_repository.dart`**:
   - **`watchAllTasks()`**: Returns a `Stream<List<Task>>` that automatically emits new values when the database changes.
   - **`createTask`, `updateTask`, `deleteTask`**: Standard CRUD operations.
@@ -175,11 +181,11 @@ The repository pattern is used to abstract the data source (Drift Database).
 - **`SeedData`**: A utility class that generates a list of sample `Task` objects.
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
 
-# Screenshots of Completed task :
+# Screenshots of Completed Task
 
-I have just created a app UI to test the working and you can change it as you see fit.
-In this the task stauts is shown as done and undone but the model provides a todo`->`inProgress`->`review`->`done` so you can change it too.
-and also i have added a comments on how to use the model and repo. so follow it.
+I have just created an app UI to test the working and you can change it as you see fit.
+In this the task status is shown as done and undone but the model provides a todo`->`inProgress`->`review`->`done` so you can change it too.
+Also, I have added comments on how to use the model and repo, so please follow them.
 
 <video src="https://github.com/user-attachments/assets/10fb0567-cc36-4ea6-9059-7ebd356d6734" width="230" height="1500" controls></video>
 
