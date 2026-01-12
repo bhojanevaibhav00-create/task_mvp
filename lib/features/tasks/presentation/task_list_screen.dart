@@ -13,7 +13,16 @@ class TaskListScreen extends StatefulWidget {
 class _TaskListScreenState extends State<TaskListScreen> {
   @override
   Widget build(BuildContext context) {
-    final tasks = TaskRepository.getAllTasks();
+    final List<TaskEntity> tasks = TaskRepository.getAllTasks();
+
+    if (tasks.isEmpty) {
+      return const Center(
+        child: Text(
+          'No tasks yet.\nTap + to create one.',
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -33,9 +42,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
             onTap: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => TaskDetailScreen(task: task)),
+                MaterialPageRoute(
+                  builder: (_) => TaskDetailScreen(task: task),
+                ),
               );
-              setState(() {});
+              setState(() {}); // refresh after detail update
             },
           ),
         );

@@ -1,8 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_routes.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (_emailController.text.contains('@')) {
+      context.go(AppRoutes.dashboard);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid email format')),
+      );
+    }
+
+    setState(() => _isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +68,6 @@ class LoginScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // App Icon / Logo placeholder
                 Container(
                   height: 56,
                   width: 56,
@@ -42,7 +81,6 @@ class LoginScreen extends StatelessWidget {
                     color: Color(0xFF4F46E5),
                   ),
                 ),
-
                 const SizedBox(height: 24),
 
                 const Text(
@@ -53,9 +91,7 @@ class LoginScreen extends StatelessWidget {
                     color: Color(0xFF111827),
                   ),
                 ),
-
                 const SizedBox(height: 6),
-
                 const Text(
                   "Sign in to continue to your workspace",
                   style: TextStyle(
@@ -63,57 +99,39 @@ class LoginScreen extends StatelessWidget {
                     color: Color(0xFF6B7280),
                   ),
                 ),
-
                 const SizedBox(height: 32),
 
-                // Email Field
                 TextField(
+                  controller: _emailController,
                   decoration: InputDecoration(
                     labelText: "Email",
-                    labelStyle: const TextStyle(color: Color(0xFF6B7280)),
                     filled: true,
                     fillColor: const Color(0xFFF9FAFB),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                     ),
                     prefixIcon: const Icon(Icons.email_outlined),
                   ),
                 ),
-
                 const SizedBox(height: 16),
 
-                // Password Field
                 TextField(
+                  controller: _passwordController,
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: "Password",
-                    labelStyle: const TextStyle(color: Color(0xFF6B7280)),
                     filled: true,
                     fillColor: const Color(0xFFF9FAFB),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                     ),
                     prefixIcon: const Icon(Icons.lock_outline),
                   ),
                 ),
-
                 const SizedBox(height: 24),
 
-                // Login Button
                 ElevatedButton(
-                  onPressed: () {
-                    context.go('/dashboard');
-                  },
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4F46E5),
                     foregroundColor: Colors.white,
@@ -121,29 +139,29 @@ class LoginScreen extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    elevation: 0,
                   ),
-                  child: const Text(
-                    "Login",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          "Login",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                 ),
-
                 const SizedBox(height: 16),
 
-                // Footer
                 Center(
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: () => context.go(AppRoutes.dashboard),
                     child: const Text(
-                      "Forgot password?",
-                      style: TextStyle(
-                        color: Color(0xFF4F46E5),
-                        fontWeight: FontWeight.w500,
-                      ),
+                      "Skip login (Demo)",
+                      style: TextStyle(color: Color(0xFF4F46E5)),
                     ),
                   ),
                 ),
