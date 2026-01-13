@@ -49,7 +49,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 maxLines: 3,
               ),
               DropdownButtonFormField<int>(
-                initialValue: _priority,
+                value: _priority,
                 decoration: const InputDecoration(labelText: 'Priority'),
                 items: const [
                   DropdownMenuItem(value: 1, child: Text('Low')),
@@ -135,7 +135,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 maxLines: 3,
               ),
               DropdownButtonFormField<int>(
-                initialValue: _priority,
+                value: _priority,
                 decoration: const InputDecoration(labelText: 'Priority'),
                 items: const [
                   DropdownMenuItem(value: 1, child: Text('Low')),
