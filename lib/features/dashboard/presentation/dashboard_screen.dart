@@ -116,25 +116,25 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                AppButton(
-                  text: 'View All Tasks',
-                  onPressed: () => context.go(AppRoutes.tasks),
-                ),
-                AppButton(
-                  text: 'Add New Task',
-                  onPressed: () =>
-                      context.go(AppRoutes.tasks), // Will open add dialog
-                ),
-                AppButton(
-                  text: 'Go to Test Screen',
-                  onPressed: () => context.go(AppRoutes.test),
-                ),
-              ],
-            ),
+           Wrap(
+  spacing: 12,
+  runSpacing: 12,
+  children: [
+    AppButton(
+      text: 'View All Tasks',
+      onPressed: () => context.push(AppRoutes.tasks),
+    ),
+    AppButton(
+      text: 'Add New Task',
+      onPressed: () => context.push(AppRoutes.tasks),
+    ),
+    AppButton(
+      text: 'Go to Test Screen',
+      onPressed: () => context.push(AppRoutes.test),
+    ),
+  ],
+),
+
 
             const SizedBox(height: 30),
 
