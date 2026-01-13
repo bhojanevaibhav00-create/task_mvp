@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/task_repository.dart';
+import 'package:task_mvp/data/models/enums.dart';
 
 // Database provider
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -44,7 +45,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       title: title,
       description: drift.Value(description.isEmpty ? null : description),
       priority: drift.Value(priority),
-      status: drift.Value('pending'),
+      status: drift.Value(TaskStatus.todo.name),
       dueDate: drift.Value(dueDate),
     );
     await _repository.createTask(companion);
@@ -67,43 +68,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
   }
 
   Future<void> seedData() async {
-    final now = DateTime.now();
-    final tasks = [
-      TasksCompanion.insert(
-        title: 'Complete Project Proposal',
-        description: const drift.Value(
-          'Draft the initial proposal for the client meeting.',
-        ),
-        priority: const drift.Value(3), // High
-        status: const drift.Value('pending'),
-        dueDate: drift.Value(now.add(const Duration(days: 2))),
-      ),
-      TasksCompanion.insert(
-        title: 'Buy Groceries',
-        description: const drift.Value('Milk, Bread, Eggs, Coffee'),
-        priority: const drift.Value(1), // Low
-        status: const drift.Value('pending'),
-        dueDate: drift.Value(now.add(const Duration(hours: 4))),
-      ),
-      TasksCompanion.insert(
-        title: 'Submit Tax Report',
-        description: const drift.Value('Quarterly tax submission.'),
-        priority: const drift.Value(3),
-        status: const drift.Value('pending'),
-        dueDate: drift.Value(now.subtract(const Duration(days: 2))), // Overdue
-      ),
-      TasksCompanion.insert(
-        title: 'Team Meeting',
-        description: const drift.Value('Weekly sync with the dev team.'),
-        priority: const drift.Value(2),
-        status: const drift.Value('completed'),
-        dueDate: drift.Value(now.subtract(const Duration(days: 1))),
-      ),
-    ];
-
-    for (var task in tasks) {
-      await _repository.createTask(task);
-    }
+    await _repository.seedDatabase();
     await loadTasks();
   }
 
@@ -142,43 +107,57 @@ final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
 final statusFilterProvider = StateProvider<String>((ref) => 'all');
 final sortByProvider = StateProvider<String>((ref) => 'date');
 final overdueFilterProvider = StateProvider<bool>((ref) => false);
+final priorityFilterProvider = StateProvider<int?>((ref) => null);
+final tagFilterProvider = StateProvider<int?>((ref) => null);
+final projectFilterProvider = StateProvider<int?>((ref) => null);
+final dateRangeStartProvider = StateProvider<DateTime?>((ref) => null);
+final dateRangeEndProvider = StateProvider<DateTime?>((ref) => null);
 
 // Filtered tasks provider
-final filteredTasksProvider = Provider<List<Task>>((ref) {
-  final tasks = ref.watch(tasksProvider);
-  final statusFilter = ref.watch(statusFilterProvider);
+final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
+  final repository = ref.watch(taskRepositoryProvider);
+  final status = ref.watch(statusFilterProvider);
   final sortBy = ref.watch(sortByProvider);
-  final overdueFilter = ref.watch(overdueFilterProvider);
+  final overdue = ref.watch(overdueFilterProvider);
+  final priority = ref.watch(priorityFilterProvider);
+  final tagId = ref.watch(tagFilterProvider);
+  final projectId = ref.watch(projectFilterProvider);
+  final start = ref.watch(dateRangeStartProvider);
+  final end = ref.watch(dateRangeEndProvider);
 
-  List<Task> filtered = List.from(tasks);
-
-  // Filter by overdue
-  if (overdueFilter) {
-    final now = DateTime.now();
-    filtered = filtered.where((task) {
-      return task.status != 'completed' &&
-          task.dueDate != null &&
-          task.dueDate!.isBefore(now);
-    }).toList();
-  } else {
-    // Filter by status (only if not filtering by overdue)
-    if (statusFilter != 'all') {
-      filtered = filtered.where((task) => task.status == statusFilter).toList();
-    }
+  // Map UI filters to Repository parameters
+  List<String>? statuses;
+  if (status != 'all') {
+    statuses = [status];
   }
 
-  // Sort
-  if (sortBy == 'title') {
-    filtered.sort((a, b) => a.title.compareTo(b.title));
-  } else if (sortBy == 'priority') {
-    filtered.sort(
-      (a, b) => (b.priority ?? 0).compareTo(a.priority ?? 0),
-    ); // Higher priority first
-  } else if (sortBy == 'date') {
-    filtered.sort(
-      (a, b) => b.id.compareTo(a.id),
-    ); // Newer tasks first (higher id)
+  String repoSort = 'updated_at_desc';
+  if (sortBy == 'priority') repoSort = 'priority_desc';
+  if (sortBy == 'date') repoSort = 'due_date_asc';
+
+  DateTime? fromDate = start;
+  DateTime? toDate = end;
+  if (overdue) {
+    fromDate = DateTime(1970); // Beginning of time
+    toDate = DateTime.now();
   }
 
-  return filtered;
+  return repository.watchTasks(
+    statuses: statuses,
+    sortBy: repoSort,
+    priority: priority,
+    tagId: tagId,
+    projectId: projectId,
+    fromDate: fromDate,
+    toDate: toDate,
+  );
+});
+
+// Activity Logs Provider
+final recentActivityProvider = FutureProvider.autoDispose<List<ActivityLog>>((
+  ref,
+) async {
+  ref.watch(tasksProvider); // Refresh when tasks change
+  final repository = ref.watch(taskRepositoryProvider);
+  return repository.getRecentActivity();
 });

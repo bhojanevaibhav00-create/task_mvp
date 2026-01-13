@@ -1,6 +1,6 @@
 # Database, Models & Offline CRUD
 
-Task Completed :-
+Tasks Completed:
 
 1. Finalise data models:
    Users, Projects, Tasks, Status, Priority, Tags
@@ -8,7 +8,48 @@ Task Completed :-
 3. Build repositories for CRUD operations.
 4. Implement task status flow and filtering.
 5. Provide seed/sample data for testing.
-6. Integrate UI with new logic foir Testing.
+6. Integrate UI with new logic for Testing.
+
+## Recent Updates (Activity Logs & Advanced Filtering)
+
+The following features have been implemented to enhance the MVP:
+
+### 1. Activity Logging (MVP)
+
+- **New Table**: `ActivityLogs` table added to track user actions.
+- **Tracking**: The `TaskRepository` now automatically logs:
+  - Task Creation
+  - Task Editing (Title/Description/Priority)
+  - Status Changes (e.g., Todo -> Done)
+  - Task Completion
+  - Project Moves
+- **Read Access**: `getRecentActivity()` method exposed to fetch the latest 20 logs for the Dashboard.
+
+### 2. Advanced Filtering & Sorting
+
+- **Database-Level**: Filtering is now performed efficiently at the database query level using Drift.
+- **Supported Filters**:
+  - Status (Todo, InProgress, Done, etc.)
+  - Priority (Low, Medium, High)
+  - Due Date Range (From/To)
+  - Tags & Projects
+- **Sorting Options**:
+  - Due Date (Ascending)
+  - Priority (Descending)
+  - Updated At (Descending)
+
+### 3. Enhanced Seed Data
+
+- The `SeedData` utility now generates Projects, Tags, mixed Tasks (Overdue/Upcoming), and sample Activity Logs for immediate UI testing.
+- Also added more sample data.
+
+### 4. UI Integration & Status Flow
+
+- **Task Providers**: Updated `task_providers.dart` to expose specific providers for filters (priority, tags, projects, date ranges) and activity logs, simplifying UI integration.
+- **Status Flow**: Implemented logic to handle task status transitions with automatic timestamp management:
+  - `created_at`: Set automatically on creation.
+  - `updated_at`: Refreshed on every update.
+  - `completed_at`: Set when status changes to 'done', cleared if reopened.
 
 ## Database Schema Overview
 
@@ -24,6 +65,11 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `status`: Text (Nullable) - 'pending' or 'completed'
 - `dueDate`: DateTime (Nullable)
 - `priority`: Integer (Nullable) - 1 (Low), 2 (Medium), 3 (High)
+- `projectId`: Integer (Nullable) - Foreign Key to Projects
+- `tagId`: Integer (Nullable) - Foreign Key to Tags
+- `createdAt`: DateTime (Default: Now)
+- `updatedAt`: DateTime (Nullable)
+- `completedAt`: DateTime (Nullable)
 
 **2. Projects**
 
@@ -41,6 +87,13 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `id`: Integer (Primary Key, Auto Increment)
 - `label`: Text (1-30 chars)
 - `colorHex`: Integer
+
+**5. ActivityLogs**
+
+- `id`: Integer (Primary Key, Auto Increment)
+- `action`: Text (e.g., 'created', 'completed')
+- `description`: Text (Nullable)
+- `timestamp`: DateTime (Default: Now)
 
 ## Development Setup
 
@@ -82,6 +135,7 @@ lib/data/
 │   ├── task_model.dart
 │   └── user_model.dart
 ├── repositories/
+│   ├── i_task_repository.dart
 │   ├── project_repository.dart
 │   └── task_repository.dart
 ├── seed/
@@ -110,6 +164,11 @@ These files define the domain logic and data structures used throughout the app.
 
 The repository pattern is used to abstract the data source (Drift Database).
 
+- **`i_task_repository.dart`**:
+
+  - Defines the abstract contract for task operations.
+  - Decouples the UI from the specific database implementation, facilitating testing and future data source changes.
+
 - **`task_repository.dart`**:
   - **`watchAllTasks()`**: Returns a `Stream<List<Task>>` that automatically emits new values when the database changes.
   - **`createTask`, `updateTask`, `deleteTask`**: Standard CRUD operations.
@@ -122,10 +181,11 @@ The repository pattern is used to abstract the data source (Drift Database).
 - **`SeedData`**: A utility class that generates a list of sample `Task` objects.
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
 
-# Screenshots of Completed task :
-   I have just created a app UI to test the working and you can change it as you see fit. 
-   In this the task stauts is shown as done and undone but the model provides a todo` -> `inProgress` -> `review` -> `done` so you can change it too. 
-   and also i have added a comments on how to use the model and repo. so follow it. 
+# Screenshots of Completed Task
+
+I have just created an app UI to test the working and you can change it as you see fit.
+In this the task status is shown as done and undone but the model provides a todo`->`inProgress`->`review`->`done` so you can change it too.
+Also, I have added comments on how to use the model and repo, so please follow them.
 
 <video src="https://github.com/user-attachments/assets/10fb0567-cc36-4ea6-9059-7ebd356d6734" width="230" height="1500" controls></video>
 
