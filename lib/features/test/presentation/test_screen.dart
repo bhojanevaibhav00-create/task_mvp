@@ -8,7 +8,6 @@ import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/core/providers/task_providers.dart';
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/data/models/task_extensions.dart';
-import 'package:task_mvp/core/utils/logger.dart';
 
 class TestScreen extends ConsumerStatefulWidget {
   const TestScreen({super.key});
@@ -90,7 +89,9 @@ class _TestScreenState extends ConsumerState<TestScreen> {
 
   Future<void> _checkDbVersion() async {
     try {
-      final version = await ref.read(taskRepositoryProvider).getDatabaseVersion();
+      final version = await ref
+          .read(taskRepositoryProvider)
+          .getDatabaseVersion();
       setState(() {
         _status = 'Database Version: $version';
       });
@@ -170,7 +171,6 @@ class _TestScreenState extends ConsumerState<TestScreen> {
                   onPressed: () => _navigateTo(AppRoutes.tasks),
                   child: const Text('Go to Tasks'),
                 ),
-               
               ],
             ),
             const SizedBox(height: 20),
