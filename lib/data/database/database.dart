@@ -11,6 +11,10 @@ class Tasks extends Table {
   TextColumn get description => text().nullable()();
   TextColumn get status => text().nullable()();
   DateTimeColumn get dueDate => dateTime().nullable()();
+  TextColumn get dueTime => text().nullable()();
+  DateTimeColumn get reminderAt => dateTime().nullable()();
+  BoolColumn get reminderEnabled =>
+      boolean().withDefault(const Constant(false))();
   IntColumn get priority => integer().nullable()();
   IntColumn get projectId => integer().nullable().references(Projects, #id)();
   IntColumn get tagId => integer().nullable().references(Tags, #id)();
@@ -22,8 +26,12 @@ class Tasks extends Table {
 
 class Projects extends Table {
   IntColumn get id => integer().autoIncrement()();
-  TextColumn get title => text().withLength(min: 1, max: 50)();
-  DateTimeColumn get createdAt => dateTime()();
+  TextColumn get name => text().withLength(min: 1, max: 50)();
+  TextColumn get description => text().nullable()();
+  IntColumn get color => integer().nullable()();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 }
 
 class Users extends Table {
@@ -41,17 +49,32 @@ class ActivityLogs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get action => text()();
   TextColumn get description => text().nullable()();
+  IntColumn get taskId => integer().nullable()();
+  IntColumn get projectId => integer().nullable()();
   DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
+}
+
+class Notifications extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get type => text()(); // e.g., 'reminder', 'system', 'alert'
+  TextColumn get title => text()();
+  TextColumn get message => text()();
+  IntColumn get taskId => integer().nullable().references(Tasks, #id)();
+  IntColumn get projectId => integer().nullable().references(Projects, #id)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isRead => boolean().withDefault(const Constant(false))();
 }
 
 //Set Up the Database Class
 
-@DriftDatabase(tables: [Tasks, Projects, Users, Tags, ActivityLogs])
+@DriftDatabase(
+  tables: [Tasks, Projects, Users, Tags, ActivityLogs, Notifications],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -81,6 +104,35 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 22) {
           await m.createTable(activityLogs);
+        }
+        if (from < 3) {
+          await m.renameColumn(
+            projects,
+            'title',
+            projects.name as GeneratedColumn,
+          );
+          await m.addColumn(projects, projects.description as GeneratedColumn);
+          await m.addColumn(projects, projects.color as GeneratedColumn);
+          await m.addColumn(projects, projects.isArchived as GeneratedColumn);
+          await m.addColumn(projects, projects.updatedAt as GeneratedColumn);
+        }
+        if (from < 4) {
+          await m.createTable(notifications);
+        }
+        if (from < 5) {
+          await m.addColumn(tasks, tasks.dueTime as GeneratedColumn);
+          await m.addColumn(tasks, tasks.reminderAt as GeneratedColumn);
+          await m.addColumn(tasks, tasks.reminderEnabled as GeneratedColumn);
+        }
+        if (from < 6) {
+          await m.addColumn(
+            activityLogs,
+            activityLogs.taskId as GeneratedColumn,
+          );
+          await m.addColumn(
+            activityLogs,
+            activityLogs.projectId as GeneratedColumn,
+          );
         }
       },
     );

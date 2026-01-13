@@ -4,8 +4,6 @@ import '../constants/app_routes.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/tasks/presentation/task_list_screen.dart';
-import '../../features/demo/presentation/demo_screen.dart';
-
 
 final appRouter = GoRouter(
   initialLocation: AppRoutes.login,
@@ -22,7 +20,5 @@ final appRouter = GoRouter(
       path: AppRoutes.tasks,
       builder: (context, state) => const TaskListScreen(),
     ),
-
-   
   ],
 );

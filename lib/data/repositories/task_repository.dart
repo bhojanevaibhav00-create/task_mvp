@@ -13,7 +13,12 @@ class TaskRepository implements ITaskRepository {
     final id = await _db.into(_db.tasks).insert(task);
 
     if (task.title.present) {
-      await _logActivity('created', 'Task "${task.title.value}" created');
+      await _logActivity(
+        'created',
+        'Task "${task.title.value}" created',
+        taskId: id,
+        projectId: task.projectId.value,
+      );
     }
 
     return id;
@@ -83,6 +88,16 @@ class TaskRepository implements ITaskRepository {
     )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
+  /// Fetches upcoming reminders within a specific time range.
+  /// Useful for a background scheduler to find tasks that need notification.
+  Future<List<Task>> fetchUpcomingReminders(DateTime from, DateTime to) {
+    return (_db.select(_db.tasks)
+          ..where((t) => t.reminderEnabled.equals(true))
+          ..where((t) => t.reminderAt.isBetweenValues(from, to))
+          ..where((t) => t.status.isNotValue('done')))
+        .get();
+  }
+
   // Update
   Future<bool> updateTask(Task task) async {
     final oldTask = await getTaskById(task.id);
@@ -111,22 +126,44 @@ class TaskRepository implements ITaskRepository {
     if (result) {
       if (oldTask.status != task.status) {
         if (task.status == 'done') {
-          await _logActivity('completed', 'Task "${task.title}" completed');
+          await _logActivity(
+            'completed',
+            'Task "${task.title}" completed',
+            taskId: task.id,
+            projectId: task.projectId,
+          );
         } else {
           await _logActivity(
             'status_changed',
-            'Status changed to ${task.status}',
+            'Status changed from ${oldTask.status} to ${task.status}',
+            taskId: task.id,
+            projectId: task.projectId,
           );
         }
-      } else if (oldTask.projectId != task.projectId) {
+      }
+
+      if (oldTask.projectId != task.projectId) {
         await _logActivity(
           'moved',
           'Moved to project ${task.projectId ?? "none"}',
+          taskId: task.id,
+          projectId: task.projectId,
         );
-      } else if (oldTask.title != task.title ||
-          oldTask.description != task.description ||
-          oldTask.priority != task.priority) {
-        await _logActivity('edited', 'Task "${task.title}" updated');
+      }
+
+      final changes = <String>[];
+      if (oldTask.title != task.title) changes.add('title');
+      if (oldTask.description != task.description) changes.add('description');
+      if (oldTask.dueDate != task.dueDate) changes.add('due date');
+      if (oldTask.priority != task.priority) changes.add('priority');
+
+      if (changes.isNotEmpty) {
+        await _logActivity(
+          'edited',
+          'Updated ${changes.join(', ')}',
+          taskId: task.id,
+          projectId: task.projectId,
+        );
       }
     }
     return result;
@@ -168,13 +205,32 @@ class TaskRepository implements ITaskRepository {
         .get();
   }
 
-  Future<void> _logActivity(String action, String description) async {
+  // Activity Logs per Project
+  Future<List<ActivityLog>> getRecentActivityByProject(int projectId) async {
+    return await (_db.select(_db.activityLogs)
+          ..where((t) => t.projectId.equals(projectId))
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc),
+          ])
+          ..limit(20))
+        .get();
+  }
+
+  Future<void> _logActivity(
+    String action,
+    String description, {
+    int? taskId,
+    int? projectId,
+  }) async {
     await _db
         .into(_db.activityLogs)
         .insert(
           ActivityLogsCompanion.insert(
             action: action,
             description: Value(description),
+            taskId: Value(taskId),
+            projectId: Value(projectId),
             timestamp: Value(DateTime.now()),
           ),
         );
