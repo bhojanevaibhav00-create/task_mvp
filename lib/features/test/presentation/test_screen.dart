@@ -96,7 +96,7 @@ class _TestScreenState extends State<TestScreen> {
   }
 
   void _testLogger() {
-    logInfo('Test log message from TestScreen');
+    debugPrint('Test log message from TestScreen');
     setState(() {
       _status = 'Logger tested - check console';
     });
