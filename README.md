@@ -51,6 +51,23 @@ The following features have been implemented to enhance the MVP:
   - `updated_at`: Refreshed on every update.
   - `completed_at`: Set when status changes to 'done', cleared if reopened.
 
+### 5. Project Enhancements, Notifications & Reminders (Latest Update)
+
+- **Project Management**:
+  - Enhanced `Projects` table with description, color coding, and archiving support.
+  - Added `ProjectRepository` with computed statistics (progress %, overdue/today counts) for dashboard cards.
+- **Notifications System**:
+  - New `Notifications` table for system alerts and reminders.
+  - Repository methods to add, list, and mark notifications as read.
+- **Task Reminders**:
+  - Added `dueTime`, `reminderAt`, and `reminderEnabled` fields to Tasks.
+  - Implemented `fetchUpcomingReminders` query for background scheduling services.
+- **Enriched Activity Logs**:
+  - Logs now track specific field changes (e.g., "Updated title, priority") and project moves.
+  - Added support for filtering activity logs by project.
+- **Seed Data**:
+  - Updated to generate realistic project scenarios (Active, High Volume, Archived) and sample notifications.
+
 ## Database Schema Overview
 
 The application uses `drift` for the local SQLite database. Below is the schema definition:
@@ -64,6 +81,9 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `description`: Text (Nullable)
 - `status`: Text (Nullable) - 'pending' or 'completed'
 - `dueDate`: DateTime (Nullable)
+- `dueTime`: Text (Nullable)
+- `reminderAt`: DateTime (Nullable)
+- `reminderEnabled`: Boolean (Default: False)
 - `priority`: Integer (Nullable) - 1 (Low), 2 (Medium), 3 (High)
 - `projectId`: Integer (Nullable) - Foreign Key to Projects
 - `tagId`: Integer (Nullable) - Foreign Key to Tags
@@ -74,8 +94,12 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 **2. Projects**
 
 - `id`: Integer (Primary Key, Auto Increment)
-- `title`: Text (1-50 chars)
-- `createdAt`: DateTime
+- `name`: Text (1-50 chars)
+- `description`: Text (Nullable)
+- `color`: Integer (Nullable)
+- `isArchived`: Boolean (Default: False)
+- `createdAt`: DateTime (Default: Now)
+- `updatedAt`: DateTime (Nullable)
 
 **3. Users**
 
@@ -93,7 +117,20 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `id`: Integer (Primary Key, Auto Increment)
 - `action`: Text (e.g., 'created', 'completed')
 - `description`: Text (Nullable)
+- `taskId`: Integer (Nullable)
+- `projectId`: Integer (Nullable)
 - `timestamp`: DateTime (Default: Now)
+
+**6. Notifications**
+
+- `id`: Integer (Primary Key, Auto Increment)
+- `type`: Text (e.g., 'reminder', 'system')
+- `title`: Text
+- `message`: Text
+- `taskId`: Integer (Nullable) - Foreign Key to Tasks
+- `projectId`: Integer (Nullable) - Foreign Key to Projects
+- `createdAt`: DateTime (Default: Now)
+- `isRead`: Boolean (Default: False)
 
 ## Development Setup
 
@@ -135,6 +172,7 @@ lib/data/
 │   ├── task_model.dart
 │   └── user_model.dart
 ├── repositories/
+│   ├── notifications_repository.dart
 │   ├── i_task_repository.dart
 │   ├── project_repository.dart
 │   └── task_repository.dart
