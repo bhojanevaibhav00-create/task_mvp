@@ -855,7 +855,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
     'created_at',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
@@ -1059,7 +1059,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
-      ),
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -1089,7 +1089,7 @@ class Task extends DataClass implements Insertable<Task> {
   final int? priority;
   final int? projectId;
   final int? tagId;
-  final DateTime? createdAt;
+  final DateTime createdAt;
   final DateTime? updatedAt;
   final DateTime? completedAt;
   const Task({
@@ -1104,7 +1104,7 @@ class Task extends DataClass implements Insertable<Task> {
     this.priority,
     this.projectId,
     this.tagId,
-    this.createdAt,
+    required this.createdAt,
     this.updatedAt,
     this.completedAt,
   });
@@ -1138,9 +1138,7 @@ class Task extends DataClass implements Insertable<Task> {
     if (!nullToAbsent || tagId != null) {
       map['tag_id'] = Variable<int>(tagId);
     }
-    if (!nullToAbsent || createdAt != null) {
-      map['created_at'] = Variable<DateTime>(createdAt);
-    }
+    map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
     }
@@ -1179,9 +1177,7 @@ class Task extends DataClass implements Insertable<Task> {
       tagId: tagId == null && nullToAbsent
           ? const Value.absent()
           : Value(tagId),
-      createdAt: createdAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(createdAt),
+      createdAt: Value(createdAt),
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAt),
@@ -1208,7 +1204,7 @@ class Task extends DataClass implements Insertable<Task> {
       priority: serializer.fromJson<int?>(json['priority']),
       projectId: serializer.fromJson<int?>(json['projectId']),
       tagId: serializer.fromJson<int?>(json['tagId']),
-      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
     );
@@ -1228,7 +1224,7 @@ class Task extends DataClass implements Insertable<Task> {
       'priority': serializer.toJson<int?>(priority),
       'projectId': serializer.toJson<int?>(projectId),
       'tagId': serializer.toJson<int?>(tagId),
-      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
     };
@@ -1246,7 +1242,7 @@ class Task extends DataClass implements Insertable<Task> {
     Value<int?> priority = const Value.absent(),
     Value<int?> projectId = const Value.absent(),
     Value<int?> tagId = const Value.absent(),
-    Value<DateTime?> createdAt = const Value.absent(),
+    DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
   }) => Task(
@@ -1261,7 +1257,7 @@ class Task extends DataClass implements Insertable<Task> {
     priority: priority.present ? priority.value : this.priority,
     projectId: projectId.present ? projectId.value : this.projectId,
     tagId: tagId.present ? tagId.value : this.tagId,
-    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
   );
@@ -1362,7 +1358,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<int?> priority;
   final Value<int?> projectId;
   final Value<int?> tagId;
-  final Value<DateTime?> createdAt;
+  final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
   final Value<DateTime?> completedAt;
   const TasksCompanion({
@@ -1443,7 +1439,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<int?>? priority,
     Value<int?>? projectId,
     Value<int?>? tagId,
-    Value<DateTime?>? createdAt,
+    Value<DateTime>? createdAt,
     Value<DateTime?>? updatedAt,
     Value<DateTime?>? completedAt,
   }) {
@@ -1762,6 +1758,26 @@ class $ActivityLogsTable extends ActivityLogs
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _projectIdMeta = const VerificationMeta(
+    'projectId',
+  );
+  @override
+  late final GeneratedColumn<int> projectId = GeneratedColumn<int>(
+    'project_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _timestampMeta = const VerificationMeta(
     'timestamp',
   );
@@ -1775,7 +1791,14 @@ class $ActivityLogsTable extends ActivityLogs
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, action, description, timestamp];
+  List<GeneratedColumn> get $columns => [
+    id,
+    action,
+    description,
+    taskId,
+    projectId,
+    timestamp,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1808,6 +1831,18 @@ class $ActivityLogsTable extends ActivityLogs
         ),
       );
     }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    }
+    if (data.containsKey('project_id')) {
+      context.handle(
+        _projectIdMeta,
+        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
+      );
+    }
     if (data.containsKey('timestamp')) {
       context.handle(
         _timestampMeta,
@@ -1835,6 +1870,14 @@ class $ActivityLogsTable extends ActivityLogs
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      ),
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}project_id'],
+      ),
       timestamp: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}timestamp'],
@@ -1852,11 +1895,15 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
   final int id;
   final String action;
   final String? description;
+  final int? taskId;
+  final int? projectId;
   final DateTime timestamp;
   const ActivityLog({
     required this.id,
     required this.action,
     this.description,
+    this.taskId,
+    this.projectId,
     required this.timestamp,
   });
   @override
@@ -1866,6 +1913,12 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
     map['action'] = Variable<String>(action);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || taskId != null) {
+      map['task_id'] = Variable<int>(taskId);
+    }
+    if (!nullToAbsent || projectId != null) {
+      map['project_id'] = Variable<int>(projectId);
     }
     map['timestamp'] = Variable<DateTime>(timestamp);
     return map;
@@ -1878,6 +1931,12 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      taskId: taskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskId),
+      projectId: projectId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(projectId),
       timestamp: Value(timestamp),
     );
   }
@@ -1891,6 +1950,8 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
       id: serializer.fromJson<int>(json['id']),
       action: serializer.fromJson<String>(json['action']),
       description: serializer.fromJson<String?>(json['description']),
+      taskId: serializer.fromJson<int?>(json['taskId']),
+      projectId: serializer.fromJson<int?>(json['projectId']),
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
     );
   }
@@ -1901,6 +1962,8 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
       'id': serializer.toJson<int>(id),
       'action': serializer.toJson<String>(action),
       'description': serializer.toJson<String?>(description),
+      'taskId': serializer.toJson<int?>(taskId),
+      'projectId': serializer.toJson<int?>(projectId),
       'timestamp': serializer.toJson<DateTime>(timestamp),
     };
   }
@@ -1909,11 +1972,15 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
     int? id,
     String? action,
     Value<String?> description = const Value.absent(),
+    Value<int?> taskId = const Value.absent(),
+    Value<int?> projectId = const Value.absent(),
     DateTime? timestamp,
   }) => ActivityLog(
     id: id ?? this.id,
     action: action ?? this.action,
     description: description.present ? description.value : this.description,
+    taskId: taskId.present ? taskId.value : this.taskId,
+    projectId: projectId.present ? projectId.value : this.projectId,
     timestamp: timestamp ?? this.timestamp,
   );
   ActivityLog copyWithCompanion(ActivityLogsCompanion data) {
@@ -1923,6 +1990,8 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
     );
   }
@@ -1933,13 +2002,16 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
           ..write('id: $id, ')
           ..write('action: $action, ')
           ..write('description: $description, ')
+          ..write('taskId: $taskId, ')
+          ..write('projectId: $projectId, ')
           ..write('timestamp: $timestamp')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, action, description, timestamp);
+  int get hashCode =>
+      Object.hash(id, action, description, taskId, projectId, timestamp);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1947,6 +2019,8 @@ class ActivityLog extends DataClass implements Insertable<ActivityLog> {
           other.id == this.id &&
           other.action == this.action &&
           other.description == this.description &&
+          other.taskId == this.taskId &&
+          other.projectId == this.projectId &&
           other.timestamp == this.timestamp);
 }
 
@@ -1954,31 +2028,39 @@ class ActivityLogsCompanion extends UpdateCompanion<ActivityLog> {
   final Value<int> id;
   final Value<String> action;
   final Value<String?> description;
+  final Value<int?> taskId;
+  final Value<int?> projectId;
   final Value<DateTime> timestamp;
   const ActivityLogsCompanion({
     this.id = const Value.absent(),
     this.action = const Value.absent(),
     this.description = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.projectId = const Value.absent(),
     this.timestamp = const Value.absent(),
   });
   ActivityLogsCompanion.insert({
     this.id = const Value.absent(),
     required String action,
     this.description = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.projectId = const Value.absent(),
     this.timestamp = const Value.absent(),
-    required Value<int?> projectId,
-    required Value<int?> taskId,
   }) : action = Value(action);
   static Insertable<ActivityLog> custom({
     Expression<int>? id,
     Expression<String>? action,
     Expression<String>? description,
+    Expression<int>? taskId,
+    Expression<int>? projectId,
     Expression<DateTime>? timestamp,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (action != null) 'action': action,
       if (description != null) 'description': description,
+      if (taskId != null) 'task_id': taskId,
+      if (projectId != null) 'project_id': projectId,
       if (timestamp != null) 'timestamp': timestamp,
     });
   }
@@ -1987,12 +2069,16 @@ class ActivityLogsCompanion extends UpdateCompanion<ActivityLog> {
     Value<int>? id,
     Value<String>? action,
     Value<String?>? description,
+    Value<int?>? taskId,
+    Value<int?>? projectId,
     Value<DateTime>? timestamp,
   }) {
     return ActivityLogsCompanion(
       id: id ?? this.id,
       action: action ?? this.action,
       description: description ?? this.description,
+      taskId: taskId ?? this.taskId,
+      projectId: projectId ?? this.projectId,
       timestamp: timestamp ?? this.timestamp,
     );
   }
@@ -2009,6 +2095,12 @@ class ActivityLogsCompanion extends UpdateCompanion<ActivityLog> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (projectId.present) {
+      map['project_id'] = Variable<int>(projectId.value);
+    }
     if (timestamp.present) {
       map['timestamp'] = Variable<DateTime>(timestamp.value);
     }
@@ -2021,6 +2113,8 @@ class ActivityLogsCompanion extends UpdateCompanion<ActivityLog> {
           ..write('id: $id, ')
           ..write('action: $action, ')
           ..write('description: $description, ')
+          ..write('taskId: $taskId, ')
+          ..write('projectId: $projectId, ')
           ..write('timestamp: $timestamp')
           ..write(')'))
         .toString();
@@ -3240,7 +3334,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int?> priority,
       Value<int?> projectId,
       Value<int?> tagId,
-      Value<DateTime?> createdAt,
+      Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
       Value<DateTime?> completedAt,
     });
@@ -3257,7 +3351,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int?> priority,
       Value<int?> projectId,
       Value<int?> tagId,
-      Value<DateTime?> createdAt,
+      Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
       Value<DateTime?> completedAt,
     });
@@ -3743,7 +3837,7 @@ class $$TasksTableTableManager
                 Value<int?> priority = const Value.absent(),
                 Value<int?> projectId = const Value.absent(),
                 Value<int?> tagId = const Value.absent(),
-                Value<DateTime?> createdAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
               }) => TasksCompanion(
@@ -3775,7 +3869,7 @@ class $$TasksTableTableManager
                 Value<int?> priority = const Value.absent(),
                 Value<int?> projectId = const Value.absent(),
                 Value<int?> tagId = const Value.absent(),
-                Value<DateTime?> createdAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
               }) => TasksCompanion.insert(
@@ -4022,6 +4116,8 @@ typedef $$ActivityLogsTableCreateCompanionBuilder =
       Value<int> id,
       required String action,
       Value<String?> description,
+      Value<int?> taskId,
+      Value<int?> projectId,
       Value<DateTime> timestamp,
     });
 typedef $$ActivityLogsTableUpdateCompanionBuilder =
@@ -4029,6 +4125,8 @@ typedef $$ActivityLogsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> action,
       Value<String?> description,
+      Value<int?> taskId,
+      Value<int?> projectId,
       Value<DateTime> timestamp,
     });
 
@@ -4053,6 +4151,16 @@ class $$ActivityLogsTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get projectId => $composableBuilder(
+    column: $table.projectId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4086,6 +4194,16 @@ class $$ActivityLogsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get projectId => $composableBuilder(
+    column: $table.projectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get timestamp => $composableBuilder(
     column: $table.timestamp,
     builder: (column) => ColumnOrderings(column),
@@ -4111,6 +4229,12 @@ class $$ActivityLogsTableAnnotationComposer
     column: $table.description,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<int> get projectId =>
+      $composableBuilder(column: $table.projectId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get timestamp =>
       $composableBuilder(column: $table.timestamp, builder: (column) => column);
@@ -4150,11 +4274,15 @@ class $$ActivityLogsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> action = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<int?> taskId = const Value.absent(),
+                Value<int?> projectId = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
               }) => ActivityLogsCompanion(
                 id: id,
                 action: action,
                 description: description,
+                taskId: taskId,
+                projectId: projectId,
                 timestamp: timestamp,
               ),
           createCompanionCallback:
@@ -4162,14 +4290,16 @@ class $$ActivityLogsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String action,
                 Value<String?> description = const Value.absent(),
+                Value<int?> taskId = const Value.absent(),
+                Value<int?> projectId = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
               }) => ActivityLogsCompanion.insert(
                 id: id,
                 action: action,
                 description: description,
+                taskId: taskId,
+                projectId: projectId,
                 timestamp: timestamp,
-                projectId: const Value(null),
-                taskId: const Value(null),
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
