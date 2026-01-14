@@ -68,6 +68,17 @@ The following features have been implemented to enhance the MVP:
 - **Seed Data**:
   - Updated to generate realistic project scenarios (Active, High Volume, Archived) and sample notifications.
 
+### 6. Summary of Database Changes
+
+Recent schema updates to support the new features:
+
+- **New Tables**:
+  - `Notifications`: Stores system alerts and task reminders.
+- **Table Updates**:
+  - `Tasks`: Added `dueTime`, `reminderAt`, and `reminderEnabled` for scheduling.
+  - `Projects`: Added `description`, `color`, and `isArchived` for better organization.
+  - `ActivityLogs`: Added `projectId` to allow filtering logs by project.
+
 ## Database Schema Overview
 
 The application uses `drift` for the local SQLite database. Below is the schema definition:
@@ -208,11 +219,20 @@ The repository pattern is used to abstract the data source (Drift Database).
   - Decouples the UI from the specific database implementation, facilitating testing and future data source changes.
 
 - **`task_repository.dart`**:
+
   - **`watchAllTasks()`**: Returns a `Stream<List<Task>>` that automatically emits new values when the database changes.
   - **`createTask`, `updateTask`, `deleteTask`**: Standard CRUD operations.
   - **`deleteAllTasks()`**: Utility for clearing data during testing.
+  - **Activity Logging**: Automatically logs actions (create, update, complete) to `ActivityLogs`.
+
 - **`project_repository.dart`**:
-  - Manages `Project` entities, allowing tasks to be organized into groups.
+
+  - Manages `Project` entities with support for archiving and color coding.
+  - **Statistics**: Provides computed metrics like progress percentage and overdue counts for dashboards.
+
+- **`notifications_repository.dart`**:
+  - Manages system alerts and reminders.
+  - Supports marking notifications as read and fetching unread counts.
 
 ### 3. Seed Data (`lib/data/seed_data.dart`)
 
