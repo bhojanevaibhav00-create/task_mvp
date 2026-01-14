@@ -1,12 +1,20 @@
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/presentation/register_screen.dart';
-import '../constants/app_routes.dart';
+// Auth Screens
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/register_screen.dart';
+
+// Dashboard & Tasks
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/tasks/presentation/task_list_screen.dart';
+//import '../../features/dashboard/presentation/dashboard_screen.dart';
+
+// Other Screens
 import '../../features/demo/presentation/demo_screen.dart';
 import '../../features/test/presentation/test_screen.dart';
+
+// App Routes
+import '../constants/app_routes.dart';
 
 final appRouter = GoRouter(
   initialLocation: AppRoutes.test,
@@ -21,7 +29,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.dashboard,
-      builder: (context, state) => const DashboardScreen(),
+      builder: (context, state) {
+        // Ensure the DashboardScreen class exists in this file
+        return const DashboardScreen();
+      },
     ),
     GoRoute(
       path: AppRoutes.tasks,
@@ -29,8 +40,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.demo,
-      builder: (context, state) =>
-          const DemoScreen(title: 'Demo Home Page'),
+      builder: (context, state) => const DemoScreen(title: 'Demo Home Page'),
     ),
     GoRoute(
       path: AppRoutes.test,
