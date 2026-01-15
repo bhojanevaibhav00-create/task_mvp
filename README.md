@@ -143,6 +143,25 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `createdAt`: DateTime (Default: Now)
 - `isRead`: Boolean (Default: False)
 
+## Key Repository Methods
+
+### TaskRepository (`lib/data/repositories/task_repository.dart`)
+
+The `TaskRepository` is the primary entry point for task management.
+
+- **`watchTasks`**: The core method for the UI. Returns a `Stream<List<Task>>` that updates automatically.
+  - **Parameters**:
+    - `statuses`: Filter by list of status strings (e.g., `['todo', 'in_progress']`).
+    - `priority`: Filter by priority level (1=Low, 2=Medium, 3=High).
+    - `fromDate` / `toDate`: Filter tasks due within a specific range.
+    - `projectId`: Filter by project.
+    - `tagId`: Filter by tag.
+    - `sortBy`: Sort key (default: `updated_at_desc`).
+- **`createTask(TasksCompanion task)`**: Adds a new task and logs the creation activity.
+- **`updateTask(Task task)`**: Updates an existing task. Handles status transitions and `completedAt` timestamps automatically.
+- **`getRecentActivity()`**: Fetches the last 20 activity logs for the dashboard.
+- **`seedDatabase()`**: Populates the database with sample projects, tags, and tasks for testing.
+
 ## Development Setup
 
 ### 1. Run Migrations / Code Generation
