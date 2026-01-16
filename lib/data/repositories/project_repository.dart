@@ -59,10 +59,14 @@ class ProjectRepository {
     )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  /// Lists all active (non-archived) projects.
-  Future<List<Project>> listProjects() {
+  /// Lists projects. By default, excludes archived projects.
+  Future<List<Project>> listProjects({bool includeArchived = false}) {
     return (_db.select(_db.projects)
-          ..where((t) => t.isArchived.equals(false))
+          ..where(
+            (t) => includeArchived
+                ? const Constant(true)
+                : t.isArchived.equals(false),
+          )
           ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
         .get();
   }
@@ -71,8 +75,15 @@ class ProjectRepository {
 
   /// Watches projects with computed statistics (progress, counts).
   /// Useful for dashboard overview cards.
-  Stream<List<ProjectStatistics>> watchProjectStatistics() {
-    final query = _db.select(_db.projects).join([
+  Stream<List<ProjectStatistics>> watchProjectStatistics({
+    bool includeArchived = false,
+  }) {
+    final projectsQuery = _db.select(_db.projects);
+    if (!includeArchived) {
+      projectsQuery.where((t) => t.isArchived.equals(false));
+    }
+
+    final query = projectsQuery.join([
       leftOuterJoin(_db.tasks, _db.tasks.projectId.equalsExp(_db.projects.id)),
     ]);
 
