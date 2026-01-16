@@ -170,7 +170,7 @@ The repository pattern is used to abstract the data source (Drift Database).
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
 
 
-### Migration & Upgrade Safety
+## Migration & Upgrade Safety
 
 ### 1. Schema Versioning Strategy
 The database schema is versioned using the `schemaVersion` getter in `AppDatabase` (`lib/data/database/database.dart`).
