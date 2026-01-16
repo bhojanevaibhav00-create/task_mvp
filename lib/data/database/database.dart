@@ -22,6 +22,7 @@ class Tasks extends Table {
       dateTime().nullable().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
+  IntColumn get assigneeId => integer().nullable().references(Users, #id)();
 }
 
 class Projects extends Table {
@@ -65,16 +66,34 @@ class Notifications extends Table {
   BoolColumn get isRead => boolean().withDefault(const Constant(false))();
 }
 
+class ProjectMembers extends Table {
+  IntColumn get projectId => integer().references(Projects, #id)();
+  IntColumn get userId => integer().references(Users, #id)();
+  TextColumn get role => text()();
+  DateTimeColumn get joinedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {projectId, userId};
+}
+
 //Set Up the Database Class
 
 @DriftDatabase(
-  tables: [Tasks, Projects, Users, Tags, ActivityLogs, Notifications],
+  tables: [
+    Tasks,
+    Projects,
+    Users,
+    Tags,
+    ActivityLogs,
+    Notifications,
+    ProjectMembers,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -102,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(tasks, tasks.completedAt as GeneratedColumn);
           } catch (e) {}
         }
-        if (from < 22) {
+        if (from < 7) {
           await m.createTable(activityLogs);
         }
         if (from < 3) {
@@ -133,6 +152,10 @@ class AppDatabase extends _$AppDatabase {
             activityLogs,
             activityLogs.projectId as GeneratedColumn,
           );
+        }
+        if (from < 7) {
+          await m.createTable(projectMembers);
+          await m.addColumn(tasks, tasks.assigneeId);
         }
       },
     );

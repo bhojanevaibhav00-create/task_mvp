@@ -9,6 +9,7 @@ class TaskFilters {
     String? searchQuery,
     DateTime? fromDate,
     DateTime? toDate,
+    bool? hasDueDate,
     int? tagId,
     int? projectId,
     String? sortBy,
@@ -45,12 +46,17 @@ class TaskFilters {
         }
       }
 
+      // Date Existence Filter
+      if (hasDueDate != null) {
+        if (hasDueDate && task.dueDate == null) return false;
+        if (!hasDueDate && task.dueDate != null) return false;
+      }
+
       // Date Range Filter
-      if (fromDate != null && toDate != null) {
+      if (fromDate != null || toDate != null) {
         if (task.dueDate == null) return false;
-        if (task.dueDate!.isBefore(fromDate) || task.dueDate!.isAfter(toDate)) {
-          return false;
-        }
+        if (fromDate != null && task.dueDate!.isBefore(fromDate)) return false;
+        if (toDate != null && task.dueDate!.isAfter(toDate)) return false;
       }
 
       return true;

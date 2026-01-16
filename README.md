@@ -79,6 +79,12 @@ Recent schema updates to support the new features:
   - `Projects`: Added `description`, `color`, and `isArchived` for better organization.
   - `ActivityLogs`: Added `projectId` to allow filtering logs by project.
 
+### 7. Collaboration Prep (New)
+
+- **Tasks**: Added `assigneeId` field (nullable) for task assignment.
+- **ProjectMembers**: Added placeholder structure for future team collaboration.
+- **Activity Logs**: Now tracks "Assigned to user" events.
+
 ## Database Schema Overview
 
 The application uses `drift` for the local SQLite database. Below is the schema definition:
@@ -101,6 +107,7 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `createdAt`: DateTime (Default: Now)
 - `updatedAt`: DateTime (Nullable)
 - `completedAt`: DateTime (Nullable)
+- `assigneeId`: Integer (Nullable) - Foreign Key to Users
 
 **2. Projects**
 
@@ -142,6 +149,14 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `projectId`: Integer (Nullable) - Foreign Key to Projects
 - `createdAt`: DateTime (Default: Now)
 - `isRead`: Boolean (Default: False)
+
+**7. ProjectMembers**
+
+- `projectId`: Integer (Foreign Key to Projects)
+- `userId`: Integer (Foreign Key to Users)
+- `role`: Text (e.g., 'admin', 'member')
+- `joinedAt`: DateTime (Default: Now)
+- Primary Key: (projectId, userId)
 
 ## Key Repository Methods
 
@@ -257,6 +272,46 @@ The repository pattern is used to abstract the data source (Drift Database).
 
 - **`SeedData`**: A utility class that generates a list of sample `Task` objects.
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
+
+## Migration & Upgrade Safety
+
+### 1. Schema Versioning Strategy
+The database schema is versioned using the `schemaVersion` getter in `AppDatabase` (`lib/data/database/database.dart`).
+- **Current Version**: 7
+- **Rule**: Every time a table structure changes (new column, new table), increment this version number by 1.
+
+### 2. Handling Upgrades (Migration Strategy)
+We use Drift's `MigrationStrategy` to handle upgrades safely without data loss.
+- **Logic**: The `onUpgrade` callback receives the `from` (old) and `to` (new) version.
+- **Implementation**: We check the `from` version and apply changes incrementally.
+  ```dart
+  if (from < 7) {
+    // Apply changes introduced in version 7
+    await m.createTable(projectMembers);
+    await m.addColumn(tasks, tasks.assigneeId);
+  }
+  ```
+- **Safety**: This ensures that users upgrading from version 1 directly to version 7 will execute all intermediate migration steps sequentially (or cumulatively if structured that way).
+
+### 3. Developer Clean Reset
+If you encounter schema mismatches during active development (e.g., "no such column" errors) and don't need to preserve data:
+1. **Uninstall the App**: Long press -> App Info -> Storage -> Clear Data (or Uninstall).
+2. **Rebuild**: Run `flutter run`.
+3. **Regenerate Code**: If you changed dart files, run `dart run build_runner build --delete-conflicting-outputs`.
+
+## Testing & Validation Notes
+
+### Validated Edge Cases
+1. **Null Dates**: Verified that tasks with no due date appear correctly in "No Date" filters and don't crash sorting logic.
+2. **Status Transitions**:
+   - *Scenario*: Move Task from 'Todo' -> 'Done' -> 'Todo'.
+   - *Result*: `completedAt` is set, then cleared. `updatedAt` updates on both actions.
+3. **Migration Resilience**:
+   - *Scenario*: Installed app with Schema v1, then upgraded to v7.
+   - *Result*: New tables (`ActivityLogs`, `Notifications`) were created, and existing Tasks table received new columns (`assigneeId`) without losing existing tasks.
+4. **Archived Projects**:
+   - *Scenario*: Archive a project with active tasks.
+   - *Result*: Tasks remain in DB but project is hidden from default lists. Tasks are still accessible via "All Tasks" if filters allow.
 
 # Screenshots of Completed Task
 

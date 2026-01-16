@@ -34,6 +34,7 @@ class TaskRepository implements ITaskRepository {
     int? priority,
     DateTime? fromDate,
     DateTime? toDate,
+    bool? hasDueDate,
     int? tagId,
     int? projectId,
     String sortBy = 'updated_at_desc',
@@ -47,9 +48,25 @@ class TaskRepository implements ITaskRepository {
     if (priority != null) {
       query.where((t) => t.priority.equals(priority));
     }
-    if (fromDate != null && toDate != null) {
-      query.where((t) => t.dueDate.isBetweenValues(fromDate, toDate));
+
+    // Date Filters
+    if (hasDueDate != null) {
+      query.where(
+        (t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull(),
+      );
     }
+
+    // Apply range filters only if we aren't strictly looking for "No Date"
+    if (hasDueDate != false) {
+      if (fromDate != null && toDate != null) {
+        query.where((t) => t.dueDate.isBetweenValues(fromDate, toDate));
+      } else if (fromDate != null) {
+        query.where((t) => t.dueDate.isBiggerOrEqualValue(fromDate));
+      } else if (toDate != null) {
+        query.where((t) => t.dueDate.isSmallerOrEqualValue(toDate));
+      }
+    }
+
     if (tagId != null) {
       query.where((t) => t.tagId.equals(tagId));
     }
@@ -146,6 +163,19 @@ class TaskRepository implements ITaskRepository {
         await _logActivity(
           'moved',
           'Moved to project ${task.projectId ?? "none"}',
+          taskId: task.id,
+          projectId: task.projectId,
+        );
+      }
+
+      // Check for assignee change
+      // Note: Ensure 'assigneeId' is added to Tasks table in database.dart
+      if (oldTask.assigneeId != task.assigneeId) {
+        await _logActivity(
+          'assigned',
+          task.assigneeId != null
+              ? 'Assigned to user ${task.assigneeId}'
+              : 'Unassigned',
           taskId: task.id,
           projectId: task.projectId,
         );

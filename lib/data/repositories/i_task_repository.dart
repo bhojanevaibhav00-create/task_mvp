@@ -17,6 +17,7 @@ abstract class ITaskRepository {
   /// * [statuses]: List of status strings (e.g., 'todo', 'done').
   /// * [priority]: Filter by priority level (1=Low, 2=Medium, 3=High).
   /// * [fromDate] / [toDate]: Filter tasks due within this date range.
+  /// * [hasDueDate]: Filter by presence of due date (true=has date, false=no date).
   /// * [tagId]: Filter by specific tag ID.
   /// * [projectId]: Filter by specific project ID.
   /// * [sortBy]: Sort key ('due_date_asc', 'priority_desc', 'updated_at_desc').
@@ -25,6 +26,7 @@ abstract class ITaskRepository {
     int? priority,
     DateTime? fromDate,
     DateTime? toDate,
+    bool? hasDueDate,
     int? tagId,
     int? projectId,
     String sortBy = 'updated_at_desc',
@@ -36,8 +38,8 @@ abstract class ITaskRepository {
   /// Updates an existing task.
   ///
   /// Automatically handles:
-  /// * Updating `updatedAt` timestamp.
-  /// * Setting/clearing `completedAt` based on status.
+  /// * Updating `updatedAt` timestamp (always set on updates).
+  /// * Setting `completedAt` when status is 'Done', and clearing it on reopen.
   /// * Logging activities (status change, edit, move, completion).
   Future<bool> updateTask(Task task);
 
