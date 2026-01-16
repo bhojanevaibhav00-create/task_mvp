@@ -73,6 +73,8 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `joinedAt`: DateTime (Default: Now)
 - Primary Key: (projectId, userId)
 
+---
+
 ## Key Repository Methods
 
 ### TaskRepository (`lib/data/repositories/task_repository.dart`)
@@ -92,10 +94,11 @@ The `TaskRepository` is the primary entry point for task management.
 - **`getRecentActivity()`**: Fetches the last 20 activity logs for the dashboard.
 - **`seedDatabase()`**: Populates the database with sample projects, tags, and tasks for testing.
 
+---
 
-### 3. Run Code Generation
+### Run Code Generation
 
-Run `dart run build_runner build` to generate the database code (`database.g.dart`).
+## Run `dart run build_runner build` to generate the database code (`database.g.dart`).
 
 ### Backend Folder Structure
 
@@ -105,6 +108,7 @@ lib/data/
 │   ├── database.dart
 │   └── database.g.dart
 ├── models/
+│   ├── project_member.dart
 │   ├── enums.dart
 │   ├── project_model.dart
 │   ├── tag_model.dart
@@ -120,6 +124,8 @@ lib/data/
 ├── seed/
     └── seed_data.dart
 ```
+
+---
 
 ## Project Structure & Implementation Details
 
@@ -169,16 +175,21 @@ The repository pattern is used to abstract the data source (Drift Database).
 - **`SeedData`**: A utility class that generates a list of sample `Task` objects.
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
 
+---
 
 ## Migration & Upgrade Safety
 
 ### 1. Schema Versioning Strategy
+
 The database schema is versioned using the `schemaVersion` getter in `AppDatabase` (`lib/data/database/database.dart`).
+
 - **Current Version**: 7
 - **Rule**: Every time a table structure changes (new column, new table), increment this version number by 1.
 
 ### 2. Handling Upgrades (Migration Strategy)
+
 We use Drift's `MigrationStrategy` to handle upgrades safely without data loss.
+
 - **Logic**: The `onUpgrade` callback receives the `from` (old) and `to` (new) version.
 - **Implementation**: We check the `from` version and apply changes incrementally.
   ```dart
@@ -191,23 +202,26 @@ We use Drift's `MigrationStrategy` to handle upgrades safely without data loss.
 - **Safety**: This ensures that users upgrading from version 1 directly to version 7 will execute all intermediate migration steps sequentially (or cumulatively if structured that way).
 
 ### 3. Developer Clean Reset
+
 If you encounter schema mismatches during active development (e.g., "no such column" errors) and don't need to preserve data:
+
 1. **Uninstall the App**: Long press -> App Info -> Storage -> Clear Data (or Uninstall).
 2. **Rebuild**: Run `flutter run`.
 3. **Regenerate Code**: If you changed dart files, run `dart run build_runner build --delete-conflicting-outputs`.
 
+---
 
 ## Testing & Validation Notes
 
 ### Validated Edge Cases
+
 1. **Null Dates**: Verified that tasks with no due date appear correctly in "No Date" filters and don't crash sorting logic.
 2. **Status Transitions**:
-   - *Scenario*: Move Task from 'Todo' -> 'Done' -> 'Todo'.
-   - *Result*: `completedAt` is set, then cleared. `updatedAt` updates on both actions.
+   - _Scenario_: Move Task from 'Todo' -> 'Done' -> 'Todo'.
+   - _Result_: `completedAt` is set, then cleared. `updatedAt` updates on both actions.
 3. **Migration Resilience**:
-   - *Scenario*: Installed app with Schema v1, then upgraded to v7.
-   - *Result*: New tables (`ActivityLogs`, `Notifications`) were created, and existing Tasks table received new columns (`assigneeId`) without losing existing tasks.
+   - _Scenario_: Installed app with Schema v1, then upgraded to v7.
+   - _Result_: New tables (`ActivityLogs`, `Notifications`) were created, and existing Tasks table received new columns (`assigneeId`) without losing existing tasks.
 4. **Archived Projects**:
-   - *Scenario*: Archive a project with active tasks.
-   - *Result*: Tasks remain in DB but project is hidden from default lists. Tasks are still accessible via "All Tasks" if filters allow.
-
+   - _Scenario_: Archive a project with active tasks.
+   - _Result_: Tasks remain in DB but project is hidden from default lists. Tasks are still accessible via "All Tasks" if filters allow.
