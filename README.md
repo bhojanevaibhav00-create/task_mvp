@@ -232,8 +232,8 @@ If you encounter schema mismatches during active development (e.g., "no such col
 
 1. **Null Dates**: Verified that tasks with no due date appear correctly in "No Date" filters and don't crash sorting logic.
 2. **Status Transitions**:
-   - _Scenario_: Move Task from 'Todo' -> 'Done' -> 'Todo'.
-   - _Result_: `completedAt` is set, then cleared. `updatedAt` updates on both actions.
+   - _Scenario_: Move Task from 'Todo' -> 'In progres' -> 'Done'.
+   - _Result_: `completedAt` is set, then 'inprogress'. `updatedAt` updates on both actions.
 3. **Migration Resilience**:
    - _Scenario_: Installed app with Schema v1, then upgraded to v7.
    - _Result_: New tables (`ActivityLogs`, `Notifications`) were created, and existing Tasks table received new columns (`assigneeId`) without losing existing tasks.
