@@ -1,5 +1,13 @@
 # Database, Models & Offline CRUD
 
+## Table of Contents
+
+- [Database Schema Overview](#database-schema-overview)
+- [Key Repository Methods](#key-repository-methods)
+- [Project Structure & Implementation Details](#project-structure--implementation-details)
+- [Migration & Upgrade Safety](#migration--upgrade-safety)
+- [Testing & Validation Notes](#testing--validation-notes)
+
 ## Database Schema Overview
 
 The application uses `drift` for the local SQLite database. Below is the schema definition:
@@ -98,7 +106,11 @@ The `TaskRepository` is the primary entry point for task management.
 
 ### Run Code Generation
 
-## Run `dart run build_runner build` to generate the database code (`database.g.dart`).
+'''dart
+Run `dart run build_runner build` to generate the database code (`database.g.dart`).
+'''
+
+---
 
 ### Backend Folder Structure
 
@@ -225,3 +237,6 @@ If you encounter schema mismatches during active development (e.g., "no such col
 4. **Archived Projects**:
    - _Scenario_: Archive a project with active tasks.
    - _Result_: Tasks remain in DB but project is hidden from default lists. Tasks are still accessible via "All Tasks" if filters allow.
+5. **Input Boundaries & Encoding**:
+   - _Scenario_: Create task with max length title (50 chars) and emojis.
+   - _Result_: Title validates correctly; Emojis render properly in list view.
