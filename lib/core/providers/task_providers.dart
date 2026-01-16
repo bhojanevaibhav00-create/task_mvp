@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/task_repository.dart';
 import 'package:task_mvp/data/models/enums.dart';
+import 'package:task_mvp/core/providers/notification_providers.dart';
 
 // Database provider
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -14,7 +15,8 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 // Repository provider
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  return TaskRepository(db);
+  final notificationRepo = ref.read(notificationRepositoryProvider);
+   return TaskRepository(db, notificationRepo);;
 });
 
 // Tasks state notifier

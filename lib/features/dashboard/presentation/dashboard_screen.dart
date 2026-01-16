@@ -5,7 +5,8 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../data/models/enums.dart';
-
+import 'package:task_mvp/core/providers/notification_providers.dart';
+import 'package:task_mvp/features/notifications/presentation/notification_screen.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -18,16 +19,45 @@ class DashboardScreen extends ConsumerWidget {
     final pendingTasks = tasks
         .where((task) => task.status != TaskStatus.done.name)
         .length;
+    final unreadCount =
+        ref.watch(unreadNotificationCountProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.refresh(tasksProvider.notifier).loadTasks(),
+       actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: () {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => const NotificationScreen(),
+    ),
+  );
+},
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: CircleAvatar(
+                    radius: 9,
+                    backgroundColor: Colors.red,
+                    child: Text(
+                      unreadCount.toString(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
+
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -116,25 +146,24 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-           Wrap(
-  spacing: 12,
-  runSpacing: 12,
-  children: [
-    AppButton(
-      text: 'View All Tasks',
-      onPressed: () => context.push(AppRoutes.tasks),
-    ),
-    AppButton(
-      text: 'Add New Task',
-      onPressed: () => context.push(AppRoutes.tasks),
-    ),
-    AppButton(
-      text: 'Go to Test Screen',
-      onPressed: () => context.push(AppRoutes.test),
-    ),
-  ],
-),
-
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                AppButton(
+                  text: 'View All Tasks',
+                  onPressed: () => context.push(AppRoutes.tasks),
+                ),
+                AppButton(
+                  text: 'Add New Task',
+                  onPressed: () => context.push(AppRoutes.tasks),
+                ),
+                AppButton(
+                  text: 'Go to Test Screen',
+                  onPressed: () => context.push(AppRoutes.test),
+                ),
+              ],
+            ),
 
             const SizedBox(height: 30),
 
