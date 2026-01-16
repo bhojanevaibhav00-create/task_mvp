@@ -6,4 +6,6 @@ class AppRoutes {
 
   static const demo = '/demo';
   static const test = '/test';
+  static const notifications = '/notifications';
+
 }
