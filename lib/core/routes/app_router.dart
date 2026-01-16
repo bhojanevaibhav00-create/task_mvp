@@ -30,8 +30,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.dashboard,
       builder: (context, state) {
-        // Ensure the DashboardScreen class exists in this file
-        return const DashboardScreen();
+        // Pass a dummy toggle or a real one if you have state
+        return DashboardScreen(
+          onToggleTheme: () {
+            // You can implement your theme toggle logic here
+            print("Theme toggled");
+          },
+        );
       },
     ),
     GoRoute(
