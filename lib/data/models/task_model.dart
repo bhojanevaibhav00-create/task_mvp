@@ -4,35 +4,44 @@ import 'tag_model.dart';
 class Task {
   final String id;
   final String title;
-  final String description;
+  final String? description;
   final TaskStatus status;
   final Priority priority;
-  final List<Tag> tags;
   final DateTime? dueDate;
-  final String? projectId;
+  final bool important;
+  final List<Tag> tags;
 
   Task({
     required this.id,
     required this.title,
-    required this.description,
-    required this.status,
-    required this.priority,
-    required this.tags,
+    this.description,
+    this.status = TaskStatus.todo,
+    this.priority = Priority.medium,
     this.dueDate,
-    this.projectId,
+    this.important = false,
+    this.tags = const [],
   });
 
-  factory Task.fromJson(Map<String, dynamic> json) => Task(
-    id: json['id'],
-    title: json['title'],
-    description: json['description'],
-    status: TaskStatus.values.byName(json['status']), // Maps string to Enum
-    priority: Priority.values.byName(json['priority']),
-    tags: (json['tags'] as List).map((t) => Tag.fromJson(t)).toList(),
-    dueDate: json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
-    projectId: json['project_id']?.toString(),
-  );
+  /// ✅ ADD THIS METHOD
+  Task copyWith({
+    String? id,
+    String? title,
+    String? description,
+    TaskStatus? status,
+    Priority? priority,
+    DateTime? dueDate,
+    bool? important,
+    List<Tag>? tags,
+  }) {
+    return Task(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      dueDate: dueDate ?? this.dueDate,
+      important: important ?? this.important,
+      tags: tags ?? this.tags,
+    );
+  }
 }
-
-// to this model work, make sure to import enums.dart where needed and use
-// example: final task = Task.fromJson(yourJsonMap) to parse a Task object.
