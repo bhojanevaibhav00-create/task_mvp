@@ -6,6 +6,18 @@ void main() {
   runApp(const MyApp());
 }
 
+/* ================= DESIGN SYSTEM ================= */
+class AppTheme {
+  static const Color primary = Color(0xFF6366F1);
+  static const Color primaryDark = Color(0xFF6366F1);
+
+  static const Color surfaceLight = Color(0xFFF4F6FA);
+  static const Color surfaceDark = Color(0xFF121212);
+
+  static const double radius = 16;
+  static const double elevation = 1.5;
+}
+
 /* ================= APP ROOT ================= */
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -29,16 +41,84 @@ class _MyAppState extends State<MyApp> {
       title: 'Task MVP',
       debugShowCheckedModeBanner: false,
       themeMode: _mode,
+
+      /* ================= LIGHT THEME ================= */
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF4F46E5),
-        scaffoldBackgroundColor: const Color(0xFFF4F6FA),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppTheme.primary,
+          brightness: Brightness.light,
+          surface: AppTheme.surfaceLight,
+        ),
+        scaffoldBackgroundColor: AppTheme.surfaceLight,
+
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+        ),
+
+        cardTheme: CardTheme(
+          elevation: AppTheme.elevation,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radius),
+          ),
+        ),
+
+        chipTheme: ChipThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+        ),
       ),
+
+      /* ================= DARK THEME ================= */
       darkTheme: ThemeData(
-        brightness: Brightness.dark,
         useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF6366F1),
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppTheme.primaryDark,
+          brightness: Brightness.dark,
+          surface: AppTheme.surfaceDark,
+        ),
+        scaffoldBackgroundColor: AppTheme.surfaceDark,
+
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+        ),
+
+        cardTheme: CardTheme(
+          color: const Color(0xFF1E1E1E),
+          elevation: AppTheme.elevation,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radius),
+          ),
+        ),
+
+        chipTheme: ChipThemeData(
+          backgroundColor: const Color(0xFF2A2A2A),
+          selectedColor: AppTheme.primaryDark,
+          labelStyle: const TextStyle(color: Colors.white),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: AppTheme.primaryDark,
+          foregroundColor: Colors.white,
+        ),
       ),
+
       home: DashboardScreen(onToggleTheme: _toggleTheme),
     );
   }
@@ -107,15 +187,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     Timer(const Duration(seconds: 2), () {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // FILTERED PROJECTS BASED ON SEARCH + FILTERS
     List<Project> filteredProjects = projects.map((project) {
       final filteredTasks = project.tasks.where((task) {
         final matchesSearch = task.title.toLowerCase().contains(searchQuery.toLowerCase());
@@ -132,26 +209,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Dashboard"),
-        centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("No new notifications")),
-              );
-            },
-          ),
+          IconButton(icon: const Icon(Icons.notifications_none), onPressed: () {}),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => SettingsScreen(
-                    onToggleTheme: widget.onToggleTheme,
-                  ),
-                ),
+                MaterialPageRoute(builder: (_) => SettingsScreen(onToggleTheme: widget.onToggleTheme)),
               );
             },
           ),
@@ -159,11 +224,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+              colors: [AppTheme.primary, AppTheme.primaryDark],
             ),
           ),
         ),
-        foregroundColor: Colors.white,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openTaskBottomSheet(),
@@ -172,120 +236,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          /// SEARCH
-          TextField(
-            onChanged: (v) => setState(() => searchQuery = v),
-            decoration: InputDecoration(
-              hintText: "Search tasks or projects",
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Theme.of(context).cardColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          /// SMART TILES
-          Row(
-            children: const [
-              Expanded(child: SmartTile(icon: Icons.today, label: "My Day")),
-              SizedBox(width: 12),
-              Expanded(child: SmartTile(icon: Icons.star, label: "Important")),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          /// ACTIVE FILTERS DISPLAY
-          if (activeStatusFilters.isNotEmpty ||
-              activePriorityFilters.isNotEmpty ||
-              activeTagFilters.isNotEmpty ||
-              activeDueBucket != null ||
-              activeSort != null)
-            Wrap(
-              spacing: 8,
-              children: [
-                ...activeStatusFilters.map((s) => FilterChip(
-                  label: Text(s.name),
-                  selected: true,
-                  onSelected: (_) => setState(() => activeStatusFilters.remove(s)),
-                )),
-                ...activePriorityFilters.map((p) => FilterChip(
-                  label: Text(p.name),
-                  selected: true,
-                  onSelected: (_) => setState(() => activePriorityFilters.remove(p)),
-                )),
-                ...activeTagFilters.map((t) => FilterChip(
-                  label: Text(t),
-                  selected: true,
-                  onSelected: (_) => setState(() => activeTagFilters.remove(t)),
-                )),
-                if (activeDueBucket != null)
-                  FilterChip(
-                    label: Text(activeDueBucket!),
-                    selected: true,
-                    onSelected: (_) => setState(() => activeDueBucket = null),
-                  ),
-                if (activeSort != null)
-                  FilterChip(
-                    label: Text("Sort: $activeSort"),
-                    selected: true,
-                    onSelected: (_) => setState(() => activeSort = null),
-                  ),
-                ActionChip(
-                  label: const Text("Clear All"),
-                  onPressed: () {
-                    setState(() {
-                      activeStatusFilters.clear();
-                      activePriorityFilters.clear();
-                      activeTagFilters.clear();
-                      activeDueBucket = null;
-                      activeSort = null;
-                    });
-                  },
-                ),
-              ],
-            ),
-          const SizedBox(height: 16),
-
-          /// FILTER BUTTON
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Projects", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              IconButton(
-                icon: const Icon(Icons.filter_list),
-                onPressed: _openFilterBottomSheet,
-              )
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          /// PROJECTS / LOADING
           if (isLoading)
-            ...List.generate(2, (index) => const ProjectSkeleton())
-          else if (filteredProjects.isEmpty)
-            EmptyState(
-              title: "No projects yet",
-              subtitle: "Create your first project",
-              buttonText: "Add Project",
-              onPressed: () {},
-            )
+            ...List.generate(2, (_) => const ProjectSkeleton())
           else
-            for (var p in filteredProjects)
-              Column(
-                children: [
-                  AnimatedProjectCard(project: p),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () => Navigator.push(
-                        context, MaterialPageRoute(builder: (_) => BoardScreen(project: p))),
-                    child: const Text("Open Board"),
-                  ),
-                ],
-              ),
+            for (var p in filteredProjects) AnimatedProjectCard(project: p),
         ],
       ),
     );
@@ -329,122 +283,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return tasks;
   }
 
-  void _openFilterBottomSheet() {
-    Set<TaskStatus> tempStatus = Set.from(activeStatusFilters);
-    Set<TaskPriority> tempPriority = Set.from(activePriorityFilters);
-    Set<String> tempTags = Set.from(activeTagFilters);
-    String? tempDue = activeDueBucket;
-    String? tempSort = activeSort;
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) {
-        return StatefulBuilder(builder: (context, setStateSB) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text("Filter Tasks", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  const SizedBox(height: 12),
-                  const Text("Status"),
-                  Wrap(
-                    spacing: 8,
-                    children: TaskStatus.values
-                        .map((s) => FilterChip(
-                      label: Text(s.name),
-                      selected: tempStatus.contains(s),
-                      onSelected: (v) =>
-                          setStateSB(() => v ? tempStatus.add(s) : tempStatus.remove(s)),
-                    ))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text("Priority"),
-                  Wrap(
-                    spacing: 8,
-                    children: TaskPriority.values
-                        .map((p) => FilterChip(
-                      label: Text(p.name),
-                      selected: tempPriority.contains(p),
-                      onSelected: (v) =>
-                          setStateSB(() => v ? tempPriority.add(p) : tempPriority.remove(p)),
-                    ))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text("Tags"),
-                  Wrap(
-                    spacing: 8,
-                    children: allTags
-                        .map((t) => FilterChip(
-                      label: Text(t),
-                      selected: tempTags.contains(t),
-                      onSelected: (v) =>
-                          setStateSB(() => v ? tempTags.add(t) : tempTags.remove(t)),
-                    ))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text("Due"),
-                  Wrap(
-                    spacing: 8,
-                    children: ["Today", "Overdue", "Next 7 Days"]
-                        .map((d) => FilterChip(
-                      label: Text(d),
-                      selected: tempDue == d,
-                      onSelected: (v) => setStateSB(() => tempDue = d),
-                    ))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text("Sort"),
-                  Wrap(
-                    spacing: 8,
-                    children: ["A-Z", "Due Date", "Priority"]
-                        .map((s) => FilterChip(
-                      label: Text(s),
-                      selected: tempSort == s,
-                      onSelected: (v) => setStateSB(() => tempSort = s),
-                    ))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        activeStatusFilters = tempStatus;
-                        activePriorityFilters = tempPriority;
-                        activeTagFilters = tempTags;
-                        activeDueBucket = tempDue;
-                        activeSort = tempSort;
-                      });
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Apply Filters"),
-                  ),
-                ],
-              ),
-            ),
-          );
-        });
-      },
-    );
-  }
-
-  void _openTaskBottomSheet({Task? existingTask}) {
-    final titleController = TextEditingController(text: existingTask?.title ?? "");
-    bool important = existingTask?.important ?? false;
-    DateTime? due = existingTask?.due;
-    TaskPriority priority = existingTask?.priority ?? TaskPriority.medium;
-
+  void _openTaskBottomSheet() {
+    final controller = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (_) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom + 16,
@@ -452,79 +295,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
           right: 16,
           top: 16,
         ),
-        child: StatefulBuilder(builder: (context, setStateSB) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: "Task Title"),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Text("Important: "),
-                  Switch(value: important, onChanged: (v) => setStateSB(() => important = v)),
-                ],
-              ),
-              Row(
-                children: [
-                  const Text("Priority: "),
-                  DropdownButton<TaskPriority>(
-                    value: priority,
-                    items: TaskPriority.values
-                        .map((p) => DropdownMenuItem(value: p, child: Text(p.name)))
-                        .toList(),
-                    onChanged: (v) => setStateSB(() => priority = v!),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  const Text("Due: "),
-                  TextButton(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: due ?? DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) setStateSB(() => due = picked);
-                    },
-                    child: Text(due != null ? DateFormat('MMM dd, yyyy').format(due!) : "Set Date"),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () {
-                  if (titleController.text.isEmpty) return;
-                  setState(() {
-                    final task = Task(title: titleController.text, important: important, due: due, priority: priority);
-                    if (existingTask != null) {
-                      existingTask.title = task.title;
-                      existingTask.important = task.important;
-                      existingTask.due = task.due;
-                      existingTask.priority = task.priority;
-                    } else {
-                      projects.first.tasks.add(task);
-                    }
-                  });
-                  Navigator.pop(context);
-                },
-                child: Text(existingTask == null ? "Create Task" : "Update Task"),
-              ),
-              const SizedBox(height: 16),
-            ],
-          );
-        }),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: controller, decoration: const InputDecoration(labelText: "Task Title")),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                setState(() => projects.first.tasks.add(Task(title: controller.text)));
+                Navigator.pop(context);
+              },
+              child: const Text("Create Task"),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/* ================= SETTINGS SCREEN ================= */
+/* ================= SETTINGS ================= */
 class SettingsScreen extends StatelessWidget {
   final VoidCallback onToggleTheme;
   const SettingsScreen({super.key, required this.onToggleTheme});
@@ -533,54 +323,16 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Settings")),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          SwitchListTile(
-            title: const Text("Dark Mode"),
-            value: Theme.of(context).brightness == Brightness.dark,
-            onChanged: (_) => onToggleTheme(),
-          ),
-          SwitchListTile(
-            title: const Text("Notifications"),
-            value: true,
-            onChanged: (_) {},
-          ),
-          SwitchListTile(
-            title: const Text("Sound"),
-            value: false,
-            onChanged: (_) {},
-          ),
-        ],
+      body: SwitchListTile(
+        title: const Text("Dark Mode"),
+        value: Theme.of(context).brightness == Brightness.dark,
+        onChanged: (_) => onToggleTheme(),
       ),
     );
   }
 }
 
 /* ================= UI COMPONENTS ================= */
-class SmartTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const SmartTile({super.key, required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, color: Colors.indigo),
-            const SizedBox(height: 6),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class AnimatedProjectCard extends StatelessWidget {
   final Project project;
   const AnimatedProjectCard({required this.project, super.key});
@@ -588,7 +340,6 @@ class AnimatedProjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         title: Text(project.name),
         subtitle: Text("${project.tasks.length} tasks"),
@@ -599,108 +350,13 @@ class AnimatedProjectCard extends StatelessWidget {
 
 class ProjectSkeleton extends StatelessWidget {
   const ProjectSkeleton({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
-        title: Container(height: 16, color: Colors.grey[300]),
-        subtitle: Container(height: 12, color: Colors.grey[200], margin: const EdgeInsets.only(top: 8)),
-      ),
-    );
-  }
-}
-
-class EmptyState extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String buttonText;
-  final VoidCallback onPressed;
-  const EmptyState({super.key, required this.title, required this.subtitle, required this.buttonText, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        const SizedBox(height: 4),
-        Text(subtitle),
-        const SizedBox(height: 8),
-        ElevatedButton(onPressed: onPressed, child: Text(buttonText))
-      ],
-    );
-  }
-}
-
-/* ================= BOARD SCREEN ================= */
-class BoardScreen extends StatefulWidget {
-  final Project project;
-  const BoardScreen({super.key, required this.project});
-
-  @override
-  State<BoardScreen> createState() => _BoardScreenState();
-}
-
-class _BoardScreenState extends State<BoardScreen> {
-  @override
-  Widget build(BuildContext context) {
-    Map<TaskStatus, List<Task>> grouped = {};
-    for (var status in TaskStatus.values) {
-      grouped[status] = widget.project.tasks.where((t) => t.status == status).toList();
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.project.name)),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: TaskStatus.values.map((status) {
-          final tasks = grouped[status]!;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(status.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 8),
-              ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: tasks.length,
-                itemBuilder: (_, index) {
-                  final t = tasks[index];
-                  return Card(
-                    key: ValueKey(t),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: ListTile(
-                      title: Text(t.title),
-                      subtitle: Row(
-                        children: [
-                          if (t.due != null)
-                            Text(DateFormat('MMM dd').format(t.due!), style: const TextStyle(fontSize: 12)),
-                          const SizedBox(width: 8),
-                          if (t.important) const Icon(Icons.star, size: 14),
-                        ],
-                      ),
-                      trailing: const Icon(Icons.drag_handle),
-                      onTap: () {},
-                    ),
-                  );
-                },
-                onReorder: (oldIndex, newIndex) {
-                  setState(() {
-                    if (newIndex > oldIndex) newIndex--;
-                    final task = tasks.removeAt(oldIndex);
-                    tasks.insert(newIndex, task);
-                    final otherTasks = widget.project.tasks.where((t) => t.status != status).toList();
-                    widget.project.tasks
-                      ..removeWhere((t) => t.status == status)
-                      ..addAll(tasks)
-                      ..addAll(otherTasks);
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-            ],
-          );
-        }).toList(),
+        title: Container(height: 16, color: Colors.grey),
+        subtitle: Container(height: 12, color: Colors.grey[300]),
       ),
     );
   }
