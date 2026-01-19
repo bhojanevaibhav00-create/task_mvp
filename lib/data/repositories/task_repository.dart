@@ -1,12 +1,13 @@
 import 'package:drift/drift.dart';
 import 'package:task_mvp/data/database/database.dart';
+import 'package:task_mvp/data/repositories/notification_repository.dart';
 import '../seed/seed_data.dart';
 import 'i_task_repository.dart';
 
 class TaskRepository implements ITaskRepository {
   final AppDatabase _db;
 
-  TaskRepository(this._db);
+  TaskRepository(this._db, NotificationRepository notificationRepo);
 
   // Create
   Future<int> createTask(TasksCompanion task) async {

@@ -16,7 +16,7 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final db = ref.watch(databaseProvider);
   final notificationRepo = ref.read(notificationRepositoryProvider);
-   return TaskRepository(db, notificationRepo);;
+  return TaskRepository(db, notificationRepo);
 });
 
 // Tasks state notifier

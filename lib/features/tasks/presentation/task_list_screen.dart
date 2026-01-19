@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
 import '../../../core/providers/task_providers.dart';
-import '../../../data/database/database.dart';
 import '../../../data/models/enums.dart';
 import 'package:task_mvp/core/providers/notification_providers.dart';
 import 'package:task_mvp/features/notifications/presentation/notification_screen.dart';
@@ -67,8 +66,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                     DropdownMenuItem(value: 2, child: Text('Medium')),
                     DropdownMenuItem(value: 3, child: Text('High')),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _priority = value ?? 1),
+                  onChanged: (value) => setState(() => _priority = value ?? 1),
                 ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -88,9 +86,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                           setState(() => _selectedDate = date);
                         }
                       },
-                      child: Text(
-                        _formatDate(_selectedDate) ?? 'Select Date',
-                      ),
+                      child: Text(_formatDate(_selectedDate) ?? 'Select Date'),
                     ),
                   ],
                 ),
@@ -106,7 +102,9 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               onPressed: () async {
                 if (_titleController.text.isEmpty) return;
 
-                await ref.read(tasksProvider.notifier).addTask(
+                await ref
+                    .read(tasksProvider.notifier)
+                    .addTask(
                       _titleController.text,
                       _descriptionController.text,
                       priority: _priority,
@@ -130,18 +128,20 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     final unreadCount = ref.watch(unreadNotificationCountProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tasks'), actions: [
+      appBar: AppBar(
+        title: const Text('Tasks'),
+        actions: [
           Stack(
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications),
-               onPressed: () {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => const NotificationScreen(),
-    ),
-  );
-},
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationScreen(),
+                    ),
+                  );
+                },
               ),
 
               /// 🔴 Badge
@@ -168,7 +168,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             ],
           ),
         ],
-),
+      ),
       body: Column(
         children: [
           // ================= SEARCH BAR (STEP 2) =================
@@ -204,35 +204,32 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           // ================= TASK LIST =================
           Expanded(
             child: filteredTasksAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (tasks) {
                 // ================= SEARCH LOGIC (STEP 3) =================
                 final visibleTasks = tasks.where((task) {
                   if (_searchQuery.isEmpty) return true;
                   return task.title.toLowerCase().contains(_searchQuery) ||
-                      (task.description ?? '')
-                          .toLowerCase()
-                          .contains(_searchQuery);
+                      (task.description ?? '').toLowerCase().contains(
+                        _searchQuery,
+                      );
                 }).toList();
 
                 if (visibleTasks.isEmpty) {
-                  return const Center(
-                    child: Text('No matching tasks found'),
-                  );
+                  return const Center(child: Text('No matching tasks found'));
                 }
 
                 return ListView.builder(
                   itemCount: visibleTasks.length,
                   itemBuilder: (context, index) {
                     final task = visibleTasks[index];
-                    final isOverdue = task.dueDate != null &&
+                    final isOverdue =
+                        task.dueDate != null &&
                         task.dueDate!.isBefore(DateTime.now()) &&
                         task.status != TaskStatus.done.name;
 
-                    final priorityColor =
-                        _getPriorityColor(task.priority ?? 1);
+                    final priorityColor = _getPriorityColor(task.priority ?? 1);
 
                     return Card(
                       margin: const EdgeInsets.symmetric(
@@ -246,8 +243,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                           children: [
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     task.title,
@@ -260,13 +256,11 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                                   ),
                                   if (task.description?.isNotEmpty ?? false)
                                     Padding(
-                                      padding:
-                                          const EdgeInsets.only(top: 4),
+                                      padding: const EdgeInsets.only(top: 4),
                                       child: Text(
                                         task.description!,
                                         maxLines: 2,
-                                        overflow:
-                                            TextOverflow.ellipsis,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   const SizedBox(height: 8),
@@ -275,22 +269,23 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                                     runSpacing: 4,
                                     children: [
                                       Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
+                                        padding: const EdgeInsets.symmetric(
                                           horizontal: 8,
                                           vertical: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: priorityColor
-                                              .withOpacity(0.15),
-                                          borderRadius:
-                                              BorderRadius.circular(6),
+                                          color: priorityColor.withOpacity(
+                                            0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
                                           border: Border.all(
-                                              color: priorityColor),
+                                            color: priorityColor,
+                                          ),
                                         ),
                                         child: Text(
-                                          _getPriorityText(
-                                              task.priority ?? 1),
+                                          _getPriorityText(task.priority ?? 1),
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
@@ -312,8 +307,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                                   ),
                                   if (isOverdue)
                                     const Padding(
-                                      padding:
-                                          EdgeInsets.only(top: 4),
+                                      padding: EdgeInsets.only(top: 4),
                                       child: Text(
                                         'OVERDUE',
                                         style: TextStyle(
@@ -330,35 +324,33 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                               children: [
                                 IconButton(
                                   icon: Icon(
-                                    task.status ==
-                                            TaskStatus.done.name
+                                    task.status == TaskStatus.done.name
                                         ? Icons.check_circle
                                         : Icons.circle_outlined,
-                                    color: task.status ==
-                                            TaskStatus.done.name
+                                    color: task.status == TaskStatus.done.name
                                         ? Colors.green
                                         : null,
                                   ),
                                   onPressed: () async {
                                     final newStatus =
-                                        task.status ==
-                                                TaskStatus.done.name
-                                            ? TaskStatus.todo.name
-                                            : TaskStatus.done.name;
+                                        task.status == TaskStatus.done.name
+                                        ? TaskStatus.todo.name
+                                        : TaskStatus.done.name;
 
                                     await ref
                                         .read(tasksProvider.notifier)
                                         .updateTask(
                                           task.copyWith(
-                                            status:
-                                                drift.Value(newStatus),
+                                            status: drift.Value(newStatus),
                                           ),
                                         );
                                   },
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete,
-                                      color: Colors.red),
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
                                   onPressed: () async {
                                     await ref
                                         .read(tasksProvider.notifier)
