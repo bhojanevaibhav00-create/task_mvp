@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/project_model.dart';
 import '../../../../data/models/task_model.dart';
-import '../../../../data/models/enums.dart';
 import '../../../../data/models/tag_model.dart';
-import 'package:task_mvp/features/dashboard/presentation//widgets/project_card_improved.dart';
-import 'package:task_mvp/features/dashboard/presentation//widgets/animated_project_card.dart';
-import 'package:task_mvp/features/dashboard/presentation/widgets/project_skeleton.dart';
-import 'package:task_mvp/features/dashboard/presentation//widgets/empty_state.dart';
-import 'board_screen.dart';
-import 'settings_screen.dart';
+import '../../../../data/models/enums.dart';
+
+import 'widgets/project_card_improved.dart';
+import 'widgets/project_skeleton.dart';
+import 'widgets/empty_state.dart';
 import 'widgets/filter_bottom_sheet.dart';
 import 'widgets/task_bottom_sheet.dart';
+
+import 'package:task_mvp/features/dashboard/presentation/board_screen.dart';
+import 'package:task_mvp/features/dashboard/presentation/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback onToggleTheme;
@@ -41,7 +41,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
 
-    // Define tags
     allTags = [
       Tag(id: "1", label: "UI", colorHex: 0xFF4F46E5),
       Tag(id: "2", label: "UX", colorHex: 0xFF6366F1),
@@ -50,82 +49,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Tag(id: "5", label: "API", colorHex: 0xFFEF4444),
     ];
 
-    // Sample projects & tasks
     projects = [
       Project(
         name: "Task MVP",
         tasks: [
           Task(
-              id: "1",
-              title: "Design UI",
-              important: true,
-              dueDate: DateTime.now(),
-              priority: Priority.high,
-              status: TaskStatus.todo,
-              tags: [allTags[0]]),
+            id: "1",
+            title: "Design UI",
+            important: true,
+            dueDate: DateTime.now(),
+            priority: Priority.high,
+            status: TaskStatus.todo,
+            tags: [allTags[0]],
+          ),
           Task(
-              id: "2",
-              title: "Filters UX",
-              status: TaskStatus.inProgress,
-              priority: Priority.medium,
-              tags: [allTags[1]]),
+            id: "2",
+            title: "Filters UX",
+            status: TaskStatus.inProgress,
+            priority: Priority.medium,
+            tags: [allTags[1]],
+          ),
           Task(
-              id: "3",
-              title: "Board Polish",
-              status: TaskStatus.done,
-              priority: Priority.low,
-              tags: [allTags[2]]),
-          Task(
-              id: "4",
-              title: "API Integration",
-              status: TaskStatus.todo,
-              priority: Priority.high,
-              tags: [allTags[3], allTags[4]]),
+            id: "3",
+            title: "Board Polish",
+            status: TaskStatus.done,
+            priority: Priority.low,
+            tags: [allTags[2]],
+          ),
         ],
       ),
     ];
 
-    // Simulate loading
-    Timer(const Duration(seconds: 2), () {
-      setState(() {
-        isLoading = false;
-      });
+    Timer(const Duration(seconds: 1), () {
+      setState(() => isLoading = false);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Filter & sort projects/tasks
-    List<Project> filteredProjects = projects.map((project) {
-      final filteredTasks = project.tasks.where((task) {
+    final filteredProjects = projects.map((p) {
+      final tasks = p.tasks.where((t) {
         final matchesSearch =
-        task.title.toLowerCase().contains(searchQuery.toLowerCase());
+        t.title.toLowerCase().contains(searchQuery.toLowerCase());
         final matchesStatus =
-            activeStatusFilters.isEmpty || activeStatusFilters.contains(task.status);
-        final matchesPriority = activePriorityFilters.isEmpty ||
-            activePriorityFilters.contains(task.priority);
-        final matchesTag = activeTagFilters.isEmpty ||
-            task.tags.any((t) => activeTagFilters.contains(t));
-        final matchesDue = _matchesDueBucket(task);
-        return matchesSearch && matchesStatus && matchesPriority && matchesTag && matchesDue;
+            activeStatusFilters.isEmpty ||
+                activeStatusFilters.contains(t.status);
+        final matchesPriority =
+            activePriorityFilters.isEmpty ||
+                activePriorityFilters.contains(t.priority);
+        final matchesTag =
+            activeTagFilters.isEmpty ||
+                t.tags.any((tag) => activeTagFilters.contains(tag));
+        final matchesDue = _matchesDueBucket(t);
+        return matchesSearch &&
+            matchesStatus &&
+            matchesPriority &&
+            matchesTag &&
+            matchesDue;
       }).toList();
 
-      return Project(name: project.name, tasks: filteredTasks);
-    }).where((p) => p.tasks.isNotEmpty || p.name.toLowerCase().contains(searchQuery.toLowerCase())).toList();
+      return Project(name: p.name, tasks: tasks);
+    }).where((p) =>
+    p.tasks.isNotEmpty ||
+        p.name.toLowerCase().contains(searchQuery.toLowerCase())).toList();
 
-    // Summary cards counts
     final todayCount = projects
         .expand((p) => p.tasks)
-        .where((t) => t.dueDate != null && isToday(t.dueDate!))
+        .where((t) => t.dueDate != null && _isToday(t.dueDate!))
         .length;
+
     final overdueCount = projects
         .expand((p) => p.tasks)
-        .where((t) => t.dueDate != null && t.dueDate!.isBefore(DateTime.now()))
+        .where((t) =>
+    t.dueDate != null && t.dueDate!.isBefore(DateTime.now()))
         .length;
+
     final upcomingCount = projects
         .expand((p) => p.tasks)
-        .where((t) => t.dueDate != null && t.dueDate!.isAfter(DateTime.now()))
+        .where((t) =>
+    t.dueDate != null && t.dueDate!.isAfter(DateTime.now()))
         .length;
+
     final completedCount = projects
         .expand((p) => p.tasks)
         .where((t) => t.status == TaskStatus.done)
@@ -135,152 +139,201 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text("Dashboard"),
         centerTitle: true,
-        flexibleSpace: Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none),
-            onPressed: () => ScaffoldMessenger.of(context)
-                .showSnackBar(const SnackBar(content: Text("No new notifications"))),
+            onPressed: () {},
           ),
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => SettingsScreen(onToggleTheme: widget.onToggleTheme)),
-            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      SettingsScreen(onToggleTheme: widget.onToggleTheme),
+                ),
+              );
+            },
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () =>
-            openTaskBottomSheet(context: context, projects: projects, onUpdate: () => setState(() {})),
+        onPressed: () => openTaskBottomSheet(
+          context: context,
+          projects: projects,
+          onUpdate: () => setState(() {}),
+        ),
         child: const Icon(Icons.add),
-        backgroundColor: AppColors.fabBackground,
-        foregroundColor: AppColors.fabForeground,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Search
-          TextField(
-            onChanged: (v) => setState(() => searchQuery = v),
-            decoration: InputDecoration(
-              hintText: "Search tasks or projects",
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Theme.of(context).cardColor,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppColors.cardRadius), borderSide: BorderSide.none),
+          /// 🔍 PREMIUM SEARCH BAR
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color:Colors.grey.shade300),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.search, size: 20, color: Colors.grey),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    onChanged: (v) =>
+                        setState(() => searchQuery = v),
+                    decoration: const InputDecoration(
+                      hintText: "Search tasks or projects",
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                if (searchQuery.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => setState(() => searchQuery = ""),
+                    child: const Icon(Icons.close,
+                        size: 18, color: Colors.grey),
+                  ),
+              ],
             ),
           ),
+
           const SizedBox(height: 16),
 
-          // Summary Cards
+          /// 📊 SUMMARY CARDS (VERTICAL)
+          _summaryCard("Today", todayCount, AppColors.todayGradient),
+          const SizedBox(height: 8),
+          _summaryCard("Overdue", overdueCount, AppColors.overdueGradient),
+          const SizedBox(height: 8),
+          _summaryCard("Upcoming", upcomingCount, AppColors.upcomingGradient),
+          const SizedBox(height: 8),
+          _summaryCard("Completed", completedCount, AppColors.completedGradient),
+
+          const SizedBox(height: 24),
+
+          /// 📁 PROJECTS HEADER
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _summaryCard("Today", todayCount, AppColors.todayGradient),
-              _summaryCard("Overdue", overdueCount, AppColors.overdueGradient),
-              _summaryCard("Upcoming", upcomingCount, AppColors.upcomingGradient),
-              _summaryCard("Completed", completedCount, AppColors.completedGradient),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Projects Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Projects", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Projects",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               IconButton(
-                  icon: const Icon(Icons.filter_list),
-                  onPressed: () => openFilterBottomSheet(
-                    context: context,
-                    allTags: allTags,
-                    statusFilters: activeStatusFilters,
-                    priorityFilters: activePriorityFilters,
-                    tagFilters: activeTagFilters,
-                    dueBucket: activeDueBucket,
-                    sort: activeSort,
-                    onApply: (status, priority, tags, due, sort) {
-                      setState(() {
-                        activeStatusFilters = status;
-                        activePriorityFilters = priority;
-                        activeTagFilters = tags;
-                        activeDueBucket = due;
-                        activeSort = sort;
-                      });
-                    },
-                  )),
+                icon: const Icon(Icons.filter_list),
+                onPressed: () => openFilterBottomSheet(
+                  context: context,
+                  allTags: allTags,
+                  statusFilters: activeStatusFilters,
+                  priorityFilters: activePriorityFilters,
+                  tagFilters: activeTagFilters,
+                  dueBucket: activeDueBucket,
+                  sort: activeSort,
+                  onApply: (s, p, t, d, so) {
+                    setState(() {
+                      activeStatusFilters = s;
+                      activePriorityFilters = p;
+                      activeTagFilters = t;
+                      activeDueBucket = d;
+                      activeSort = so;
+                    });
+                  },
+                ),
+              ),
             ],
           ),
+
           const SizedBox(height: 8),
 
-          // Projects / Loading / Empty
           if (isLoading)
-            ...List.generate(2, (index) => const ProjectSkeleton())
+            ...List.generate(2, (_) => const ProjectSkeleton())
           else if (filteredProjects.isEmpty)
             EmptyState(
-              title: "No projects yet",
-              subtitle: "Create your first project",
-              buttonText: "Add Project",
-              onPressed: () {},
+              title: "No projects found",
+              subtitle: "Try adjusting search or filters",
+              buttonText: "Clear",
+              onPressed: () => setState(() {
+                searchQuery = "";
+                activeStatusFilters.clear();
+                activePriorityFilters.clear();
+                activeTagFilters.clear();
+              }),
             )
           else
-            for (var p in filteredProjects)
-              Column(
-                children: [
-                  ProjectCardImproved(project: p, onOpenBoard: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => BoardScreen(project: p)));
-                  }),
-                  const SizedBox(height: 12),
-                ],
+            ...filteredProjects.map(
+                  (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ProjectCardImproved(
+                  project: p,
+                  onOpenBoard: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BoardScreen(project: p),
+                      ),
+                    );
+                  },
+                ),
               ),
+            ),
         ],
       ),
     );
   }
 
   Widget _summaryCard(String title, int count, LinearGradient gradient) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(AppColors.cardRadius),
-        ),
-        child: Column(
-          children: [
-            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(count.toString(), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-          ],
-        ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text(
+            count.toString(),
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }
 
   bool _matchesDueBucket(Task task) {
-    if (activeDueBucket == null) return true;
+    if (activeDueBucket == null || task.dueDate == null) return true;
     final now = DateTime.now();
-    if (task.dueDate == null) return false;
+
     switch (activeDueBucket) {
       case "Today":
-        return isToday(task.dueDate!);
+        return _isToday(task.dueDate!);
       case "Overdue":
         return task.dueDate!.isBefore(now);
       case "Next 7 Days":
-        return task.dueDate!.isAfter(now) && task.dueDate!.isBefore(now.add(const Duration(days: 7)));
+        return task.dueDate!
+            .isAfter(now) &&
+            task.dueDate!.isBefore(now.add(const Duration(days: 7)));
       default:
         return true;
     }
   }
 
-  bool isToday(DateTime date) {
+  bool _isToday(DateTime date) {
     final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 }

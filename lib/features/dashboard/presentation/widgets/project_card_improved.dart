@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:task_mvp/data/models/project_model.dart';
-import 'package:task_mvp/data/models/task_model.dart';
-import 'package:task_mvp/data/models/enums.dart'; // ✅ REQUIRED
-import 'package:task_mvp/core/constants/app_colors.dart';
+import '../../../../../core/constants/app_colors.dart';
+import '../../../../data/models/project_model.dart';
+import '../../../../data/models/task_model.dart';
+import '../../../../data/models/enums.dart';
 
 class ProjectCardImproved extends StatelessWidget {
   final Project project;
-  final VoidCallback onOpenBoard;
+  final VoidCallback? onOpenBoard;
 
   const ProjectCardImproved({
     super.key,
     required this.project,
-    required this.onOpenBoard,
+    this.onOpenBoard,
   });
 
   @override
@@ -19,50 +19,36 @@ class ProjectCardImproved extends StatelessWidget {
     final totalTasks = project.tasks.length;
     final completedTasks =
         project.tasks.where((t) => t.status == TaskStatus.done).length;
-
-    final progress =
-    totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
+    final progress = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
 
     return Card(
-      elevation: AppColors.cardElevation,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
+      elevation: AppColors.cardElevation,
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppColors.cardRadius),
         onTap: onOpenBoard,
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// Project name
-              Text(
-                project.name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              /// Progress bar
+              Text(project.name,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
               LinearProgressIndicator(
                 value: progress,
+                backgroundColor: AppColors.progressBackground,
+                color: AppColors.progressForeground,
                 minHeight: 6,
-                borderRadius: BorderRadius.circular(6),
               ),
-
-              const SizedBox(height: 6),
-
-              /// Progress text
-              Text(
-                "$completedTasks / $totalTasks tasks completed",
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium,
-              ),
+              const SizedBox(height: 4),
+              Text("$completedTasks/$totalTasks tasks completed",
+                  style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
         ),
