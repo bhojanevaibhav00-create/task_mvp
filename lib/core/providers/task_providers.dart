@@ -25,7 +25,7 @@ final notificationRepositoryProvider =
 });
 
 /// ======================================================
-/// REMINDER SERVICE  ✅ FIXED (uses DB, not repository)
+/// REMINDER SERVICE
 /// ======================================================
 final reminderServiceProvider = Provider<ReminderService>((ref) {
   final db = ref.watch(databaseProvider);
@@ -33,7 +33,7 @@ final reminderServiceProvider = Provider<ReminderService>((ref) {
 });
 
 /// ======================================================
-/// TASK REPOSITORY  ✅ FIXED (injects everything)
+/// TASK REPOSITORY
 /// ======================================================
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final db = ref.watch(databaseProvider);

@@ -1,225 +1,170 @@
-import 'dart:math';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 import '../models/enums.dart';
 
 class SeedData {
   static Future<void> generate(AppDatabase db) async {
-    final r = Random();
+    // 1. Create Users (Mock Members)
+    final userNames = ['Alice', 'Bob', 'Charlie', 'Diana'];
+    final userIds = <int>[];
 
-    // 1. Create Projects
-    final projectIds = <int>[];
-
-    // Active Projects
-    projectIds.add(
-      await db
-          .into(db.projects)
-          .insert(
-            ProjectsCompanion.insert(
-              name: 'Personal',
-              description: const Value('Personal tasks and errands'),
-              color: const Value(0xFF4CAF50),
-              createdAt: Value(DateTime.now()),
-            ),
-          ),
-    );
-
-    projectIds.add(
-      await db
-          .into(db.projects)
-          .insert(
-            ProjectsCompanion.insert(
-              name: 'Work',
-              description: const Value('Office projects'),
-              color: const Value(0xFF2196F3),
-              createdAt: Value(DateTime.now()),
-            ),
-          ),
-    );
-
-    // High Volume Project
-    final highVolumeId = await db
-        .into(db.projects)
-        .insert(
-          ProjectsCompanion.insert(
-            name: 'Migration (High Volume)',
-            description: const Value('System migration tasks'),
-            color: const Value(0xFFFF9800),
-            createdAt: Value(DateTime.now()),
-          ),
-        );
-    projectIds.add(highVolumeId);
-
-    // Archived Project
-    await db
-        .into(db.projects)
-        .insert(
-          ProjectsCompanion.insert(
-            name: 'Legacy System',
-            isArchived: const Value(true),
-            color: const Value(0xFF9E9E9E),
-            createdAt: Value(
-              DateTime.now().subtract(const Duration(days: 365)),
-            ),
-          ),
-        );
-
-    // 2. Create Tags
-    final tagIds = <int>[];
-    final tagsData = [
-      {'label': 'Urgent', 'color': 0xFFFF0000},
-      {'label': 'Work', 'color': 0xFF0000FF},
-      {'label': 'Home', 'color': 0xFF00FF00},
-      {'label': 'Feature', 'color': 0xFF800080},
-      {'label': 'Bug', 'color': 0xFFFFA500},
-    ];
-
-    for (var tag in tagsData) {
+    for (final name in userNames) {
       final id = await db
-          .into(db.tags)
-          .insert(
-            TagsCompanion.insert(
-              label: tag['label'] as String,
-              colorHex: tag['color'] as int,
-            ),
-          );
-      tagIds.add(id);
+          .into(db.users)
+          .insert(UsersCompanion.insert(name: name));
+      userIds.add(id);
     }
 
-    // 3. Create Tasks (Mixed)
-    final statuses = TaskStatus.values.map((e) => e.name).toList();
+    // 2. Create Projects
+    final p1 = await db
+        .into(db.projects)
+        .insert(
+          ProjectsCompanion.insert(
+            name: 'Website Redesign',
+            description: Value('Overhaul of the corporate website'),
+            color: Value(0xFF4CAF50), // Green
+          ),
+        );
 
-    for (int i = 0; i < 50; i++) {
-      final status = statuses[r.nextInt(statuses.length)];
-      final priority = 1 + r.nextInt(3); // 1, 2, 3
+    final p2 = await db
+        .into(db.projects)
+        .insert(
+          ProjectsCompanion.insert(
+            name: 'Mobile App MVP',
+            description: Value('Flutter based task manager'),
+            color: Value(0xFF2196F3), // Blue
+          ),
+        );
 
-      // Date logic
-      DateTime? dueDate;
-      final dateType = r.nextInt(
-        4,
-      ); // 0: today, 1: overdue, 2: upcoming, 3: null
-      final now = DateTime.now();
+    // 3. Add Members to Projects
+    // Website Redesign Team
+    if (userIds.length >= 2) {
+      await db
+          .into(db.projectMembers)
+          .insert(
+            ProjectMembersCompanion.insert(
+              projectId: p1,
+              userId: userIds[0], // Alice
+              role: 'admin',
+            ),
+          );
+      await db
+          .into(db.projectMembers)
+          .insert(
+            ProjectMembersCompanion.insert(
+              projectId: p1,
+              userId: userIds[1], // Bob
+              role: 'member',
+            ),
+          );
+    }
 
-      switch (dateType) {
-        case 0: // Today
-          dueDate = now;
-          break;
-        case 1: // Overdue
-          dueDate = now.subtract(Duration(days: 1 + r.nextInt(10)));
-          break;
-        case 2: // Upcoming
-          dueDate = now.add(Duration(days: 1 + r.nextInt(14)));
-          break;
-        case 3: // No date
-          dueDate = null;
-          break;
-      }
+    // Mobile App Team
+    if (userIds.length >= 4) {
+      await db
+          .into(db.projectMembers)
+          .insert(
+            ProjectMembersCompanion.insert(
+              projectId: p2,
+              userId: userIds[1], // Bob
+              role: 'lead',
+            ),
+          );
+      await db
+          .into(db.projectMembers)
+          .insert(
+            ProjectMembersCompanion.insert(
+              projectId: p2,
+              userId: userIds[2], // Charlie
+              role: 'dev',
+            ),
+          );
+      await db
+          .into(db.projectMembers)
+          .insert(
+            ProjectMembersCompanion.insert(
+              projectId: p2,
+              userId: userIds[3], // Diana
+              role: 'qa',
+            ),
+          );
+    }
 
-      // Assign first 30 tasks to High Volume project
-      int? projectId;
-      if (i < 30) {
-        projectId = highVolumeId;
-      } else {
-        projectId = projectIds.isNotEmpty
-            ? projectIds[r.nextInt(projectIds.length)]
-            : null;
-      }
+    // 4. Create Tasks with Assignments
+    final now = DateTime.now();
 
-      final tagId = tagIds.isNotEmpty ? tagIds[r.nextInt(tagIds.length)] : null;
-
+    // Tasks for Website Redesign
+    if (userIds.isNotEmpty) {
       await db
           .into(db.tasks)
           .insert(
             TasksCompanion.insert(
-              title: 'Task ${i + 1}: ${_getRandomTaskTitle(r)}',
-              description: Value(
-                'Description for task ${i + 1}. ${_getRandomDescription(r)}',
-              ),
-              status: Value(status),
-              priority: Value(priority),
-              dueDate: Value(dueDate),
-              projectId: Value(projectId),
-              tagId: Value(tagId),
-              createdAt: Value(now.subtract(Duration(days: r.nextInt(30)))),
+              title: 'Design Home Page',
+              projectId: Value(p1),
+              status: Value(TaskStatus.inProgress.dbValue),
+              priority: Value(3),
+              assigneeId: Value(userIds[0]), // Alice
+              dueDate: Value(now.add(const Duration(days: 2))),
             ),
           );
     }
 
-    // 4. Create Activity Logs (Sample Data)
-    final actions = [
-      'created',
-      'edited',
-      'status_changed',
-      'completed',
-      'moved',
-    ];
-    for (int i = 0; i < 15; i++) {
-      final action = actions[r.nextInt(actions.length)];
+    if (userIds.length > 1) {
       await db
-          .into(db.activityLogs)
+          .into(db.tasks)
           .insert(
-            ActivityLogsCompanion.insert(
-              action: action,
-              description: Value('System generated activity ${i + 1}'),
-              timestamp: Value(
-                DateTime.now().subtract(Duration(hours: r.nextInt(48))),
-              ),
-              projectId: const Value(null),
-              taskId: const Value(null),
+            TasksCompanion.insert(
+              title: 'Implement CSS Grid',
+              projectId: Value(p1),
+              status: Value(TaskStatus.todo.dbValue),
+              priority: Value(2),
+              assigneeId: Value(userIds[1]), // Bob
+              dueDate: Value(now.add(const Duration(days: 5))),
             ),
           );
     }
 
-    // 5. Create Notifications
-    final notificationTypes = ['reminder', 'alert', 'system'];
-    for (int i = 0; i < 5; i++) {
+    // Tasks for Mobile App
+    if (userIds.length > 2) {
       await db
-          .into(db.notifications)
+          .into(db.tasks)
           .insert(
-            NotificationsCompanion.insert(
-              type: notificationTypes[r.nextInt(notificationTypes.length)],
-              title: 'Notification ${i + 1}',
-              message: 'This is a sample notification generated by seed data.',
-              isRead: Value(r.nextBool()),
-              createdAt: Value(
-                DateTime.now().subtract(Duration(hours: r.nextInt(48))),
-              ),
+            TasksCompanion.insert(
+              title: 'Setup Drift Database',
+              projectId: Value(p2),
+              status: Value(TaskStatus.done.dbValue),
+              priority: Value(3),
+              assigneeId: Value(userIds[2]), // Charlie
+              completedAt: Value(now.subtract(const Duration(hours: 4))),
             ),
           );
     }
-  }
 
+    if (userIds.length > 3) {
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              title: 'Write Unit Tests',
+              projectId: Value(p2),
+              status: Value(TaskStatus.review.dbValue),
+              priority: Value(2),
+              assigneeId: Value(userIds[3]), // Diana
+              dueDate: Value(now.add(const Duration(days: 1))),
+            ),
+          );
+    }
 
-  static String _getRandomTaskTitle(Random r) {
-    const verbs = [
-      'Fix',
-      'Update',
-      'Create',
-      'Review',
-      'Delete',
-      'Refactor',
-      'Test',
-    ];
-    const nouns = [
-      'Login',
-      'Dashboard',
-      'Profile',
-      'Settings',
-      'Database',
-      'API',
-      'UI',
-    ];
-    return '${verbs[r.nextInt(verbs.length)]} ${nouns[r.nextInt(nouns.length)]}';
-  }
-
-  static String _getRandomDescription(Random r) {
-    const desc = [
-      'Needs urgent attention.',
-      'Discuss with the team first.',
-      'Check the requirements doc.',
-      'Optimization required.',
-      'Customer reported issue.',
-    ];
-    return desc[r.nextInt(desc.length)];
+    // Unassigned Task
+    await db
+        .into(db.tasks)
+        .insert(
+          TasksCompanion.insert(
+            title: 'Update Documentation',
+            projectId: Value(p2),
+            status: Value(TaskStatus.todo.dbValue),
+            priority: Value(1),
+          ),
+        );
   }
 }

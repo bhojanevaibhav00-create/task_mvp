@@ -1,15 +1,40 @@
 # Database, Models & Offline CRUD
 
-## Table of Contents
+---
 
-| no.   | Topic |
-| -------- | ------- |
-| 1 | [Database Schema Overview](#database-schema-overview)   |
-| 2 |[Key Repository Methods](#key-repository-methods)    |
-| 3 | [Project Structure & Implementation Details](#project-structure--implementation-details)  |
-| 4 | [Migration & Upgrade Safety](#migration--upgrade-safety)  |
-| 5 | [Testing & Validation Notes](#testing--validation-notes)  |
+## Migration & Upgrade Safety
 
+### 1. Schema Versioning Strategy
+
+The database schema is versioned using the `schemaVersion` getter in `AppDatabase` (`lib/data/database/database.dart`).
+
+- **Current Version**: 7
+- **Rule**: Every time a table structure changes (new column, new table), increment this version number by 1.
+
+### 2. Handling Upgrades (Migration Strategy)
+
+We use Drift's `MigrationStrategy` to handle upgrades safely without data loss.
+
+- **Logic**: The `onUpgrade` callback receives the `from` (old) and `to` (new) version.
+- **Implementation**: We check the `from` version and apply changes incrementally.
+  ```dart
+  if (from < 7) {
+    // Apply changes introduced in version 7
+    await m.createTable(projectMembers);
+    await m.addColumn(tasks, tasks.assigneeId);
+  }
+  ```
+- **Safety**: This ensures that users upgrading from version 1 directly to version 7 will execute all intermediate migration steps sequentially (or cumulatively if structured that way).
+
+### 3. Developer Clean Reset
+
+If you encounter schema mismatches during active development (e.g., "no such column" errors) and don't need to preserve data:
+
+1. **Uninstall the App**: Long press -> App Info -> Storage -> Clear Data (or Uninstall).
+2. **Rebuild**: Run `flutter run`.
+3. **Regenerate Code**: If you changed dart files, run `dart run build_runner build --delete-conflicting-outputs`.
+
+---
 
 ## Database Schema Overview
 
@@ -101,7 +126,9 @@ The `TaskRepository` is the primary entry point for task management.
     - `tagId`: Filter by tag.
     - `sortBy`: Sort key (default: `updated_at_desc`).
 - **`createTask(TasksCompanion task)`**: Adds a new task and logs the creation activity.
-- **`updateTask(Task task)`**: Updates an existing task. Handles status transitions and `completedAt` timestamps automatically.
+- **`updateTask(Task task)`**: Updates an existing task.
+  - **Consistency**: Always updates `updatedAt`. Sets `completedAt` only when status is 'done' (clears it if reopened).
+  - **Logic**: Handles status transitions and activity logging.
 - **`getRecentActivity()`**: Fetches the last 20 activity logs for the dashboard.
 - **`seedDatabase()`**: Populates the database with sample projects, tags, and tasks for testing.
 
@@ -135,6 +162,7 @@ lib/data/
 │   ├── notifications_repository.dart
 │   ├── i_task_repository.dart
 │   ├── project_repository.dart
+│   ├── collaboration_repository.dart
 │   └── task_repository.dart
 ├── seed/
     └── seed_data.dart
@@ -165,25 +193,28 @@ These files define the domain logic and data structures used throughout the app.
 The repository pattern is used to abstract the data source (Drift Database).
 
 - **`i_task_repository.dart`**:
-
   - Defines the abstract contract for task operations.
   - Decouples the UI from the specific database implementation, facilitating testing and future data source changes.
 
 - **`task_repository.dart`**:
-
   - **`watchAllTasks()`**: Returns a `Stream<List<Task>>` that automatically emits new values when the database changes.
   - **`createTask`, `updateTask`, `deleteTask`**: Standard CRUD operations.
   - **`deleteAllTasks()`**: Utility for clearing data during testing.
   - **Activity Logging**: Automatically logs actions (create, update, complete) to `ActivityLogs`.
 
 - **`project_repository.dart`**:
-
   - Manages `Project` entities with support for archiving and color coding.
+  - **Archiving**: Archived projects are excluded by default. Archiving does NOT delete tasks.
   - **Statistics**: Provides computed metrics like progress percentage and overdue counts for dashboards.
 
 - **`notifications_repository.dart`**:
   - Manages system alerts and reminders.
   - Supports marking notifications as read and fetching unread counts.
+
+- **`collaboration_repository.dart`**:
+  - **Purpose**: Handles project membership and task assignment logic.
+  - **Methods**: `assignTask`, `listProjectMembers`.
+  - **Status**: Phase-1 Stubs.
 
 ### 3. Seed Data (`lib/data/seed_data.dart`)
 
@@ -192,54 +223,54 @@ The repository pattern is used to abstract the data source (Drift Database).
 
 ---
 
-## Migration & Upgrade Safety
+## Testing & Validation Notes
 
-### 1. Schema Versioning Strategy
+### Edge Case Validation
 
-The database schema is versioned using the `schemaVersion` getter in `AppDatabase` (`lib/data/database/database.dart`).
+We validated the following scenarios to ensure data integrity and UI stability:
 
-- **Current Version**: 7
-- **Rule**: Every time a table structure changes (new column, new table), increment this version number by 1.
+1. **Overdue Logic**
+   - **Rule**: A task is "Overdue" if `dueDate` is strictly before `DateTime.now()` AND `status` is NOT 'done'.
+   - **Validation**: Seeded tasks with past due dates appear in "Overdue" filters; completed past tasks do not.
 
-### 2. Handling Upgrades (Migration Strategy)
+2. **"No Due Date" Behavior**
+   - **Rule**: Tasks with `dueDate = null` are treated as "Anytime" and never flagged as overdue.
+   - **Validation**: Verified these tasks appear at the bottom of sorted lists and do not trigger overdue alerts.
 
-We use Drift's `MigrationStrategy` to handle upgrades safely without data loss.
+3. **Reminder Null Safety**
+   - **Rule**: The notification scheduler checks `reminderAt != null` and `reminderEnabled == true` before scheduling.
+   - **Validation**: Creating tasks with `reminderEnabled = true` but no date defaults safely or is disabled in UI.
 
-- **Logic**: The `onUpgrade` callback receives the `from` (old) and `to` (new) version.
-- **Implementation**: We check the `from` version and apply changes incrementally.
-  ```dart
-  if (from < 7) {
-    // Apply changes introduced in version 7
-    await m.createTable(projectMembers);
-    await m.addColumn(tasks, tasks.assigneeId);
-  }
-  ```
-- **Safety**: This ensures that users upgrading from version 1 directly to version 7 will execute all intermediate migration steps sequentially (or cumulatively if structured that way).
+4. **Project Archiving**
+   - **Rule**: Archiving a project sets `isArchived = true`. It does **NOT** delete associated tasks.
+   - **Validation**:
+     1. Archive a project.
+     2. Verify project disappears from main list.
+     3. Verify tasks still exist in the database (via "All Tasks" filter or DB inspection).
 
-### 3. Developer Clean Reset
+### Validation via Seed Data
 
-If you encounter schema mismatches during active development (e.g., "no such column" errors) and don't need to preserve data:
+We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a comprehensive dataset including:
 
-1. **Uninstall the App**: Long press -> App Info -> Storage -> Clear Data (or Uninstall).
-2. **Rebuild**: Run `flutter run`.
-3. **Regenerate Code**: If you changed dart files, run `dart run build_runner build --delete-conflicting-outputs`.
+- Tasks with past/future/null due dates.
+- Tasks in all priority levels.
+- Projects with mixed active/completed tasks.
+  This allowed rapid visual verification of filtering and sorting logic without manual entry.
 
 ---
 
-## Testing & Validation Notes
+## Recent Updates
 
-### Validated Edge Cases
+### Collaboration & Seed Data (Latest)
 
-1. **Null Dates**: Verified that tasks with no due date appear correctly in "No Date" filters and don't crash sorting logic.
-2. **Status Transitions**:
-   - _Scenario_: Move Task from 'Todo' -> 'In progres' -> 'Done'.
-   - _Result_: `completedAt` is set, then 'inprogress'. `updatedAt` updates on both actions.
-3. **Migration Resilience**:
-   - _Scenario_: Installed app with Schema v1, then upgraded to v7.
-   - _Result_: New tables (`ActivityLogs`, `Notifications`) were created, and existing Tasks table received new columns (`assigneeId`) without losing existing tasks.
-4. **Archived Projects**:
-   - _Scenario_: Archive a project with active tasks.
-   - _Result_: Tasks remain in DB but project is hidden from default lists. Tasks are still accessible via "All Tasks" if filters allow.
-5. **Input Boundaries & Encoding**:
-   - _Scenario_: Create task with max length title (50 chars) and emojis.
-   - _Result_: Title validates correctly; Emojis render properly in list view.
+- **Collaboration Logic**:
+  - Implemented `CollaborationRepository` methods (add/remove member, assign/unassign task).
+  - Integrated `ActivityLogs` for all collaboration actions (e.g., "Member added", "Task assigned").
+
+- **Code Structure**:
+  - Implemented `CollaborationRepository` (replaced stubs).
+  - Formalized `ProjectMember` Drift table definition.
+
+- **Seed Data**: Added mock users and assigned tasks to validate UI display.
+
+- **Refactoring**: Enforced type safety in Seed Data using `TaskStatus` enums.
