@@ -11,11 +11,7 @@ class TaskRepository implements ITaskRepository {
   final ReminderService _reminderService;
 
   /// ================= CONSTRUCTOR =================
-  TaskRepository(
-    this._db,
-    this._notificationRepo,
-    this._reminderService,
-  );
+  TaskRepository(this._db, this._notificationRepo, this._reminderService);
 
   // ================= CREATE =================
   @override
@@ -90,13 +86,19 @@ class TaskRepository implements ITaskRepository {
 
     query.orderBy([
       switch (sortBy) {
-        'priority_desc' =>
-          (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.desc),
-        'due_date_asc' =>
-          (t) => OrderingTerm(expression: t.dueDate, mode: OrderingMode.asc),
-        _ =>
-          (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
-      }
+        'priority_desc' => (t) => OrderingTerm(
+          expression: t.priority,
+          mode: OrderingMode.desc,
+        ),
+        'due_date_asc' => (t) => OrderingTerm(
+          expression: t.dueDate,
+          mode: OrderingMode.asc,
+        ),
+        _ => (t) => OrderingTerm(
+          expression: t.updatedAt,
+          mode: OrderingMode.desc,
+        ),
+      },
     ]);
 
     return query.watch();
@@ -104,16 +106,14 @@ class TaskRepository implements ITaskRepository {
 
   @override
   Future<Task?> getTaskById(int id) {
-    return (_db.select(_db.tasks)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    return (_db.select(
+      _db.tasks,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   // ================= REMINDERS QUERY =================
   @override
-  Future<List<Task>> fetchUpcomingReminders(
-    DateTime from,
-    DateTime to,
-  ) {
+  Future<List<Task>> fetchUpcomingReminders(DateTime from, DateTime to) {
     return (_db.select(_db.tasks)
           ..where((t) => t.reminderEnabled.equals(true))
           ..where((t) => t.reminderAt.isBetweenValues(from, to))
@@ -207,7 +207,9 @@ class TaskRepository implements ITaskRepository {
     int? taskId,
     int? projectId,
   }) async {
-    await _db.into(_db.activityLogs).insert(
+    await _db
+        .into(_db.activityLogs)
+        .insert(
           ActivityLogsCompanion.insert(
             action: action,
             description: Value(description),

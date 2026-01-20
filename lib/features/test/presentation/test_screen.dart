@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element, unused_import
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -48,8 +50,7 @@ class _TestScreenState extends ConsumerState<TestScreen> {
 
       final nextStatus = currentStatus.next;
 
-      final updatedTask =
-          task.copyWith(status: drift.Value(nextStatus.name));
+      final updatedTask = task.copyWith(status: drift.Value(nextStatus.name));
 
       await ref.read(taskRepositoryProvider).updateTask(updatedTask);
 
@@ -74,8 +75,9 @@ class _TestScreenState extends ConsumerState<TestScreen> {
   // ================= DB VERSION =================
   Future<void> _checkDbVersion() async {
     try {
-      final version =
-          await ref.read(taskRepositoryProvider).getDatabaseVersion();
+      final version = await ref
+          .read(taskRepositoryProvider)
+          .getDatabaseVersion();
       setState(() => _status = 'Database Version: $version');
     } catch (e) {
       setState(() => _status = 'DB version error: $e');
@@ -99,28 +101,37 @@ class _TestScreenState extends ConsumerState<TestScreen> {
             Text('Status: $_status', style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 20),
 
-            const Text('Database Tests',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Database Tests',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
 
             Wrap(
               spacing: 10,
               runSpacing: 10,
               children: [
-                ElevatedButton(onPressed: _addTask, child: const Text('Add Task')),
                 ElevatedButton(
-                    onPressed: _deleteAllTasks,
-                    child: const Text('Delete All')),
+                  onPressed: _addTask,
+                  child: const Text('Add Task'),
+                ),
                 ElevatedButton(
-                    onPressed: _checkDbVersion,
-                    child: const Text('Check DB Version')),
+                  onPressed: _deleteAllTasks,
+                  child: const Text('Delete All'),
+                ),
+                ElevatedButton(
+                  onPressed: _checkDbVersion,
+                  child: const Text('Check DB Version'),
+                ),
               ],
             ),
 
             const SizedBox(height: 30),
 
-            const Text('Tasks',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Tasks',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
 
             const SizedBox(height: 10),
 

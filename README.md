@@ -261,13 +261,16 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 
 ## Recent Updates
 
-### Collaboration Phase-1 & Hardening
-- **Schema v7 Upgrade**:
-  - Added `ProjectMembers` table for many-to-many user-project mapping.
-  - Added `assigneeId` to `Tasks` table.
-- **Documentation**:
-  - Added comprehensive **Migration Safety** guide (Reset steps vs Upgrade logic).
-  - Added **Edge Case Validation** report (Overdue logic, Archiving behavior).
+### Collaboration & Seed Data (Latest)
+
+- **Collaboration Logic**:
+  - Implemented `CollaborationRepository` methods (add/remove member, assign/unassign task).
+  - Integrated `ActivityLogs` for all collaboration actions (e.g., "Member added", "Task assigned").
+
 - **Code Structure**:
-  - Created `CollaborationRepository` stubs.
+  - Implemented `CollaborationRepository` (replaced stubs).
   - Formalized `ProjectMember` Drift table definition.
+
+- **Seed Data**: Added mock users and assigned tasks to validate UI display.
+
+- **Refactoring**: Enforced type safety in Seed Data using `TaskStatus` enums.

@@ -27,10 +27,9 @@ abstract class ITaskRepository {
   Future<void> seedDatabase();
 
   Future<List<ActivityLog>> getRecentActivity();
-   
-  /// ✅ ADD THIS (VERY IMPORTANT)
-  Future<List<Task>> fetchUpcomingReminders(
-    DateTime from,
-    DateTime to,
-  );
+
+  /// ADD THIS (VERY IMPORTANT)
+  Future<List<Task>> fetchUpcomingReminders(DateTime from, DateTime to);
+
+  Future<int> getDatabaseVersion();
 }
