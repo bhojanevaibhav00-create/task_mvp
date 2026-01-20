@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 import 'package:task_mvp/core/providers/task_providers.dart';
+import 'package:task_mvp/features/tasks/presentation/widgets/reminder_section.dart';
 
 void main() {
   runApp(
@@ -11,7 +12,6 @@ void main() {
   );
 }
 
-/// Bootstrap widget to run app-start logic
 class AppBootstrap extends ConsumerStatefulWidget {
   const AppBootstrap({super.key});
 
@@ -20,24 +20,22 @@ class AppBootstrap extends ConsumerStatefulWidget {
 }
 
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
-  bool _initialized = false;
+  bool initialized = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    if (!_initialized) {
-      _initialized = true;
-
-      // ✅ SAFE app-start resync
-      Future.microtask(() {
-        ref.read(reminderServiceProvider).resyncOnAppStart();
+    if (!initialized) {
+      initialized = true;
+      Future.microtask(() async {
+        final reminder = ref.read(reminderServiceProvider);
+        await reminder.init();
+        await reminder.requestPermission();
       });
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return const MyApp();
-  }
+  Widget build(BuildContext context) => const MyApp();
 }
