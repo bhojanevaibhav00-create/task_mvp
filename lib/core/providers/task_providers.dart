@@ -2,24 +2,54 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/task_repository.dart';
+import 'package:task_mvp/data/repositories/notification_repository.dart';
 import 'package:task_mvp/data/models/enums.dart';
-import 'package:task_mvp/core/providers/notification_providers.dart';
+import 'package:task_mvp/core/services/reminder_service.dart';
 
-// Database provider
+/// ======================================================
+/// DATABASE PROVIDER
+/// ======================================================
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
   ref.onDispose(() => db.close());
   return db;
 });
 
-// Repository provider
-final taskRepositoryProvider = Provider<TaskRepository>((ref) {
+/// ======================================================
+/// NOTIFICATION REPOSITORY
+/// ======================================================
+final notificationRepositoryProvider =
+    Provider<NotificationRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  final notificationRepo = ref.read(notificationRepositoryProvider);
-  return TaskRepository(db, notificationRepo);
+  return NotificationRepository(db);
 });
 
-// Tasks state notifier
+/// ======================================================
+/// REMINDER SERVICE
+/// ======================================================
+final reminderServiceProvider = Provider<ReminderService>((ref) {
+  final db = ref.watch(databaseProvider);
+  return ReminderService(db);
+});
+
+/// ======================================================
+/// TASK REPOSITORY
+/// ======================================================
+final taskRepositoryProvider = Provider<TaskRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  final notificationRepo = ref.watch(notificationRepositoryProvider);
+  final reminderService = ref.watch(reminderServiceProvider);
+
+  return TaskRepository(
+    db,
+    notificationRepo,
+    reminderService,
+  );
+});
+
+/// ======================================================
+/// TASKS NOTIFIER
+/// ======================================================
 class TasksNotifier extends StateNotifier<List<Task>> {
   final TaskRepository _repository;
 
@@ -29,10 +59,8 @@ class TasksNotifier extends StateNotifier<List<Task>> {
 
   Future<void> loadTasks() async {
     try {
-      final tasks = await _repository.getAllTasks();
-      state = tasks;
-    } catch (e) {
-      // Handle error - could add error state
+      state = await _repository.getAllTasks();
+    } catch (_) {
       state = [];
     }
   }
@@ -50,6 +78,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       status: drift.Value(TaskStatus.todo.name),
       dueDate: drift.Value(dueDate),
     );
+
     await _repository.createTask(companion);
     await loadTasks();
   }
@@ -73,39 +102,20 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     await _repository.seedDatabase();
     await loadTasks();
   }
-
-  List<Task> getFilteredTasks(String? status, String? sortBy) {
-    List<Task> filtered = List.from(state);
-
-    // Filter by status
-    if (status != null && status != 'all') {
-      filtered = filtered.where((task) => task.status == status).toList();
-    }
-
-    // Sort
-    if (sortBy == 'title') {
-      filtered.sort((a, b) => a.title.compareTo(b.title));
-    } else if (sortBy == 'priority') {
-      filtered.sort(
-        (a, b) => (b.priority ?? 0).compareTo(a.priority ?? 0),
-      ); // Higher priority first
-    } else if (sortBy == 'date') {
-      filtered.sort(
-        (a, b) => b.id.compareTo(a.id),
-      ); // Newer tasks first (higher id)
-    }
-
-    return filtered;
-  }
 }
 
-// Tasks provider
-final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
+/// ======================================================
+/// TASKS PROVIDER
+/// ======================================================
+final tasksProvider =
+    StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
   return TasksNotifier(repository);
 });
 
-// Filter and sort providers
+/// ======================================================
+/// FILTER PROVIDERS
+/// ======================================================
 final statusFilterProvider = StateProvider<String>((ref) => 'all');
 final sortByProvider = StateProvider<String>((ref) => 'date');
 final overdueFilterProvider = StateProvider<bool>((ref) => false);
@@ -115,9 +125,13 @@ final projectFilterProvider = StateProvider<int?>((ref) => null);
 final dateRangeStartProvider = StateProvider<DateTime?>((ref) => null);
 final dateRangeEndProvider = StateProvider<DateTime?>((ref) => null);
 
-// Filtered tasks provider
-final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
+/// ======================================================
+/// FILTERED TASKS STREAM
+/// ======================================================
+final filteredTasksProvider =
+    StreamProvider.autoDispose<List<Task>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
+
   final status = ref.watch(statusFilterProvider);
   final sortBy = ref.watch(sortByProvider);
   final overdue = ref.watch(overdueFilterProvider);
@@ -127,11 +141,8 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
   final start = ref.watch(dateRangeStartProvider);
   final end = ref.watch(dateRangeEndProvider);
 
-  // Map UI filters to Repository parameters
   List<String>? statuses;
-  if (status != 'all') {
-    statuses = [status];
-  }
+  if (status != 'all') statuses = [status];
 
   String repoSort = 'updated_at_desc';
   if (sortBy == 'priority') repoSort = 'priority_desc';
@@ -139,8 +150,9 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
 
   DateTime? fromDate = start;
   DateTime? toDate = end;
+
   if (overdue) {
-    fromDate = DateTime(1970); // Beginning of time
+    fromDate = DateTime(1970);
     toDate = DateTime.now();
   }
 
@@ -155,11 +167,12 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
   );
 });
 
-// Activity Logs Provider
-final recentActivityProvider = FutureProvider.autoDispose<List<ActivityLog>>((
-  ref,
-) async {
-  ref.watch(tasksProvider); // Refresh when tasks change
+/// ======================================================
+/// ACTIVITY LOGS
+/// ======================================================
+final recentActivityProvider =
+    FutureProvider.autoDispose<List<ActivityLog>>((ref) async {
+  ref.watch(tasksProvider);
   final repository = ref.watch(taskRepositoryProvider);
   return repository.getRecentActivity();
 });
