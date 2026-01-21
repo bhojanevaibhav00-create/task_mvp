@@ -2,16 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:task_mvp/core/constants/app_colors.dart';
 
-
 import 'app.dart';
 import 'core/providers/task_providers.dart';
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: AppBootstrap(),
-    ),
-  );
+  runApp(const ProviderScope(child: AppBootstrap()));
 }
 
 class AppBootstrap extends ConsumerStatefulWidget {
