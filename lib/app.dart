@@ -1,69 +1,28 @@
+// lib/core/constants/app_colors.dart
+
 import 'package:flutter/material.dart';
-import 'package:task_mvp/core/constants/app_colors.dart';
 
-class AppTheme {
-  // ===============================
-  // LIGHT THEME
-  // ===============================
-  static ThemeData get lightTheme {
-    return ThemeData(
-      useMaterial3: true,
+class AppColors {
+  static const primary = Color(0xFF4F46E5);
 
-      // Colors
-      primaryColor: AppColors.primary,
-      scaffoldBackgroundColor: AppColors.background,
-      cardColor: AppColors.cardLight,
+  static const cardLight = Color(0xFFF5F5F5);
+  static const cardDark = Color(0xFF1F2937);
+  static const cardRadius = 12.0;
+  static const cardElevation = 2.0;
 
-      // AppBar
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.white,
-      ),
+  static const fabBackground = primary;
+  static const fabForeground = Colors.white;
 
-      // Floating Action Button
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-      ),
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+  );
 
-      // Cards
-      cardTheme: CardThemeData(
-        color: AppColors.cardLight,
-        elevation: AppColors.cardElevation,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppColors.cardRadius),
-        ),
-      ),
-
-      // Inputs
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.cardLight,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.cardRadius),
-          borderSide: BorderSide.none,
-        ),
-      ),
-
-      // Chips
-      chipTheme: ChipThemeData(
-        backgroundColor: AppColors.primary.withOpacity(0.1),
-        selectedColor: AppColors.primary,
-        labelStyle: const TextStyle(color: Colors.black),
-        secondaryLabelStyle: const TextStyle(color: Colors.white),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-
-      // Typography
-      textTheme: const TextTheme(
-        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        bodyMedium: TextStyle(fontSize: 14),
-        bodySmall: TextStyle(fontSize: 12, color: Colors.grey),
-      ),
-    );
-  }
+  static const LinearGradient todayGradient =
+  LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF818CF8)]);
+  static const LinearGradient overdueGradient =
+  LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFF87171)]);
+  static const LinearGradient upcomingGradient =
+  LinearGradient(colors: [Color(0xFF10B981), Color(0xFF34D399)]);
+  static const LinearGradient completedGradient =
+  LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)]);
 }

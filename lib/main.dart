@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'core/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/dashboard/presentation/dashboard_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,15 +11,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    return MaterialApp(
       title: 'Task MVP',
       debugShowCheckedModeBanner: false,
-
-      // Use the corrected AppTheme getter
       theme: AppTheme.lightTheme,
-
-      // Router configuration
-      routerConfig: appRouter,
+      darkTheme: AppTheme.darkTheme,
+      home: DashboardScreen(onToggleTheme: () {}),
     );
   }
 }
