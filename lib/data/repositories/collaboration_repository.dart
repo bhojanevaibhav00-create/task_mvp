@@ -1,6 +1,14 @@
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 
+/// Data Transfer Object for Project Member with User details
+class ProjectMemberWithUser {
+  final ProjectMember member;
+  final User user;
+
+  ProjectMemberWithUser({required this.member, required this.user});
+}
+
 /// Repository for handling collaboration features (assignments, members).
 class CollaborationRepository {
   final AppDatabase _db;
@@ -21,7 +29,11 @@ class CollaborationRepository {
           mode: InsertMode.insertOrReplace,
         );
 
-    await _logActivity('member_added', 'Member added', projectId: projectId);
+    await _logActivity(
+      'member_added',
+      'Member $userId added to project',
+      projectId: projectId,
+    );
   }
 
   /// Removes a member from a project.
@@ -33,16 +45,24 @@ class CollaborationRepository {
 
     await _logActivity(
       'member_removed',
-      'Member removed',
+      'Member $userId removed from project',
       projectId: projectId,
     );
   }
 
-  /// Lists all members associated with a specific project.
-  Future<List<ProjectMember>> listProjectMembers(int projectId) {
-    return (_db.select(
-      _db.projectMembers,
-    )..where((m) => m.projectId.equals(projectId))).get();
+  /// Lists all members associated with a specific project, including user details.
+  Future<List<ProjectMemberWithUser>> listProjectMembers(int projectId) async {
+    final query = _db.select(_db.projectMembers).join([
+      innerJoin(_db.users, _db.users.id.equalsExp(_db.projectMembers.userId)),
+    ])..where(_db.projectMembers.projectId.equals(projectId));
+
+    final rows = await query.get();
+    return rows.map((row) {
+      return ProjectMemberWithUser(
+        member: row.readTable(_db.projectMembers),
+        user: row.readTable(_db.users),
+      );
+    }).toList();
   }
 
   /// Assigns a task to a specific user.
@@ -51,7 +71,11 @@ class CollaborationRepository {
       TasksCompanion(assigneeId: Value(userId)),
     );
 
-    await _logActivity('task_assigned', 'Task assigned', taskId: taskId);
+    await _logActivity(
+      'task_assigned',
+      'Task assigned to user $userId',
+      taskId: taskId,
+    );
   }
 
   /// Unassigns a task.

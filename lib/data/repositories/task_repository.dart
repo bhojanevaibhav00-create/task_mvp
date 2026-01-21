@@ -182,7 +182,7 @@ class TaskRepository implements ITaskRepository {
 
   // ================= SEED =================
   @override
-  Future<void> seedDatabase() => SeedData.generate(_db);
+  Future<void> seedDatabase() => SeedData(_db).seed();
 
   // ================= VERSION =================
   @override

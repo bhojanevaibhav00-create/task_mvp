@@ -1,170 +1,192 @@
 import 'package:drift/drift.dart';
 import '../database/database.dart';
-import '../models/enums.dart';
 
 class SeedData {
-  static Future<void> generate(AppDatabase db) async {
-    // 1. Create Users (Mock Members)
-    final userNames = ['Alice', 'Bob', 'Charlie', 'Diana'];
-    final userIds = <int>[];
+  final AppDatabase db;
 
-    for (final name in userNames) {
-      final id = await db
-          .into(db.users)
-          .insert(UsersCompanion.insert(name: name));
-      userIds.add(id);
+  SeedData(this.db);
+
+  /// Populates the database with mock users, projects, members, and assigned tasks.
+  Future<void> seed() async {
+    // 1. Create Users
+    final users = [
+      'Alice Johnson',
+      'Bob Smith',
+      'Charlie Davis',
+      'Diana Prince',
+      'Evan Wright',
+    ];
+
+    final userIds = <String, int>{};
+
+    for (final name in users) {
+      // Check if user exists to avoid duplicates
+      final existing = await (db.select(
+        db.users,
+      )..where((u) => u.name.equals(name))).getSingleOrNull();
+
+      if (existing != null) {
+        userIds[name] = existing.id;
+      } else {
+        final id = await db
+            .into(db.users)
+            .insert(UsersCompanion(name: Value(name)));
+        userIds[name] = id;
+      }
     }
 
     // 2. Create Projects
-    final p1 = await db
-        .into(db.projects)
-        .insert(
-          ProjectsCompanion.insert(
-            name: 'Website Redesign',
-            description: Value('Overhaul of the corporate website'),
-            color: Value(0xFF4CAF50), // Green
-          ),
-        );
+    final projects = [
+      {'name': 'Mobile App Redesign', 'color': 0xFF1E88E5}, // Blue
+      {'name': 'Backend Migration', 'color': 0xFF43A047}, // Green
+    ];
 
-    final p2 = await db
-        .into(db.projects)
-        .insert(
-          ProjectsCompanion.insert(
-            name: 'Mobile App MVP',
-            description: Value('Flutter based task manager'),
-            color: Value(0xFF2196F3), // Blue
-          ),
-        );
+    final projectIds = <String, int>{};
 
-    // 3. Add Members to Projects
-    // Website Redesign Team
-    if (userIds.length >= 2) {
-      await db
-          .into(db.projectMembers)
-          .insert(
-            ProjectMembersCompanion.insert(
-              projectId: p1,
-              userId: userIds[0], // Alice
-              role: 'admin',
-            ),
-          );
-      await db
-          .into(db.projectMembers)
-          .insert(
-            ProjectMembersCompanion.insert(
-              projectId: p1,
-              userId: userIds[1], // Bob
-              role: 'member',
-            ),
-          );
+    for (final p in projects) {
+      final name = p['name'] as String;
+      final color = p['color'] as int;
+
+      final existing = await (db.select(
+        db.projects,
+      )..where((p) => p.name.equals(name))).getSingleOrNull();
+
+      if (existing != null) {
+        projectIds[name] = existing.id;
+      } else {
+        final id = await db
+            .into(db.projects)
+            .insert(
+              ProjectsCompanion(
+                name: Value(name),
+                description: Value('Collaboration project for $name'),
+                color: Value(color),
+                createdAt: Value(DateTime.now()),
+                updatedAt: Value(DateTime.now()),
+              ),
+            );
+        projectIds[name] = id;
+      }
     }
 
-    // Mobile App Team
-    if (userIds.length >= 4) {
-      await db
-          .into(db.projectMembers)
-          .insert(
-            ProjectMembersCompanion.insert(
-              projectId: p2,
-              userId: userIds[1], // Bob
-              role: 'lead',
-            ),
-          );
-      await db
-          .into(db.projectMembers)
-          .insert(
-            ProjectMembersCompanion.insert(
-              projectId: p2,
-              userId: userIds[2], // Charlie
-              role: 'dev',
-            ),
-          );
-      await db
-          .into(db.projectMembers)
-          .insert(
-            ProjectMembersCompanion.insert(
-              projectId: p2,
-              userId: userIds[3], // Diana
-              role: 'qa',
-            ),
-          );
+    // 3. Add Project Members
+    final memberships = {
+      'Mobile App Redesign': [
+        {'user': 'Alice Johnson', 'role': 'admin'},
+        {'user': 'Bob Smith', 'role': 'member'},
+        {'user': 'Charlie Davis', 'role': 'viewer'},
+      ],
+      'Backend Migration': [
+        {'user': 'Alice Johnson', 'role': 'member'},
+        {'user': 'Diana Prince', 'role': 'admin'},
+        {'user': 'Evan Wright', 'role': 'member'},
+      ],
+    };
+
+    for (final entry in memberships.entries) {
+      final projectName = entry.key;
+      final members = entry.value;
+      final pid = projectIds[projectName];
+
+      if (pid == null) continue;
+
+      for (final m in members) {
+        final userName = m['user']!;
+        final role = m['role']!;
+        final uid = userIds[userName];
+
+        if (uid == null) continue;
+
+        await db
+            .into(db.projectMembers)
+            .insert(
+              ProjectMembersCompanion(
+                projectId: Value(pid),
+                userId: Value(uid),
+                role: Value(role),
+                joinedAt: Value(DateTime.now()),
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+      }
     }
 
     // 4. Create Tasks with Assignments
-    final now = DateTime.now();
+    final tasks = [
+      {
+        'title': 'Design System Setup',
+        'project': 'Mobile App Redesign',
+        'assignee': 'Alice Johnson',
+        'status': 'done',
+        'priority': 3,
+      },
+      {
+        'title': 'Login Screen UI',
+        'project': 'Mobile App Redesign',
+        'assignee': 'Bob Smith',
+        'status': 'in_progress',
+        'priority': 2,
+      },
+      {
+        'title': 'API Integration',
+        'project': 'Mobile App Redesign',
+        'assignee': 'Bob Smith',
+        'status': 'todo',
+        'priority': 2,
+      },
+      {
+        'title': 'User Acceptance Testing',
+        'project': 'Mobile App Redesign',
+        'assignee': 'Charlie Davis',
+        'status': 'todo',
+        'priority': 1,
+      },
+      {
+        'title': 'Database Schema',
+        'project': 'Backend Migration',
+        'assignee': 'Diana Prince',
+        'status': 'done',
+        'priority': 3,
+      },
+      {
+        'title': 'Auth Middleware',
+        'project': 'Backend Migration',
+        'assignee': 'Evan Wright',
+        'status': 'in_progress',
+        'priority': 3,
+      },
+    ];
 
-    // Tasks for Website Redesign
-    if (userIds.isNotEmpty) {
-      await db
-          .into(db.tasks)
-          .insert(
-            TasksCompanion.insert(
-              title: 'Design Home Page',
-              projectId: Value(p1),
-              status: Value(TaskStatus.inProgress.dbValue),
-              priority: Value(3),
-              assigneeId: Value(userIds[0]), // Alice
-              dueDate: Value(now.add(const Duration(days: 2))),
-            ),
-          );
+    for (final t in tasks) {
+      final pid = projectIds[t['project'] as String];
+      final uid = userIds[t['assignee'] as String];
+      final title = t['title'] as String;
+
+      if (pid != null && uid != null) {
+        // Check if task already exists to prevent duplicates
+        final existing =
+            await (db.select(db.tasks)..where(
+                  (tbl) => tbl.title.equals(title) & tbl.projectId.equals(pid),
+                ))
+                .getSingleOrNull();
+
+        if (existing == null) {
+          await db
+              .into(db.tasks)
+              .insert(
+                TasksCompanion(
+                  title: Value(title),
+                  description: Value('Task for $title'),
+                  projectId: Value(pid),
+                  assigneeId: Value(uid),
+                  status: Value(t['status'] as String),
+                  priority: Value(t['priority'] as int),
+                  createdAt: Value(DateTime.now()),
+                  updatedAt: Value(DateTime.now()),
+                ),
+              );
+        }
+      }
     }
-
-    if (userIds.length > 1) {
-      await db
-          .into(db.tasks)
-          .insert(
-            TasksCompanion.insert(
-              title: 'Implement CSS Grid',
-              projectId: Value(p1),
-              status: Value(TaskStatus.todo.dbValue),
-              priority: Value(2),
-              assigneeId: Value(userIds[1]), // Bob
-              dueDate: Value(now.add(const Duration(days: 5))),
-            ),
-          );
-    }
-
-    // Tasks for Mobile App
-    if (userIds.length > 2) {
-      await db
-          .into(db.tasks)
-          .insert(
-            TasksCompanion.insert(
-              title: 'Setup Drift Database',
-              projectId: Value(p2),
-              status: Value(TaskStatus.done.dbValue),
-              priority: Value(3),
-              assigneeId: Value(userIds[2]), // Charlie
-              completedAt: Value(now.subtract(const Duration(hours: 4))),
-            ),
-          );
-    }
-
-    if (userIds.length > 3) {
-      await db
-          .into(db.tasks)
-          .insert(
-            TasksCompanion.insert(
-              title: 'Write Unit Tests',
-              projectId: Value(p2),
-              status: Value(TaskStatus.review.dbValue),
-              priority: Value(2),
-              assigneeId: Value(userIds[3]), // Diana
-              dueDate: Value(now.add(const Duration(days: 1))),
-            ),
-          );
-    }
-
-    // Unassigned Task
-    await db
-        .into(db.tasks)
-        .insert(
-          TasksCompanion.insert(
-            title: 'Update Documentation',
-            projectId: Value(p2),
-            status: Value(TaskStatus.todo.dbValue),
-            priority: Value(1),
-          ),
-        );
   }
 }

@@ -117,24 +117,31 @@ class ProjectRepository {
         // Filter for active tasks (not done) for time-based stats
         final activeTasks = tasks.where((t) => t.status != 'done');
 
+        int overdueCount = 0;
+        int todayCount = 0;
+        int upcomingCount = 0;
+
+        for (final t in activeTasks) {
+          if (t.dueDate == null) continue;
+
+          if (t.dueDate!.isBefore(now)) {
+            overdueCount++;
+          } else if (!t.dueDate!.isBefore(todayStart) &&
+              t.dueDate!.isBefore(todayEnd)) {
+            // Check if date is today (inclusive of start, exclusive of end)
+            todayCount++;
+          } else if (t.dueDate!.isAfter(todayEnd)) {
+            upcomingCount++;
+          }
+        }
+
         return ProjectStatistics(
           project: project,
           totalTasks: total,
           completedTasks: done,
-          overdueTasks: activeTasks
-              .where((t) => t.dueDate != null && t.dueDate!.isBefore(now))
-              .length,
-          todayTasks: activeTasks
-              .where(
-                (t) =>
-                    t.dueDate != null &&
-                    t.dueDate!.isAfter(todayStart) &&
-                    t.dueDate!.isBefore(todayEnd),
-              )
-              .length,
-          upcomingTasks: activeTasks
-              .where((t) => t.dueDate != null && t.dueDate!.isAfter(todayEnd))
-              .length,
+          overdueTasks: overdueCount,
+          todayTasks: todayCount,
+          upcomingTasks: upcomingCount,
         );
       }).toList();
     });
