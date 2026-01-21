@@ -257,6 +257,8 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 - Projects with mixed active/completed tasks.
   This allowed rapid visual verification of filtering and sorting logic without manual entry.
 
+**Note**: The seed script is designed to be **idempotent**. It checks for existing records (by name/title) before inserting, so you can safely press "Seed Data" multiple times during development without creating duplicate users, projects, or tasks.
+
 ---
 
 ## Recent Updates
