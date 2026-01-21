@@ -2,67 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:task_mvp/core/constants/app_colors.dart';
 
 class AppTheme {
-  static final ThemeData lightTheme = ThemeData(
+  static ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
-    primaryColor: AppColors.primary,
-    scaffoldBackgroundColor: AppColors.scaffoldLight,
-    cardColor: AppColors.cardLight,
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.fabBackground,
-      foregroundColor: AppColors.fabForeground,
-    ),
+    primaryColor: const Color(0xFF4F46E5),
+    scaffoldBackgroundColor: Colors.grey[50],
     appBarTheme: const AppBarTheme(
-      elevation: AppColors.cardElevation,
-      backgroundColor: AppColors.primary,
+      backgroundColor: Color(0xFF4F46E5),
       foregroundColor: Colors.white,
-      centerTitle: true,
+      elevation: 2,
+    ),
+    cardTheme: const CardThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(AppColors.cardRadius)),
+      ),
+      elevation: 2,
+      color: Colors.white,
     ),
     textTheme: const TextTheme(
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      bodyLarge: TextStyle(fontSize: 16),
-      bodyMedium: TextStyle(fontSize: 14, color: Colors.black54),
-      labelLarge: TextStyle(fontSize: 12, color: Colors.black54),
-    ),
-    chipTheme: const ChipThemeData(
-      backgroundColor: AppColors.chipBackground,
-      selectedColor: AppColors.chipSelectedBackground,
-      labelStyle: TextStyle(color: Colors.black87),
-      secondaryLabelStyle: TextStyle(color: Colors.white),
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-      labelPadding: EdgeInsets.symmetric(horizontal: 6),
+      titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      bodyMedium: TextStyle(fontSize: 14),
     ),
   );
 
-  static final ThemeData darkTheme = ThemeData(
+  static ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
-    primaryColor: AppColors.primary,
-    scaffoldBackgroundColor: AppColors.scaffoldDark,
-    cardColor: AppColors.cardDark,
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-    ),
+    primaryColor: const Color(0xFF6366F1),
+    scaffoldBackgroundColor: Colors.black,
     appBarTheme: const AppBarTheme(
-      elevation: AppColors.cardElevation,
-      backgroundColor: AppColors.primary,
+      backgroundColor: Color(0xFF6366F1),
       foregroundColor: Colors.white,
-      centerTitle: true,
+      elevation: 2,
+    ),
+    cardTheme: const CardThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(AppColors.cardRadius)),
+      ),
+      elevation: 2,
+      color: Color(0xFF1F2937),
     ),
     textTheme: const TextTheme(
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      bodyLarge: TextStyle(fontSize: 16),
+      titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       bodyMedium: TextStyle(fontSize: 14, color: Colors.white70),
-      labelLarge: TextStyle(fontSize: 12, color: Colors.white70),
-    ),
-    chipTheme: const ChipThemeData(
-      backgroundColor: AppColors.chipBackground,
-      selectedColor: AppColors.chipSelectedBackground,
-      labelStyle: TextStyle(color: Colors.white),
-      secondaryLabelStyle: TextStyle(color: Colors.white),
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-      labelPadding: EdgeInsets.symmetric(horizontal: 6),
     ),
   );
 }

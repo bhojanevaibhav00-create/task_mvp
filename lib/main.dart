@@ -3,20 +3,34 @@ import 'core/theme/app_theme.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const TaskMVPApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class TaskMVPApp extends StatefulWidget {
+  const TaskMVPApp({super.key});
+
+  @override
+  State<TaskMVPApp> createState() => _TaskMVPAppState();
+}
+
+class _TaskMVPAppState extends State<TaskMVPApp> {
+  bool isDark = false;
+
+  void toggleTheme() {
+    setState(() {
+      isDark = !isDark;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Task MVP',
       debugShowCheckedModeBanner: false,
+      title: 'Task MVP',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      home: DashboardScreen(onToggleTheme: () {}),
+      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+      home: DashboardScreen(onToggleTheme: toggleTheme),
     );
   }
 }

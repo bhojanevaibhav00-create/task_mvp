@@ -1,18 +1,8 @@
 import 'package:flutter/material.dart';
-enum TaskStatus {
-  todo,
-  inProgress,
-  review,
-  done,
-}
 
-enum Priority {
-  low,
-  medium,
-  high,
-}
-extension PriorityExtension on Priority {
-  // Returns a color for each priority
+enum Priority { low, medium, high }
+
+extension PriorityX on Priority {
   Color get color {
     switch (this) {
       case Priority.low:
@@ -24,7 +14,6 @@ extension PriorityExtension on Priority {
     }
   }
 
-  // Optional: return a name string
   String get name {
     switch (this) {
       case Priority.low:
@@ -33,6 +22,36 @@ extension PriorityExtension on Priority {
         return "Medium";
       case Priority.high:
         return "High";
+    }
+  }
+}
+
+enum TaskStatus { todo, inProgress, done,review }
+
+extension TaskStatusX on TaskStatus {
+  Color get color {
+    switch (this) {
+      case TaskStatus.todo:
+        return Colors.grey;
+      case TaskStatus.inProgress:
+        return Colors.blue;
+      case TaskStatus.done:
+        return Colors.green;
+      case TaskStatus.review:
+        return Colors.white;
+    }
+  }
+
+  String get name {
+    switch (this) {
+      case TaskStatus.todo:
+        return "To Do";
+      case TaskStatus.inProgress:
+        return "In Progress";
+      case TaskStatus.done:
+        return "Done";
+      case TaskStatus.review:
+        return "Review";
     }
   }
 }

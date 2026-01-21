@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/project_model.dart';
 import '../../../../data/models/task_model.dart';
-import '../../../../data/models/enums.dart';
-import 'package:task_mvp/features/dashboard/presentation/widgets/board_column.dart';
+import 'widgets/board_column.dart';
+import 'package:task_mvp/data/models/enums.dart';
 
 class BoardScreen extends StatelessWidget {
   final Project project;
@@ -11,20 +11,15 @@ class BoardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Group tasks by status
-    final todoTasks =
-    project.tasks.where((t) => t.status == TaskStatus.todo).toList();
-    final inProgressTasks =
-    project.tasks.where((t) => t.status == TaskStatus.inProgress).toList();
-    final doneTasks =
-    project.tasks.where((t) => t.status == TaskStatus.done).toList();
+    final todoTasks = project.tasks.where((t) => t.status == TaskStatus.todo).toList();
+    final inProgressTasks = project.tasks.where((t) => t.status == TaskStatus.inProgress).toList();
+    final doneTasks = project.tasks.where((t) => t.status == TaskStatus.done).toList();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(project.name),
-        flexibleSpace:
-        Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
-        foregroundColor: Colors.white,
+        centerTitle: true,
+        flexibleSpace: Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
       ),
       body: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -33,9 +28,9 @@ class BoardScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             BoardColumn(title: "To Do", tasks: todoTasks),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             BoardColumn(title: "In Progress", tasks: inProgressTasks),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             BoardColumn(title: "Done", tasks: doneTasks),
           ],
         ),

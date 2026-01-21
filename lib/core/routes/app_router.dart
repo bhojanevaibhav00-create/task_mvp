@@ -53,3 +53,4 @@ final appRouter = GoRouter(
     ),
   ],
 );
+//give me error like The function 'DashboardScreen' isn't defined. in this app.router file

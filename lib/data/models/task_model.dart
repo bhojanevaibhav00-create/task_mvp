@@ -22,9 +22,7 @@ class Task {
     this.tags = const [],
   });
 
-  Task copyWith({
-    TaskStatus? status,
-  }) {
+  Task copyWith({TaskStatus? status}) {
     return Task(
       id: id,
       title: title,

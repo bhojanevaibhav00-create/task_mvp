@@ -1,60 +1,48 @@
 import 'package:flutter/material.dart';
-import '../../../../data/models/task_model.dart';
-import '../../../../data/models/enums.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../data/models/task_model.dart';
+import 'package:task_mvp/data/models/enums.dart';
 
 class TaskTile extends StatelessWidget {
   final Task task;
-
   const TaskTile({super.key, required this.task});
+
+  Color getPriorityColor() {
+    switch (task.priority) {
+      case Priority.high:
+        return AppColors.highPriority;
+      case Priority.medium:
+        return AppColors.mediumPriority;
+      case Priority.low:
+        return AppColors.lowPriority;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.cardRadius)),
-      elevation: AppColors.cardElevation,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: ListTile(
+        title: Text(task.title),
+        subtitle: Row(
           children: [
-            Row(
-              children: [
-                if (task.important)
-                  const Icon(Icons.star, color: Colors.orange, size: 18),
-                Expanded(
-                  child: Text(task.title,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      )),
+            if (task.dueDate != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(6),
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                if (task.dueDate != null)
-                  Text(
-                    "Due: ${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}",
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                const SizedBox(width: 12),
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                      color: task.priority.color.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4)),
-                  child: Text(
-                    task.priority.name.toUpperCase(),
-                    style: TextStyle(
-                        color: task.priority.color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12),
-                  ),
-                ),
-              ],
+                child: Text("${task.dueDate!.day}/${task.dueDate!.month}"),
+              ),
+            const SizedBox(width: 8),
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: getPriorityColor(),
+                shape: BoxShape.circle,
+              ),
             ),
           ],
         ),

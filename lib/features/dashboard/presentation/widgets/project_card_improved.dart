@@ -1,31 +1,33 @@
 import 'package:flutter/material.dart';
-import '../../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/project_model.dart';
 import '../../../../data/models/task_model.dart';
-import '../../../../data/models/enums.dart';
+import '../board_screen.dart';
+import 'package:task_mvp/data/models/enums.dart';
 
 class ProjectCardImproved extends StatelessWidget {
   final Project project;
-  final VoidCallback? onOpenBoard;
+  final VoidCallback onOpenBoard;
 
   const ProjectCardImproved({
     super.key,
     required this.project,
-    this.onOpenBoard,
+    required this.onOpenBoard,
   });
+
+  double getProgress() {
+    if (project.tasks.isEmpty) return 0;
+    final completed = project.tasks.where((t) => t.status == TaskStatus.done).length;
+    return completed / project.tasks.length;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final totalTasks = project.tasks.length;
-    final completedTasks =
-        project.tasks.where((t) => t.status == TaskStatus.done).length;
-    final progress = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
-
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
-      elevation: AppColors.cardElevation,
+      elevation: 2,
       child: InkWell(
         onTap: onOpenBoard,
         borderRadius: BorderRadius.circular(AppColors.cardRadius),
@@ -34,21 +36,18 @@ class ProjectCardImproved extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(project.name,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold)),
+              Text(project.name, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
               LinearProgressIndicator(
-                value: progress,
+                value: getProgress(),
                 backgroundColor: AppColors.progressBackground,
                 color: AppColors.progressForeground,
-                minHeight: 6,
               ),
-              const SizedBox(height: 4),
-              Text("$completedTasks/$totalTasks tasks completed",
-                  style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 8),
+              Text(
+                "${project.tasks.length} tasks • ${project.tasks.where((t) => t.status == TaskStatus.done).length} completed",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ],
           ),
         ),
