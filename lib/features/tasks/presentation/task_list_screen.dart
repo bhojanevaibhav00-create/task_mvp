@@ -182,8 +182,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                                     Text(
                                       task.title,
                                       maxLines: 2,
-                                      overflow:
-                                          TextOverflow.ellipsis,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight:

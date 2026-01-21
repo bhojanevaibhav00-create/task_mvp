@@ -1,42 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../data/models/enums.dart';
-import 'package:task_mvp/core/providers/notification_providers.dart';
-import 'package:task_mvp/features/notifications/presentation/notification_screen.dart';
+import '../../../core/providers/notification_providers.dart';
+import '../../notifications/presentation/notification_screen.dart';
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tasks = ref.watch(tasksProvider);
-    final completedTasks = tasks
-        .where((task) => task.status == TaskStatus.done.name)
-        .length;
-    final pendingTasks = tasks
-        .where((task) => task.status != TaskStatus.done.name)
-        .length;
-    final unreadCount =
-        ref.watch(unreadNotificationCountProvider);
+
+    final completedTasks =
+        tasks.where((t) => t.status == TaskStatus.done.name).length;
+    final pendingTasks =
+        tasks.where((t) => t.status != TaskStatus.done.name).length;
+
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-       actions: [
+        actions: [
           Stack(
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications),
                 onPressed: () {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => const NotificationScreen(),
-    ),
-  );
-},
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationScreen(),
+                    ),
+                  );
+                },
               ),
               if (unreadCount > 0)
                 Positioned(
@@ -57,7 +58,6 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ],
-
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -70,76 +70,20 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // Statistics Cards
+            // ================= SUMMARY =================
             Row(
               children: [
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            tasks.length.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text('Total Tasks'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            pendingTasks.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          const Text('Pending'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            completedTasks.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const Text('Completed'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                _statCard('Total', tasks.length, Colors.blue),
+                const SizedBox(width: 12),
+                _statCard('Pending', pendingTasks, Colors.orange),
+                const SizedBox(width: 12),
+                _statCard('Completed', completedTasks, Colors.green),
               ],
             ),
 
             const SizedBox(height: 30),
 
-            // Quick Actions
+            // ================= QUICK ACTIONS =================
             const Text(
               'Quick Actions',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -151,62 +95,77 @@ class DashboardScreen extends ConsumerWidget {
               runSpacing: 12,
               children: [
                 AppButton(
-                  text: 'View All Tasks',
+                  text: 'View Tasks',
                   onPressed: () => context.push(AppRoutes.tasks),
                 ),
                 AppButton(
-                  text: 'Add New Task',
+                  text: 'Add Task',
                   onPressed: () => context.push(AppRoutes.tasks),
-                ),
-                AppButton(
-                  text: 'Go to Test Screen',
-                  onPressed: () => context.push(AppRoutes.test),
                 ),
               ],
             ),
 
             const SizedBox(height: 30),
 
-            // Recent Tasks
-            if (tasks.isNotEmpty) ...[
-              const Text(
-                'Recent Tasks',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: tasks.length.clamp(
-                    0,
-                    5,
-                  ), // Show up to 5 recent tasks
-                  itemBuilder: (context, index) {
-                    final task = tasks[index];
-                    return Card(
-                      child: ListTile(
-                        title: Text(task.title),
-                        subtitle: Text('Status: ${task.status}'),
-                        trailing: Icon(
-                          task.status == TaskStatus.done.name
-                              ? Icons.check_circle
-                              : Icons.pending,
-                          color: task.status == TaskStatus.done.name
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
-                        onTap: () => context.go(AppRoutes.tasks),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ] else
-              const Expanded(
-                child: Center(
-                  child: Text('No tasks yet. Add your first task!'),
-                ),
-              ),
+            // ================= RECENT TASKS =================
+            const Text(
+              'Recent Tasks',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: tasks.isEmpty
+                  ? const Center(
+                      child: Text('No tasks yet. Add your first task!'),
+                    )
+                  : ListView.builder(
+                      itemCount: tasks.length.clamp(0, 5),
+                      itemBuilder: (context, index) {
+                        final task = tasks[index];
+                        return Card(
+                          child: ListTile(
+                            title: Text(task.title),
+                            subtitle: Text('Status: ${task.status}'),
+                            trailing: Icon(
+                              task.status == TaskStatus.done.name
+                                  ? Icons.check_circle
+                                  : Icons.pending,
+                              color: task.status == TaskStatus.done.name
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                            onTap: () => context.push(AppRoutes.tasks),
+                          ),
+                        );
+                      },
+                    ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statCard(String label, int value, Color color) {
+    return Expanded(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Text(
+                value.toString(),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(label),
+            ],
+          ),
         ),
       ),
     );
