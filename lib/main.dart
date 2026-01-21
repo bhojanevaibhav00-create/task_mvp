@@ -1,22 +1,47 @@
 import 'package:flutter/material.dart';
-import 'core/theme/app_theme.dart';
-import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'app.dart';
+import 'core/providers/task_providers.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      child: AppBootstrap(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+/// Bootstrap widget to run app-start logic
+class AppBootstrap extends ConsumerStatefulWidget {
+  const AppBootstrap({super.key});
+
+  @override
+  ConsumerState<AppBootstrap> createState() => _AppBootstrapState();
+}
+
+class _AppBootstrapState extends ConsumerState<AppBootstrap> {
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_initialized) {
+      _initialized = true;
+
+      // ✅ App-start reminder resync + permission
+      Future.microtask(() async {
+        final reminder = ref.read(reminderServiceProvider);
+        await reminder.init();
+        await reminder.requestPermission();
+        await reminder.resyncOnAppStart();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Task MVP',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      home: DashboardScreen(onToggleTheme: () {}),
-    );
+    return const MyApp();
   }
 }

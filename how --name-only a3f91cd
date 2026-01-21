@@ -1,0 +1,33 @@
+[33m70b2099[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fix post-merge issues and stabilize app
+[33m0edbe86[m Merge pull request #12 from bhojanevaibhav00-create/feature/models-database-ajinkya
+[33mf572c72[m updated readme
+[33m214985e[m Fix TaskList UI overflow and improve responsive layout
+[33m41f719f[m Fix TaskList UI overflow and improve responsive layout
+[33meffa7ec[m Merge pull request #9 from bhojanevaibhav00-create/feature/models-database-ajinkya
+[33m5eaaf69[m 13-01-26 updates and enhancements
+[33m530946e[m backend
+[33m6210812[m Fix post-merge issues and stabilize app
+[33me08dc95[m Merge pull request #8 from bhojanevaibhav00-create/feature/models-database-ajinkya
+[33m68066ca[m upadte
+[33mb240dd3[m[33m ([m[1;31morigin/feature/models-database-ajinkya[m[33m)[m Merge branch 'main' into feature/models-database-ajinkya
+[33m2cd11f3[m updated readme
+[33mef1c123[m 12-01-26 DB optimization and activity log
+[33m7b98924[m Fix post-merge issues and stabilize app
+[33mabacacd[m Merge pull request #5 from bhojanevaibhav00-create/vaibhav/mvp-integration
+[33m95833d4[m Merge branch 'main' into vaibhav/mvp-integration
+[33m247b1d6[m[33m ([m[1;32mvaibhav/mvp-integration[m[33m)[m Add MVP end-to-end flow integration
+[33m8be89a9[m Add MVP end-to-end flow integration
+[33mc3756d9[m Merge pull request #4 from bhojanevaibhav00-create/feature/models-database-ajinkya
+[33md93bfa4[m Update README.md
+[33m10fd083[m Merge pull request #3 from bhojanevaibhav00-create/feature/models-database-ajinkya
+[33m56295f0[m Merge branch 'main' into feature/models-database-ajinkya
+[33me71f3a8[m Update README.md
+[33m5c6dad5[m small change
+[33m82c10eb[m Update README.md
+[33m27adabc[m finished
+[33m5e9be5f[m Freeze architecture, routes, enums and add core utilities
+[33mca1c4c1[m Update README.md
+[33ma32b7ce[m Update README.md
+[33mfc9c170[m Update README.md
+[33m4ad146c[m finished backend
+[33m8e5f1a9[m Initial Flutter project setup with architecture and routing

@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
+
 enum TaskStatus {
   todo,
   inProgress,
   review,
-  done,
+  done;
+
+  String get dbValue {
+    switch (this) {
+      case TaskStatus.inProgress:
+        return 'in_progress';
+      default:
+        return name;
+    }
+  }
 }
 
 enum Priority {
@@ -11,8 +21,8 @@ enum Priority {
   medium,
   high,
 }
+
 extension PriorityExtension on Priority {
-  // Returns a color for each priority
   Color get color {
     switch (this) {
       case Priority.low:
@@ -24,8 +34,7 @@ extension PriorityExtension on Priority {
     }
   }
 
-  // Optional: return a name string
-  String get name {
+  String get label {
     switch (this) {
       case Priority.low:
         return "Low";
