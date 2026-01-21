@@ -261,16 +261,11 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 
 ## Recent Updates
 
-### Collaboration & Seed Data (Latest)
+### UI Integration Readiness (Today)
 
-- **Collaboration Logic**:
-  - Implemented `CollaborationRepository` methods (add/remove member, assign/unassign task).
-  - Integrated `ActivityLogs` for all collaboration actions (e.g., "Member added", "Task assigned").
-
-- **Code Structure**:
-  - Implemented `CollaborationRepository` (replaced stubs).
-  - Formalized `ProjectMember` Drift table definition.
-
-- **Seed Data**: Added mock users and assigned tasks to validate UI display.
-
-- **Refactoring**: Enforced type safety in Seed Data using `TaskStatus` enums.
+- **Repository Updates**:
+  - **DTOs**: Added `ProjectMemberWithUser` to `CollaborationRepository` to bundle member role and user details.
+  - **SQL Joins**: Updated `listProjectMembers` to join `project_members` with `users` table for efficient UI rendering.
+- **Seed Data**:
+  - **Idempotency**: Added duplicate checks to `SeedData` to prevent duplicate tasks/users when re-seeding.
+  - **Mock Data**: Populates 5 users, 2 projects, and assigned tasks to verify "Assignee" UI indicators.
