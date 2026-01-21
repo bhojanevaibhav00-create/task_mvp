@@ -10,7 +10,7 @@ class ReminderService {
 
   ReminderService(this._db);
 
-  // INIT (MUST run before anything)
+  // ================= INIT =================
   Future<void> init() async {
     tzdata.initializeTimeZones();
 
@@ -32,12 +32,14 @@ class ReminderService {
         ?.createNotificationChannel(channel);
   }
 
+  // ================= PERMISSION =================
   Future<void> requestPermission() async {
     final androidImpl = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.requestNotificationsPermission();
   }
 
+  // ================= SCHEDULE =================
   Future<void> schedule(Task task) async {
     if (task.reminderEnabled != true || task.reminderAt == null) return;
 
@@ -60,7 +62,21 @@ class ReminderService {
     );
   }
 
+  // ================= CANCEL =================
   Future<void> cancel(int id) async {
     await _plugin.cancel(id);
+  }
+
+  // ================= RESYNC (VERY IMPORTANT) =================
+  Future<void> resyncOnAppStart() async {
+    final tasks = await (_db.select(_db.tasks)
+          ..where((t) => t.reminderEnabled.equals(true))
+          ..where((t) => t.reminderAt.isNotNull())
+          ..where((t) => t.status.isNotValue('done')))
+        .get();
+
+    for (final task in tasks) {
+      await schedule(task);
+    }
   }
 }

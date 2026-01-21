@@ -4,6 +4,8 @@ import '../../../../data/models/project_model.dart';
 import '../../../../data/models/task_model.dart';
 import '../../../../data/models/enums.dart';
 import 'package:task_mvp/features/dashboard/presentation/widgets/board_column.dart';
+import 'package:task_mvp/core/constants/app_colors.dart';
+
 
 class BoardScreen extends StatelessWidget {
   final Project project;

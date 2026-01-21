@@ -33,14 +33,7 @@ final appRouter = GoRouter(
     // ================= DASHBOARD =================
     GoRoute(
       path: AppRoutes.dashboard,
-      builder: (context, state) {
-        return DashboardScreen(
-          onToggleTheme: () {
-            // TODO: theme toggle wiring
-            print("Theme toggled");
-          },
-        );
-      },
+      builder: (context, state) => const DashboardScreen(),
     ),
 
     // ================= TASKS =================
