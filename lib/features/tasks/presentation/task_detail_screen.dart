@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../domain/task_entity.dart';
+import 'package:task_mvp/core/constants/app_colors.dart';
+
 
 class TaskDetailScreen extends StatefulWidget {
   final TaskEntity task;

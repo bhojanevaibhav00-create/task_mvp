@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum TaskStatus {
   todo,
   inProgress,
@@ -14,6 +16,32 @@ enum TaskStatus {
   }
 }
 
-enum Priority { low, medium, high, critical }
+enum Priority {
+  low,
+  medium,
+  high,
+}
 
-enum SortCriteria { none, priorityHighToLow, priorityLowToHigh, tagAZ, tagZA }
+extension PriorityExtension on Priority {
+  Color get color {
+    switch (this) {
+      case Priority.low:
+        return Colors.green;
+      case Priority.medium:
+        return Colors.orange;
+      case Priority.high:
+        return Colors.red;
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case Priority.low:
+        return "Low";
+      case Priority.medium:
+        return "Medium";
+      case Priority.high:
+        return "High";
+    }
+  }
+}

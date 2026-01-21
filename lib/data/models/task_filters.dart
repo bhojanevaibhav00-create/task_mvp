@@ -2,6 +2,7 @@ import 'package:task_mvp/data/database/database.dart';
 
 /// Helper class to filter and sort tasks in memory.
 class TaskFilters {
+  /// Apply filters to a list of tasks
   static List<Task> apply(
     List<Task> tasks, {
     String? status,
@@ -16,43 +17,33 @@ class TaskFilters {
   }) {
     var filteredTasks = tasks.where((task) {
       // Status Filter
-      if (status != null && task.status != status) {
-        return false;
-      }
+      if (status != null && task.status != status) return false;
 
       // Priority Filter
-      if (priority != null && task.priority != priority) {
-        return false;
-      }
+      if (priority != null && task.priority != priority) return false;
 
       // Tag Filter
-      if (tagId != null && task.tagId != tagId) {
-        return false;
-      }
+      if (tagId != null && task.tagId != tagId) return false;
 
       // Project Filter
-      if (projectId != null && task.projectId != projectId) {
-        return false;
-      }
+      if (projectId != null && task.projectId != projectId) return false;
 
-      // Search Query (Title or Description)
+      // Search Filter
       if (searchQuery != null && searchQuery.isNotEmpty) {
-        final query = searchQuery.toLowerCase();
-        final matchesTitle = task.title.toLowerCase().contains(query);
-        final matchesDesc =
-            task.description?.toLowerCase().contains(query) ?? false;
-        if (!matchesTitle && !matchesDesc) {
-          return false;
-        }
+        final q = searchQuery.toLowerCase();
+        final titleMatch = task.title.toLowerCase().contains(q);
+        final descMatch =
+            task.description?.toLowerCase().contains(q) ?? false;
+        if (!titleMatch && !descMatch) return false;
       }
 
-      // Date Existence Filter
+      // Due date existence
       if (hasDueDate != null) {
         if (hasDueDate && task.dueDate == null) return false;
         if (!hasDueDate && task.dueDate != null) return false;
       }
 
-      // Date Range Filter
+      // Date range filter
       if (fromDate != null || toDate != null) {
         if (task.dueDate == null) return false;
         if (fromDate != null && task.dueDate!.isBefore(fromDate)) return false;
@@ -70,14 +61,15 @@ class TaskFilters {
             if (a.dueDate == null) return 1;
             if (b.dueDate == null) return -1;
             return a.dueDate!.compareTo(b.dueDate!);
+
           case 'priority_desc':
-            final pA = a.priority ?? 0;
-            final pB = b.priority ?? 0;
-            return pB.compareTo(pA);
+            return (b.priority ?? 0).compareTo(a.priority ?? 0);
+
           case 'updated_at_desc':
-            final uA = a.updatedAt ?? DateTime(0);
-            final uB = b.updatedAt ?? DateTime(0);
-            return uB.compareTo(uA);
+            final aDate = a.updatedAt ?? DateTime(0);
+            final bDate = b.updatedAt ?? DateTime(0);
+            return bDate.compareTo(aDate);
+
           default:
             return 0;
         }

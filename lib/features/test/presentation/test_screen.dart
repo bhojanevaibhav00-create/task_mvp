@@ -3,10 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' as drift;
+
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/core/constants/app_routes.dart';
 import 'package:task_mvp/core/widgets/app_button.dart';
-import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/core/providers/task_providers.dart';
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/data/models/task_extensions.dart';
@@ -50,7 +51,9 @@ class _TestScreenState extends ConsumerState<TestScreen> {
 
       final nextStatus = currentStatus.next;
 
-      final updatedTask = task.copyWith(status: drift.Value(nextStatus.name));
+      final updatedTask = task.copyWith(
+        status: drift.Value(nextStatus.name),
+      );
 
       await ref.read(taskRepositoryProvider).updateTask(updatedTask);
 
@@ -75,9 +78,8 @@ class _TestScreenState extends ConsumerState<TestScreen> {
   // ================= DB VERSION =================
   Future<void> _checkDbVersion() async {
     try {
-      final version = await ref
-          .read(taskRepositoryProvider)
-          .getDatabaseVersion();
+      final version =
+          await ref.read(taskRepositoryProvider).getDatabaseVersion();
       setState(() => _status = 'Database Version: $version');
     } catch (e) {
       setState(() => _status = 'DB version error: $e');
@@ -132,7 +134,6 @@ class _TestScreenState extends ConsumerState<TestScreen> {
               'Tasks',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-
             const SizedBox(height: 10),
 
             SizedBox(

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:task_mvp/core/constants/app_colors.dart';
+
+
 import 'app.dart';
-import 'package:task_mvp/core/providers/task_providers.dart';
+import 'core/providers/task_providers.dart';
 
 void main() {
   runApp(
@@ -11,7 +14,6 @@ void main() {
   );
 }
 
-/// Bootstrap widget to run app-start logic
 class AppBootstrap extends ConsumerStatefulWidget {
   const AppBootstrap({super.key});
 
@@ -29,9 +31,13 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
     if (!_initialized) {
       _initialized = true;
 
-      // ✅ SAFE app-start resync
-      Future.microtask(() {
-        ref.read(reminderServiceProvider).resyncOnAppStart();
+      /// 🔔 App start reminder init + permission + resync
+      Future.microtask(() async {
+        final reminder = ref.read(reminderServiceProvider);
+
+        await reminder.init();
+        await reminder.requestPermission();
+        await reminder.resyncOnAppStart();
       });
     }
   }

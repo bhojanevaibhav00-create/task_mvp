@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'core/routes/app_router.dart';
-import 'core/theme/app_theme.dart';
+import 'package:task_mvp/core/routes/app_router.dart';
+import 'package:task_mvp/core/theme/app_theme.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -11,7 +11,8 @@ class MyApp extends StatelessWidget {
       title: 'Task MVP',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      routerConfig: appRouter, //  FIXED
+      darkTheme: AppTheme.darkTheme,
+      routerConfig: appRouter,
     );
   }
 }

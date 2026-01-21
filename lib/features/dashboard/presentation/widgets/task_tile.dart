@@ -1,62 +1,63 @@
 import 'package:flutter/material.dart';
+import '../../../../data/models/task_model.dart';
+import '../../../../data/models/enums.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class TaskTile extends StatelessWidget {
-  final String title;
-  final String status;
-  final Color statusColor;
+  final Task task;
 
-  const TaskTile({
-    super.key,
-    required this.title,
-    required this.status,
-    required this.statusColor,
-  });
+  const TaskTile({super.key, required this.task});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle_outline, color: Color(0xFF6366F1)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF0F172A),
-              ),
+    return Card(
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.cardRadius)),
+      elevation: AppColors.cardElevation,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (task.important)
+                  const Icon(Icons.star, color: Colors.orange, size: 18),
+                Expanded(
+                  child: Text(task.title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      )),
+                ),
+              ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                if (task.dueDate != null)
+                  Text(
+                    "Due: ${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}",
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                const SizedBox(width: 12),
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: task.priority.color.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4)),
+                  child: Text(
+                    task.priority.name.toUpperCase(),
+                    style: TextStyle(
+                        color: task.priority.color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12),
+                  ),
+                ),
+              ],
             ),
-            child: Text(
-              status,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: statusColor,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
