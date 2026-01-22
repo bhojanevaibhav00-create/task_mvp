@@ -21,8 +21,9 @@ void openFilterBottomSheet({
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (_) {
       return _FilterBottomSheet(
@@ -86,39 +87,60 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _header(),
-          const SizedBox(height: 16),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _dragHandle(),
+            const SizedBox(height: 12),
+            _header(),
+            const SizedBox(height: 20),
 
-          _section("Status", TaskStatus.values.map(_statusChip).toList()),
-          _section("Priority", Priority.values.map(_priorityChip).toList()),
-          _section("Due", ["Today", "Overdue", "Next 7 Days"].map(_dueChip).toList()),
-          _section("Tags", widget.allTags.map(_tagChip).toList()),
+            _cardSection("Status", TaskStatus.values.map(_statusChip).toList()),
+            _cardSection("Priority", Priority.values.map(_priorityChip).toList()),
+            _cardSection("Due", ["Today", "Overdue", "Next 7 Days"].map(_dueChip).toList()),
+            _cardSection("Tags", widget.allTags.map(_tagChip).toList()),
 
-          const SizedBox(height: 24),
-          _actions(),
-        ],
+            const SizedBox(height: 20),
+            _actions(),
+          ],
+        ),
       ),
     );
   }
 
-  // ================= UI PARTS =================
+  // ================= UI COMPONENTS =================
+
+  Widget _dragHandle() {
+    return Center(
+      child: Container(
+        width: 40,
+        height: 5,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade400,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
 
   Widget _header() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text("Filters", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          "Filters",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
+        const Spacer(),
         TextButton(
           onPressed: () {
             setState(() {
@@ -129,29 +151,51 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               sort = null;
             });
           },
-          child: const Text("Clear"),
+          child: const Text("Clear all"),
         ),
       ],
     );
   }
 
-  Widget _section(String title, List<Widget> chips) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: chips),
-        const SizedBox(height: 16),
-      ],
+  Widget _cardSection(String title, List<Widget> chips) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          const SizedBox(height: 10),
+          Wrap(spacing: 10, runSpacing: 10, children: chips),
+        ],
+      ),
     );
   }
 
   Widget _statusChip(TaskStatus s) {
     final selected = status.contains(s);
-    return FilterChip(
+    return ChoiceChip(
       label: Text(_statusLabel(s)),
       selected: selected,
+      selectedColor: Theme.of(context).primaryColor.withOpacity(0.15),
+      backgroundColor: Colors.grey.shade100,
+      labelStyle: TextStyle(
+        fontWeight: FontWeight.w600,
+        color: selected ? Theme.of(context).primaryColor : Colors.black87,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (_) => setState(() {
         selected ? status.remove(s) : status.add(s);
       }),
@@ -160,9 +204,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   Widget _priorityChip(Priority p) {
     final selected = priority.contains(p);
-    return FilterChip(
+    return ChoiceChip(
       label: Text(p.name.toUpperCase()),
       selected: selected,
+      selectedColor: Colors.orange.withOpacity(0.15),
+      backgroundColor: Colors.grey.shade100,
+      labelStyle: TextStyle(
+        fontWeight: FontWeight.w600,
+        color: selected ? Colors.orange : Colors.black87,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (_) => setState(() {
         selected ? priority.remove(p) : priority.add(p);
       }),
@@ -174,6 +225,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return ChoiceChip(
       label: Text(d),
       selected: selected,
+      selectedColor: Colors.blue.withOpacity(0.15),
+      backgroundColor: Colors.grey.shade100,
+      labelStyle: TextStyle(
+        fontWeight: FontWeight.w600,
+        color: selected ? Colors.blue : Colors.black87,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (_) => setState(() {
         dueBucket = selected ? null : d;
       }),
@@ -182,9 +240,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   Widget _tagChip(Tag t) {
     final selected = tags.contains(t);
-    return FilterChip(
+    return ChoiceChip(
       label: Text(t.label),
       selected: selected,
+      selectedColor: Theme.of(context).primaryColor.withOpacity(0.15),
+      backgroundColor: Colors.grey.shade100,
+      labelStyle: TextStyle(
+        fontWeight: FontWeight.w600,
+        color: selected ? Theme.of(context).primaryColor : Colors.black87,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (_) => setState(() {
         selected ? tags.remove(t) : tags.add(t);
       }),
@@ -192,15 +257,33 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   }
 
   Widget _actions() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {
-          widget.onApply(status, priority, tags, dueBucket, sort);
-          Navigator.pop(context);
-        },
-        child: const Text("Apply Filters"),
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            onPressed: () {
+              widget.onApply(status, priority, tags, dueBucket, sort);
+              Navigator.pop(context);
+            },
+            child: const Text("Apply Filters"),
+          ),
+        ),
+      ],
     );
   }
 

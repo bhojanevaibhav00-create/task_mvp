@@ -8,7 +8,9 @@ import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/tag_model.dart';
 import '../../notifications/presentation/notification_screen.dart';
+import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -23,23 +25,31 @@ class DashboardScreen extends ConsumerWidget {
     final pending =
         tasks.where((t) => t.status != TaskStatus.done.name).length;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // ================= PREMIUM APP BAR =================
+          // ================= APP BAR =================
           SliverAppBar(
             pinned: true,
             expandedHeight: 140,
-            backgroundColor: AppColors.primary,
+            backgroundColor: Theme.of(context).primaryColor,
             flexibleSpace: FlexibleSpaceBar(
               title: const Text('Dashboard'),
               background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor.withOpacity(0.9),
+                      Theme.of(context).primaryColor.withOpacity(0.7),
+                    ],
+                  ),
                 ),
               ),
             ),
             actions: [
+              // Notifications
               Stack(
                 children: [
                   IconButton(
@@ -62,13 +72,30 @@ class DashboardScreen extends ConsumerWidget {
                         child: Text(
                           unreadCount.toString(),
                           style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.white,
-                          ),
+                              fontSize: 11, color: Colors.white),
                         ),
                       ),
                     ),
                 ],
+              ),
+
+              // Filter button
+              IconButton(
+                icon: const Icon(Icons.filter_list),
+                onPressed: () {
+                  openFilterBottomSheet(
+                    context: context,
+                    allTags: [],
+                    statusFilters: {},
+                    priorityFilters: {},
+                    tagFilters: {},
+                    dueBucket: null,
+                    sort: null,
+                    onApply: (status, priority, tags, due, sort) {
+                      // Your filter logic
+                    },
+                  );
+                },
               ),
             ],
           ),
@@ -80,47 +107,27 @@ class DashboardScreen extends ConsumerWidget {
               delegate: SliverChildListDelegate([
                 const SizedBox(height: 8),
 
-                // ================= SUMMARY =================
+                // ================= SUMMARY CARDS =================
                 Row(
                   children: [
                     _summaryCard(
-                      context,
-                      'Total',
-                      tasks.length.toString(),
-                      Icons.list_alt,
-                      Colors.blue,
-                    ),
+                        context, 'Total', tasks.length.toString(), Icons.list_alt, Colors.blue, isDark),
                     const SizedBox(width: 12),
                     _summaryCard(
-                      context,
-                      'Pending',
-                      pending.toString(),
-                      Icons.pending_actions,
-                      Colors.orange,
-                    ),
+                        context, 'Pending', pending.toString(), Icons.pending_actions, Colors.orange, isDark),
                     const SizedBox(width: 12),
                     _summaryCard(
-                      context,
-                      'Done',
-                      completed.toString(),
-                      Icons.check_circle,
-                      Colors.green,
-                    ),
+                        context, 'Done', completed.toString(), Icons.check_circle, Colors.green, isDark),
                   ],
                 ),
 
                 const SizedBox(height: 24),
 
                 // ================= QUICK ACTIONS =================
-                const Text(
-                  'Quick Actions',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                const Text('Quick Actions',
+                    style:
+                    TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
-
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -138,32 +145,30 @@ class DashboardScreen extends ConsumerWidget {
 
                 const SizedBox(height: 28),
 
-                // ================= RECENT =================
-                const Text(
-                  'Recent Tasks',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                // ================= RECENT TASKS =================
+                const Text('Recent Tasks',
+                    style:
+                    TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
-
                 if (tasks.isEmpty)
-                  _emptyState()
+                  _emptyState(context, isDark)
                 else
                   ...tasks.take(5).map((task) {
-                    final isDone =
-                        task.status == TaskStatus.done.name;
+                    final isDone = task.status == TaskStatus.done.name;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
+                        color: isDark
+                            ? Theme.of(context).cardColor
+                            : Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(AppColors.cardRadius),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: isDark
+                                ? Colors.black26
+                                : Colors.black12,
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -189,12 +194,14 @@ class DashboardScreen extends ConsumerWidget {
                                 decoration: isDone
                                     ? TextDecoration.lineThrough
                                     : null,
+                                color: isDark ? Colors.white : Colors.black87,
                               ),
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.arrow_forward_ios,
-                                size: 16),
+                            icon: Icon(Icons.arrow_forward_ios,
+                                size: 16,
+                                color: isDark ? Colors.white : Colors.black87),
                             onPressed: () =>
                                 context.push(AppRoutes.tasks),
                           ),
@@ -216,13 +223,8 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _summaryCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _summaryCard(BuildContext context, String title, String value,
+      IconData icon, Color color, bool isDark) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -230,7 +232,14 @@ class DashboardScreen extends ConsumerWidget {
           gradient: LinearGradient(
             colors: [color.withOpacity(0.9), color.withOpacity(0.7)],
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppColors.cardRadius),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black26 : Colors.black12,
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,18 +249,14 @@ class DashboardScreen extends ConsumerWidget {
             Text(
               value,
               style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             ),
             const SizedBox(height: 4),
             Text(
               title,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ],
         ),
@@ -259,17 +264,22 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _emptyState() {
+  Widget _emptyState(BuildContext context, bool isDark) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark
+            ? Theme.of(context).cardColor
+            : Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           'No tasks yet. Create your first task!',
-          style: TextStyle(fontSize: 14, color: Colors.black54),
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
         ),
       ),
     );
