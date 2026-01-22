@@ -1,68 +1,133 @@
 import 'package:flutter/material.dart';
-import 'package:task_mvp/core/constants/app_colors.dart';
+import '../constants/app_colors.dart';
 
 class AppTheme {
-  static final ThemeData lightTheme = ThemeData(
+  static ThemeData lightTheme = ThemeData(
+    useMaterial3: true,
     brightness: Brightness.light,
-    primaryColor: AppColors.primary,
-    scaffoldBackgroundColor: AppColors.scaffoldLight,
-    cardColor: AppColors.cardLight,
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.fabBackground,
-      foregroundColor: AppColors.fabForeground,
+
+    colorScheme: ColorScheme.light(
+      primary: AppColors.primary,
+      surface: AppColors.cardLight,
+      background: AppColors.scaffoldLight,
     ),
+
+    scaffoldBackgroundColor: AppColors.scaffoldLight,
+
+    cardTheme: CardThemeData(
+  color: AppColors.cardLight,
+  elevation: AppColors.cardElevation,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(AppColors.cardRadius),
+  ),
+),
+
+
     appBarTheme: const AppBarTheme(
-      elevation: AppColors.cardElevation,
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      foregroundColor: Colors.black,
       centerTitle: true,
     ),
+
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primary,
+      foregroundColor: Colors.white,
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+    ),
+
     textTheme: const TextTheme(
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       bodyLarge: TextStyle(fontSize: 16),
       bodyMedium: TextStyle(fontSize: 14, color: Colors.black54),
       labelLarge: TextStyle(fontSize: 12, color: Colors.black54),
     ),
-    chipTheme: const ChipThemeData(
+
+    chipTheme: ChipThemeData(
       backgroundColor: AppColors.chipBackground,
-      selectedColor: AppColors.chipSelectedBackground,
-      labelStyle: TextStyle(color: Colors.black87),
-      secondaryLabelStyle: TextStyle(color: Colors.white),
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-      labelPadding: EdgeInsets.symmetric(horizontal: 6),
+      selectedColor: AppColors.primary,
+      labelStyle: const TextStyle(color: Colors.black87),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.primarySoft,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
     ),
   );
 
-  static final ThemeData darkTheme = ThemeData(
+  static ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
     brightness: Brightness.dark,
-    primaryColor: AppColors.primary,
-    scaffoldBackgroundColor: AppColors.scaffoldDark,
-    cardColor: AppColors.cardDark,
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
+
+    colorScheme: ColorScheme.dark(
+      primary: AppColors.primary,
+      surface: AppColors.cardDark,
+      background: AppColors.scaffoldDark,
     ),
+
+    scaffoldBackgroundColor: AppColors.scaffoldDark,
+
+    cardTheme: CardThemeData(
+  color: AppColors.cardDark,
+  elevation: AppColors.cardElevation,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(AppColors.cardRadius),
+  ),
+),
+
     appBarTheme: const AppBarTheme(
-      elevation: AppColors.cardElevation,
-      backgroundColor: AppColors.primary,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
       foregroundColor: Colors.white,
       centerTitle: true,
     ),
+
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primary,
+      foregroundColor: Colors.white,
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+    ),
+
     textTheme: const TextTheme(
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       bodyLarge: TextStyle(fontSize: 16),
       bodyMedium: TextStyle(fontSize: 14, color: Colors.white70),
       labelLarge: TextStyle(fontSize: 12, color: Colors.white70),
     ),
-    chipTheme: const ChipThemeData(
-      backgroundColor: AppColors.chipBackground,
-      selectedColor: AppColors.chipSelectedBackground,
-      labelStyle: TextStyle(color: Colors.white),
-      secondaryLabelStyle: TextStyle(color: Colors.white),
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-      labelPadding: EdgeInsets.symmetric(horizontal: 6),
+
+    chipTheme: ChipThemeData(
+      backgroundColor: Colors.white10,
+      selectedColor: AppColors.primary,
+      labelStyle: const TextStyle(color: Colors.white),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white10,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
     ),
   );
 }
