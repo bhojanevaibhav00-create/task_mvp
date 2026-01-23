@@ -152,6 +152,7 @@ lib/data/
 ├── models/
 │   ├── project_member.dart
 │   ├── enums.dart
+│   ├── project_role.dart
 │   ├── project_model.dart
 │   ├── tag_model.dart
 │   ├── task_extensions.dart
@@ -213,8 +214,8 @@ The repository pattern is used to abstract the data source (Drift Database).
 
 - **`collaboration_repository.dart`**:
   - **Purpose**: Handles project membership and task assignment logic.
-  - **Methods**: `assignTask`, `listProjectMembers`.
-  - **Status**: Phase-1 Stubs.
+  - **Methods**: `assignTask`, `unassignTask`, `addMember`, `removeMember`, `updateMemberRole`.
+  - **Features**: Enforces "Last Owner" safety constraints and triggers notifications/logs on assignment.
 
 ### 3. Seed Data (`lib/data/seed_data.dart`)
 
@@ -265,9 +266,23 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 
 ### UI Integration Readiness (Today)
 
-- **Repository Updates**:
-  - **DTOs**: Added `ProjectMemberWithUser` to `CollaborationRepository` to bundle member role and user details.
-  - **SQL Joins**: Updated `listProjectMembers` to join `project_members` with `users` table for efficient UI rendering.
-- **Seed Data**:
-  - **Idempotency**: Added duplicate checks to `SeedData` to prevent duplicate tasks/users when re-seeding.
-  - **Mock Data**: Populates 5 users, 2 projects, and assigned tasks to verify "Assignee" UI indicators.
+- **Role Management**:
+  - **New Model**: Introduced `ProjectRole` enum (Owner, Admin, Member) for strict typing.
+  - **Safety Constraints**: Implemented logic in `CollaborationRepository` to prevent removing or downgrading the last "Owner" of a project.
+
+- **Collaboration Features**:
+  - **Assignments**: `assignTask` and `unassignTask` now trigger:
+    - Database updates (`assigneeId`).
+    - Activity Logs (`task_assigned`, `task_unassigned`).
+    - System Notifications (`NotificationRepository`).
+  - **Repository**: Fully implemented `CollaborationRepository` with `NotificationRepository` injection.
+
+- **Seed Data Enhancements**:
+  - **Robust Dataset**: Updated `SeedData` to include:
+    - Correct `ProjectRole` usage.
+    - 2 Projects with 5 members split.
+    - Tasks with mixed statuses (Todo, In Progress, Done), priorities, and due dates (Past, Future, Null).
+    - Assignments distributed across users.
+
+- **Code Quality**:
+  - **Refactoring**: Cleaned up `main.dart` by moving initialization logic to `initState` and removing unused imports.
