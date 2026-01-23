@@ -8,7 +8,9 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/tag_model.dart';
 import '../../notifications/presentation/notification_screen.dart';
+import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -21,11 +23,14 @@ class DashboardScreen extends ConsumerWidget {
     final completed = tasks.where((t) => t.status == TaskStatus.done.name).length;
     final pending = tasks.where((t) => t.status != TaskStatus.done.name).length;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD), 
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
+          // ================= PREMIUM APP BAR =================
           SliverAppBar(
             pinned: true,
             expandedHeight: 140,
@@ -60,6 +65,24 @@ class DashboardScreen extends ConsumerWidget {
             ),
             actions: [
               _buildNotificationButton(context, unreadCount),
+              // Filter button from remote version
+              IconButton(
+                icon: const Icon(Icons.filter_list, color: Colors.white),
+                onPressed: () {
+                  openFilterBottomSheet(
+                    context: context,
+                    allTags: [],
+                    statusFilters: {},
+                    priorityFilters: {},
+                    tagFilters: {},
+                    dueBucket: null,
+                    sort: null,
+                    onApply: (status, priority, tags, due, sort) {
+                      // Filter logic
+                    },
+                  );
+                },
+              ),
               const SizedBox(width: 8),
             ],
           ),
@@ -93,7 +116,7 @@ class DashboardScreen extends ConsumerWidget {
                         Icons.format_list_bulleted_rounded,
                         Colors.white, 
                         AppColors.primary,
-                        AppRoutes.tasks, // Navigates to List
+                        AppRoutes.tasks,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -104,7 +127,6 @@ class DashboardScreen extends ConsumerWidget {
                         Icons.add_rounded, 
                         AppColors.primary, 
                         Colors.white,
-                        // FIX: Ensure this matches your AppRoutes string (e.g., taskCreate or addTask)
                         AppRoutes.tasks, 
                       ),
                     ),
@@ -143,7 +165,7 @@ class DashboardScreen extends ConsumerWidget {
           style: const TextStyle(
             fontSize: 18, 
             fontWeight: FontWeight.w800, 
-            color: Color(0xFF1A1C1E), // Fixed dark color
+            color: Color(0xFF1A1C1E),
           ),
         ),
         if (onAction != null)
@@ -226,11 +248,10 @@ class DashboardScreen extends ConsumerWidget {
         ),
         title: Text(
           task.title,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            decoration: isDone ? TextDecoration.lineThrough : null,
-            color: const Color(0xFF111827), // FORCE DARK TEXT FOR VISIBILITY
+            color: Color(0xFF111827),
           ),
         ),
         trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
