@@ -21,21 +21,16 @@ void openFilterBottomSheet({
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    backgroundColor: Colors.transparent,
+    builder: (_) => _FilterBottomSheet(
+      allTags: allTags,
+      initialStatus: statusFilters,
+      initialPriority: priorityFilters,
+      initialTags: tagFilters,
+      initialDueBucket: dueBucket,
+      initialSort: sort,
+      onApply: onApply,
     ),
-    builder: (_) {
-      return _FilterBottomSheet(
-        allTags: allTags,
-        initialStatus: statusFilters,
-        initialPriority: priorityFilters,
-        initialTags: tagFilters,
-        initialDueBucket: dueBucket,
-        initialSort: sort,
-        onApply: onApply,
-      );
-    },
   );
 }
 
@@ -87,38 +82,40 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          12,
-          16,
-          MediaQuery.of(context).viewInsets.bottom + 16,
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, controller) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _dragHandle(),
             const SizedBox(height: 12),
-            _header(),
-            const SizedBox(height: 20),
-
-            _cardSection("Status", TaskStatus.values.map(_statusChip).toList()),
-            _cardSection("Priority", Priority.values.map(_priorityChip).toList()),
-            _cardSection("Due", ["Today", "Overdue", "Next 7 Days"].map(_dueChip).toList()),
-            _cardSection("Tags", widget.allTags.map(_tagChip).toList()),
-
-            const SizedBox(height: 20),
+            Expanded(
+              child: ListView(
+                controller: controller,
+                children: [
+                  _header(),
+                  const SizedBox(height: 16),
+                  _section("Status", TaskStatus.values.map(_statusChip).toList()),
+                  _section("Priority", Priority.values.map(_priorityChip).toList()),
+                  _section("Due", ["Today", "Overdue", "Next 7 Days"].map(_dueChip).toList()),
+                  _section("Tags", widget.allTags.map(_tagChip).toList()),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             _actions(),
           ],
         ),
       ),
     );
   }
-
-  // ================= UI COMPONENTS =================
 
   Widget _dragHandle() {
     return Center(
@@ -157,9 +154,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
-  Widget _cardSection(String title, List<Widget> chips) {
+  Widget _section(String title, List<Widget> chips) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -175,9 +172,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 10),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          const SizedBox(height: 12),
           Wrap(spacing: 10, runSpacing: 10, children: chips),
         ],
       ),
@@ -189,7 +185,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return ChoiceChip(
       label: Text(_statusLabel(s)),
       selected: selected,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.15),
+      selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
       backgroundColor: Colors.grey.shade100,
       labelStyle: TextStyle(
         fontWeight: FontWeight.w600,
@@ -207,7 +203,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return ChoiceChip(
       label: Text(p.name.toUpperCase()),
       selected: selected,
-      selectedColor: Colors.orange.withOpacity(0.15),
+      selectedColor: Colors.orange.withOpacity(0.2),
       backgroundColor: Colors.grey.shade100,
       labelStyle: TextStyle(
         fontWeight: FontWeight.w600,
@@ -225,7 +221,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return ChoiceChip(
       label: Text(d),
       selected: selected,
-      selectedColor: Colors.blue.withOpacity(0.15),
+      selectedColor: Colors.blue.withOpacity(0.2),
       backgroundColor: Colors.grey.shade100,
       labelStyle: TextStyle(
         fontWeight: FontWeight.w600,
@@ -243,7 +239,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return ChoiceChip(
       label: Text(t.label),
       selected: selected,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.15),
+      selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
       backgroundColor: Colors.grey.shade100,
       labelStyle: TextStyle(
         fontWeight: FontWeight.w600,

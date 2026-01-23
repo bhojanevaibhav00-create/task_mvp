@@ -6,10 +6,9 @@ import 'package:task_mvp/core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../data/models/enums.dart';
-import '../../../data/models/tag_model.dart';
 import '../../notifications/presentation/notification_screen.dart';
+import '../../../features/dashboard/presentation/settings_screen.dart';
 import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -97,6 +96,19 @@ class DashboardScreen extends ConsumerWidget {
                   );
                 },
               ),
+
+              // Settings button
+              IconButton(
+                icon: const Icon(Icons.settings),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
 
@@ -111,13 +123,28 @@ class DashboardScreen extends ConsumerWidget {
                 Row(
                   children: [
                     _summaryCard(
-                        context, 'Total', tasks.length.toString(), Icons.list_alt, Colors.blue, isDark),
+                        context,
+                        'Total',
+                        tasks.length.toString(),
+                        Icons.list_alt,
+                        Colors.blue,
+                        isDark),
                     const SizedBox(width: 12),
                     _summaryCard(
-                        context, 'Pending', pending.toString(), Icons.pending_actions, Colors.orange, isDark),
+                        context,
+                        'Pending',
+                        pending.toString(),
+                        Icons.pending_actions,
+                        Colors.orange,
+                        isDark),
                     const SizedBox(width: 12),
                     _summaryCard(
-                        context, 'Done', completed.toString(), Icons.check_circle, Colors.green, isDark),
+                        context,
+                        'Done',
+                        completed.toString(),
+                        Icons.check_circle,
+                        Colors.green,
+                        isDark),
                   ],
                 ),
 
@@ -128,17 +155,84 @@ class DashboardScreen extends ConsumerWidget {
                     style:
                     TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+
+                // Separate rows for premium buttons
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    AppButton(
-                      text: 'View Tasks',
-                      onPressed: () => context.push(AppRoutes.tasks),
+                    // View Tasks
+                    InkWell(
+                      onTap: () => context.push(AppRoutes.tasks),
+                      borderRadius:
+                      BorderRadius.circular(AppColors.cardRadius),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.blue.shade600, Colors.blue.shade400],
+                          ),
+                          borderRadius:
+                          BorderRadius.circular(AppColors.cardRadius),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.view_list, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'View Tasks',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    AppButton(
-                      text: 'Add Task',
-                      onPressed: () => context.push(AppRoutes.tasks),
+                    const SizedBox(height: 12),
+
+                    // Add Task
+                    InkWell(
+                      onTap: () => context.push(AppRoutes.tasks),
+                      borderRadius:
+                      BorderRadius.circular(AppColors.cardRadius),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.green.shade600, Colors.green.shade400],
+                          ),
+                          borderRadius:
+                          BorderRadius.circular(AppColors.cardRadius),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.add, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Add Task',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -163,12 +257,11 @@ class DashboardScreen extends ConsumerWidget {
                         color: isDark
                             ? Theme.of(context).cardColor
                             : Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(AppColors.cardRadius),
+                        borderRadius:
+                        BorderRadius.circular(AppColors.cardRadius),
                         boxShadow: [
                           BoxShadow(
-                            color: isDark
-                                ? Colors.black26
-                                : Colors.black12,
+                            color: isDark ? Colors.black26 : Colors.black12,
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -191,9 +284,8 @@ class DashboardScreen extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                decoration: isDone
-                                    ? TextDecoration.lineThrough
-                                    : null,
+                                decoration:
+                                isDone ? TextDecoration.lineThrough : null,
                                 color: isDark ? Colors.white : Colors.black87,
                               ),
                             ),
@@ -202,13 +294,12 @@ class DashboardScreen extends ConsumerWidget {
                             icon: Icon(Icons.arrow_forward_ios,
                                 size: 16,
                                 color: isDark ? Colors.white : Colors.black87),
-                            onPressed: () =>
-                                context.push(AppRoutes.tasks),
+                            onPressed: () => context.push(AppRoutes.tasks),
                           ),
                         ],
                       ),
                     );
-                  }),
+                  }).toList(),
               ]),
             ),
           ),
@@ -268,9 +359,7 @@ class DashboardScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark
-            ? Theme.of(context).cardColor
-            : Theme.of(context).cardColor,
+        color: isDark ? Theme.of(context).cardColor : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
       child: Center(

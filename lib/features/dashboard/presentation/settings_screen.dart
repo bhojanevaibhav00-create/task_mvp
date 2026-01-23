@@ -1,273 +1,216 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:task_mvp/core/constants/app_colors.dart';
-import '../../../core/constants/app_routes.dart';
-import '../../../core/providers/task_providers.dart';
-import '../../../core/providers/notification_providers.dart';
-import '../../../core/widgets/app_button.dart';
-import '../../../data/models/enums.dart';
-import '../../notifications/presentation/notification_screen.dart';
-import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
+import 'package:task_mvp/core/theme/app_text_styles.dart';
+import 'package:task_mvp/core/theme/theme_controller.dart';
 
-class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+// Notifications Provider
+final notificationsProvider = StateProvider<bool>((ref) => true);
+
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tasks = ref.watch(tasksProvider);
-    final unreadCount = ref.watch(unreadNotificationCountProvider);
-
-    final completed =
-        tasks.where((t) => t.status == TaskStatus.done.name).length;
-    final pending =
-        tasks.where((t) => t.status != TaskStatus.done.name).length;
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final notificationsEnabled = ref.watch(notificationsProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // ================= APP BAR =================
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 140,
-            backgroundColor: Theme.of(context).primaryColor,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text('Dashboard'),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).primaryColor.withOpacity(0.9),
-                      Theme.of(context).primaryColor.withOpacity(0.7),
-                    ],
-                  ),
-                ),
-              ),
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.primary, // consistent color
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _sectionTitle(context, 'General'),
+
+          // Dark Mode Toggle
+          _settingTile(
+            icon: Icons.dark_mode,
+            iconColor: AppColors.primary,
+            label: 'Dark Mode',
+            trailing: ValueListenableBuilder<ThemeMode>(
+              valueListenable: ThemeController.themeMode,
+              builder: (_, mode, __) {
+                return Switch(
+                  value: mode == ThemeMode.dark,
+                  onChanged: (_) => ThemeController.toggleTheme(),
+                  activeColor: AppColors.primary,
+                );
+              },
             ),
-            actions: [
-              Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: CircleAvatar(
-                        radius: 9,
-                        backgroundColor: Colors.red,
-                        child: Text(
-                          unreadCount.toString(),
-                          style: const TextStyle(
-                              fontSize: 11, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.filter_list),
-                onPressed: () {
-                  openFilterBottomSheet(
-                    context: context,
-                    allTags: [],
-                    statusFilters: {},
-                    priorityFilters: {},
-                    tagFilters: {},
-                    dueBucket: null,
-                    sort: null,
-                    onApply: (status, priority, tags, due, sort) {
-                      // Your filter logic
-                    },
-                  );
-                },
-              ),
-            ],
           ),
 
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                const SizedBox(height: 8),
-                // ================= SUMMARY CARDS =================
-                Row(
-                  children: [
-                    _summaryCard(context, 'Total', tasks.length.toString(),
-                        Icons.list_alt, Colors.blue, isDark),
-                    const SizedBox(width: 12),
-                    _summaryCard(context, 'Pending', pending.toString(),
-                        Icons.pending_actions, Colors.orange, isDark),
-                    const SizedBox(width: 12),
-                    _summaryCard(context, 'Done', completed.toString(),
-                        Icons.check_circle, Colors.green, isDark),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // ================= QUICK ACTIONS =================
-                const Text('Quick Actions',
-                    style:
-                    TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    AppButton(
-                      text: 'View Tasks',
-                      onPressed: () => context.push(AppRoutes.tasks),
-                    ),
-                    AppButton(
-                      text: 'Add Task',
-                      onPressed: () => context.push(AppRoutes.tasks),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 28),
-
-                // ================= RECENT TASKS =================
-                const Text('Recent Tasks',
-                    style:
-                    TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 12),
-                if (tasks.isEmpty)
-                  _emptyState(context, isDark)
-                else
-                  ...tasks.take(5).map((task) {
-                    final isDone = task.status == TaskStatus.done.name;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius:
-                        BorderRadius.circular(AppColors.cardRadius),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark ? Colors.black26 : Colors.black12,
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isDone
-                                ? Icons.check_circle
-                                : Icons.circle_outlined,
-                            color: isDone ? Colors.green : Colors.grey,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              task.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                decoration: isDone
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.arrow_forward_ios,
-                                size: 16,
-                                color: isDark ? Colors.white : Colors.black87),
-                            onPressed: () =>
-                                context.push(AppRoutes.tasks),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-              ]),
+          // Notifications Toggle
+          _settingTile(
+            icon: Icons.notifications,
+            iconColor: AppColors.primary,
+            label: 'Notifications',
+            trailing: Switch(
+              value: notificationsEnabled,
+              onChanged: (v) => ref.read(notificationsProvider.notifier).state = v,
+              activeColor: AppColors.primary,
             ),
+          ),
+
+          const SizedBox(height: 24),
+          _sectionTitle(context, 'Account'),
+
+          _settingTile(
+            icon: Icons.person,
+            iconColor: AppColors.primary,
+            label: 'Profile',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
+          ),
+          _settingTile(
+            icon: Icons.lock,
+            iconColor: AppColors.primary,
+            label: 'Change Password',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+              );
+            },
+          ),
+
+          const SizedBox(height: 24),
+          _sectionTitle(context, 'About'),
+
+          _settingTile(
+            icon: Icons.info_outline,
+            iconColor: AppColors.primary,
+            label: 'App Version',
+            trailing: Text('1.0.0', style: AppTextStyles.body),
+          ),
+          _settingTile(
+            icon: Icons.help_outline,
+            iconColor: AppColors.primary,
+            label: 'Help & Support',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HelpScreen()),
+              );
+            },
+          ),
+          _settingTile(
+            icon: Icons.logout,
+            iconColor: AppColors.primary,
+            label: 'Logout',
+            onTap: () {
+              _showLogoutDialog(context);
+            },
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.tasks),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Task'),
-      ),
     );
   }
 
-  Widget _summaryCard(BuildContext context, String title, String value,
-      IconData icon, Color color, bool isDark) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color.withOpacity(0.9), color.withOpacity(0.7)],
-          ),
-          borderRadius: BorderRadius.circular(AppColors.cardRadius),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black26 : Colors.black12,
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Colors.white),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-          ],
+  // =========================
+  // Section Title
+  // =========================
+  Widget _sectionTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(
+        title.toUpperCase(),
+        style: AppTextStyles.body.copyWith(
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          color: AppColors.primary, // consistent color
+          letterSpacing: 1.2,
         ),
       ),
     );
   }
 
-  Widget _emptyState(BuildContext context, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+  // =========================
+  // Setting Tile
+  // =========================
+  Widget _settingTile({
+    required IconData icon,
+    required String label,
+    Color iconColor = Colors.black,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      elevation: AppColors.cardElevation,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
-      child: Center(
-        child: Text(
-          'No tasks yet. Create your first task!',
-          style: TextStyle(
-            fontSize: 14,
-            color: isDark ? Colors.white70 : Colors.black54,
-          ),
-        ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Icon(icon, color: iconColor),
+        title: Text(label, style: AppTextStyles.body),
+        trailing: trailing ?? const Icon(Icons.chevron_right),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       ),
     );
+  }
+
+  // =========================
+  // Logout Dialog
+  // =========================
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Implement logout logic
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =========================
+// Profile / Change Password / Help Screens
+// =========================
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(appBar: AppBar(title: const Text('Profile')));
+  }
+}
+
+class ChangePasswordScreen extends StatelessWidget {
+  const ChangePasswordScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(appBar: AppBar(title: const Text('Change Password')));
+  }
+}
+
+class HelpScreen extends StatelessWidget {
+  const HelpScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(appBar: AppBar(title: const Text('Help & Support')));
   }
 }
