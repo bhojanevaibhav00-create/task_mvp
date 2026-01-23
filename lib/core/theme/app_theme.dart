@@ -2,132 +2,48 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
 class AppTheme {
+  static final _inputBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(14),
+    borderSide: BorderSide.none,
+  );
+
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-
-    colorScheme: ColorScheme.light(
+    colorScheme: const ColorScheme.light(
       primary: AppColors.primary,
-      surface: AppColors.cardLight,
-      background: AppColors.scaffoldLight,
+      surface: AppColors.scaffoldLight,
     ),
-
     scaffoldBackgroundColor: AppColors.scaffoldLight,
-
-    cardTheme: CardThemeData(
-  color: AppColors.cardLight,
-  elevation: AppColors.cardElevation,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(AppColors.cardRadius),
-  ),
-),
-
-
-    appBarTheme: const AppBarTheme(
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      foregroundColor: Colors.black,
-      centerTitle: true,
-    ),
-
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-      elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(16)),
-      ),
-    ),
-
     textTheme: const TextTheme(
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(fontSize: 16),
-      bodyMedium: TextStyle(fontSize: 14, color: Colors.black54),
-      labelLarge: TextStyle(fontSize: 12, color: Colors.black54),
+      bodyLarge: TextStyle(fontSize: 16, color: Color(0xFF111827)), // Dark text for light mode
     ),
-
-    chipTheme: ChipThemeData(
-      backgroundColor: AppColors.chipBackground,
-      selectedColor: AppColors.primary,
-      labelStyle: const TextStyle(color: Colors.black87),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-    ),
-
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.primarySoft,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
+      fillColor: const Color(0xFFF3F4F6),
+      labelStyle: const TextStyle(color: Color(0xFF6B7280)),
+      hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+      border: _inputBorder,
     ),
   );
 
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-
-    colorScheme: ColorScheme.dark(
+    colorScheme: const ColorScheme.dark(
       primary: AppColors.primary,
-      surface: AppColors.cardDark,
-      background: AppColors.scaffoldDark,
+      surface: AppColors.scaffoldDark,
     ),
-
     scaffoldBackgroundColor: AppColors.scaffoldDark,
-
-    cardTheme: CardThemeData(
-  color: AppColors.cardDark,
-  elevation: AppColors.cardElevation,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(AppColors.cardRadius),
-  ),
-),
-
-    appBarTheme: const AppBarTheme(
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      foregroundColor: Colors.white,
-      centerTitle: true,
-    ),
-
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-      elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(16)),
-      ),
-    ),
-
     textTheme: const TextTheme(
-      titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(fontSize: 16),
-      bodyMedium: TextStyle(fontSize: 14, color: Colors.white70),
-      labelLarge: TextStyle(fontSize: 12, color: Colors.white70),
+      bodyLarge: TextStyle(fontSize: 16, color: Colors.white), // White text for dark mode
     ),
-
-    chipTheme: ChipThemeData(
-      backgroundColor: Colors.white10,
-      selectedColor: AppColors.primary,
-      labelStyle: const TextStyle(color: Colors.white),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-    ),
-
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white10,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
+      fillColor: Colors.white.withOpacity(0.05),
+      labelStyle: const TextStyle(color: Colors.white70),
+      hintStyle: const TextStyle(color: Colors.white60),
+      border: _inputBorder,
     ),
   );
 }

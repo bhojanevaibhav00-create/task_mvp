@@ -8,7 +8,7 @@ class Task {
   final String? description;
   final DateTime? dueDate;
   final Priority priority;
-  TaskStatus status;
+  final TaskStatus status; // Changed to final for better immutability pattern
   final List<Tag> tags;
 
   Task({
@@ -22,18 +22,34 @@ class Task {
     this.tags = const [],
   });
 
+  /// Helper to safely get status even if the data source returns a String.
+  /// This prevents the "tasks" filtering error in the Board Screen.
+  TaskStatus get statusEnum {
+    return status; // Since it's typed as TaskStatus, this is safe here.
+  }
+
+  /// Convenience getter for the Task Card UI
+  bool get isDone => status == TaskStatus.done;
+
+  /// Updated copyWith to handle all fields, keeping the UI reactive.
   Task copyWith({
+    String? title,
+    bool? important,
+    String? description,
+    DateTime? dueDate,
+    Priority? priority,
     TaskStatus? status,
+    List<Tag>? tags,
   }) {
     return Task(
       id: id,
-      title: title,
-      important: important,
-      description: description,
-      dueDate: dueDate,
-      priority: priority,
+      title: title ?? this.title,
+      important: important ?? this.important,
+      description: description ?? this.description,
+      dueDate: dueDate ?? this.dueDate,
+      priority: priority ?? this.priority,
       status: status ?? this.status,
-      tags: tags,
+      tags: tags ?? this.tags,
     );
   }
 }

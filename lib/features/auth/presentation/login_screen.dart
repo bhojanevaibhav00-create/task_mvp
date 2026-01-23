@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,170 +27,115 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password')),
-      );
+      _showSnackBar('Please enter email and password');
       return;
     }
 
     if (!email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid email format')),
-      );
+      _showSnackBar('Invalid email format');
       return;
     }
 
     setState(() => _isLoading = true);
-
-    // Simulate login API call
     await Future.delayed(const Duration(seconds: 1));
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Login successful!')),
-    );
-
-    context.go(AppRoutes.dashboard);
-
+    if (mounted) {
+      context.go(AppRoutes.dashboard);
+    }
     setState(() => _isLoading = false);
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Container(
-            width: 420,
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: AppColors.primaryGradient,
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // App icon
-                Container(
-                  height: 56,
-                  width: 56,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4F46E5).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.task_alt,
-                    size: 32,
-                    color: Color(0xFF4F46E5),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Welcome text
-                const Text(
-                  "Welcome back",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  "Sign in to continue to your workspace",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
+                _buildLogo(theme),
                 const SizedBox(height: 32),
-
-                // Email field
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: "Email",
-                    filled: true,
-                    fillColor: const Color(0xFFF9FAFB),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    prefixIcon: const Icon(Icons.email_outlined),
+                
+                Container(
+                  width: 420,
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 30,
+                        offset: const Offset(0, 15),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Password field
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    filled: true,
-                    fillColor: const Color(0xFFF9FAFB),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Login button
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F46E5),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Text(
-                    "Login",
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Register link
-                Center(
-                  child: TextButton(
-                    onPressed: () => context.go(AppRoutes.register),
-                    child: const Text(
-                      "Don't have an account? Register here",
-                      style: TextStyle(color: Color(0xFF4F46E5)),
-                    ),
-                  ),
-                ),
-
-                // Skip login (demo)
-                Center(
-                  child: TextButton(
-                    onPressed: () => context.go(AppRoutes.dashboard),
-                    child: const Text(
-                      "Skip login (Demo)",
-                      style: TextStyle(color: Color(0xFF4F46E5)),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        "Welcome Back",
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1A1C1E),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Sign in to access your workspace",
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      _buildTextField(
+                        controller: _emailController,
+                        label: "Email",
+                        icon: Icons.email_outlined,
+                        theme: theme,
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      _buildTextField(
+                        controller: _passwordController,
+                        label: "Password",
+                        icon: Icons.lock_outline,
+                        isObscure: true,
+                        theme: theme,
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      _buildLoginButton(theme),
+                      const SizedBox(height: 16),
+                      
+                      TextButton(
+                        onPressed: () => context.go(AppRoutes.register),
+                        child: Text(
+                          "Don't have an account? Register",
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -197,6 +143,84 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLogo(ThemeData theme) {
+    return Container(
+      height: 80,
+      width: 80,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+          )
+        ],
+      ),
+      child: const Icon(
+        Icons.task_alt_rounded,
+        size: 48,
+        color: AppColors.primary,
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required ThemeData theme,
+    bool isObscure = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isObscure,
+      // --- THE FIX: Forces the typed text to be dark grey/black ---
+      style: const TextStyle(color: Color(0xFF111827), fontSize: 16), 
+      decoration: InputDecoration(
+        labelText: label,
+        // --- Added labelStyle to ensure label is also visible ---
+        labelStyle: const TextStyle(color: Color(0xFF6B7280)),
+        prefixIcon: Icon(icon, color: AppColors.primary),
+        filled: true,
+        fillColor: const Color(0xFFF8F9FD),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade100),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginButton(ThemeData theme) {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _login,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        elevation: 0,
+      ),
+      child: _isLoading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          : const Text(
+              "Login",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
     );
   }
 }

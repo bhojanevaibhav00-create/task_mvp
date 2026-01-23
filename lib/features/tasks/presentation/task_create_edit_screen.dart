@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
-import 'package:task_mvp/core/constants/app_colors.dart';
-
 
 import '../../../core/providers/task_providers.dart';
 import '../../../data/database/database.dart';
+import '../../../core/constants/app_colors.dart';
 import 'widgets/reminder_section.dart';
 
 class TaskCreateEditScreen extends ConsumerStatefulWidget {
@@ -14,12 +13,10 @@ class TaskCreateEditScreen extends ConsumerStatefulWidget {
   const TaskCreateEditScreen({super.key, this.task});
 
   @override
-  ConsumerState<TaskCreateEditScreen> createState() =>
-      _TaskCreateEditScreenState();
+  ConsumerState<TaskCreateEditScreen> createState() => _TaskCreateEditScreenState();
 }
 
-class _TaskCreateEditScreenState
-    extends ConsumerState<TaskCreateEditScreen> {
+class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _titleCtrl;
@@ -27,20 +24,16 @@ class _TaskCreateEditScreenState
 
   bool reminderEnabled = false;
   DateTime? reminderAt;
-
   int _priority = 1;
   DateTime? dueDate;
 
   @override
   void initState() {
     super.initState();
-
     _titleCtrl = TextEditingController(text: widget.task?.title ?? '');
     _descCtrl = TextEditingController(text: widget.task?.description ?? '');
-
     reminderEnabled = widget.task?.reminderEnabled ?? false;
     reminderAt = widget.task?.reminderAt;
-
     _priority = widget.task?.priority ?? 1;
     dueDate = widget.task?.dueDate;
   }
@@ -52,197 +45,292 @@ class _TaskCreateEditScreenState
     super.dispose();
   }
 
- @override
-Widget build(BuildContext context) {
-  final isEdit = widget.task != null;
-
-  return Scaffold(
-    backgroundColor: const Color(0xFFF5F7FB),
-    appBar: AppBar(
-      title: Text(isEdit ? 'Edit Task' : 'Create Task'),
-      elevation: 0,
-      backgroundColor: Colors.white,
-      foregroundColor: Colors.black,
-    ),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: _saveTask,
-      backgroundColor: Colors.blue,
-      icon: const Icon(Icons.check),
-      label: const Text("Save Task"),
-    ),
-    body: Padding(
-      padding: const EdgeInsets.all(16),
-      child: ListView(
-        children: [
-          // MAIN CARD
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.task != null;
+    
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        child: Column(
+          children: [
+            _buildCustomAppBar(isEdit),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8F9FD),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // TITLE
-                  TextFormField(
-                    controller: _titleCtrl,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: 'What needs to be done?',
-                      border: InputBorder.none,
-                    ),
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Title required' : null,
-                  ),
-
-                  const Divider(),
-
-                  // DESCRIPTION
-                  TextFormField(
-                    controller: _descCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Add details (optional)',
-                      border: InputBorder.none,
-                    ),
-                    maxLines: 3,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // PRIORITY
-                  const Text(
-                    "Priority",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
                     children: [
-                      _priorityChip(1, "Low", Colors.green),
-                      _priorityChip(2, "Medium", Colors.orange),
-                      _priorityChip(3, "High", Colors.red),
+                      _buildSectionLabel("TASK DETAILS"),
+                      _buildInputGroup(),
+                      const SizedBox(height: 24),
+                      
+                      _buildSectionLabel("PRIORITY"),
+                      _buildPrioritySelector(),
+                      const SizedBox(height: 24),
+                      
+                      _buildSectionLabel("SETTINGS"),
+                      _buildSettingsGroup(),
+                      const SizedBox(height: 100), 
                     ],
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // DUE DATE
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.calendar_today, color: Colors.blue),
-                    title: const Text("Due date"),
-                    subtitle: Text(
-                      dueDate == null
-                          ? "Not set"
-                          : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime(2100),
-                        initialDate: dueDate ?? DateTime.now(),
-                      );
-                      if (date != null) setState(() => dueDate = date);
-                    },
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // REMINDER
-                  ReminderSection(
-                    initialEnabled: reminderEnabled,
-                    initialTime: reminderAt,
-                    onChanged: (enabled, time) {
-                      reminderEnabled = enabled;
-                      reminderAt = time;
-                    },
-                  ),
-                ],
+                ),
               ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _saveTask,
+        backgroundColor: AppColors.primary,
+        elevation: 4,
+        extendedPadding: const EdgeInsets.symmetric(horizontal: 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: const Icon(Icons.check, color: Colors.white),
+        label: const Text(
+          "Save Task", 
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomAppBar(bool isEdit) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            const Spacer(),
+            Text(
+              isEdit ? 'Edit Task' : 'New Task',
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            // DELETE BUTTON: Only visible if editing
+            if (isEdit)
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                onPressed: () => _confirmDelete(context),
+              )
+            else
+              const SizedBox(width: 48), 
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
+          color: Colors.grey.shade500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputGroup() {
+    const darkText = Color(0xFF111827);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _titleCtrl,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText),
+            decoration: InputDecoration(
+              hintText: 'Task Title', 
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              border: InputBorder.none
+            ),
+            validator: (v) => (v == null || v.isEmpty) ? 'Title required' : null,
+          ),
+          const Divider(height: 24),
+          TextFormField(
+            controller: _descCtrl,
+            maxLines: 3,
+            style: const TextStyle(fontSize: 16, color: darkText),
+            decoration: InputDecoration(
+              hintText: 'Add details...', 
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              border: InputBorder.none
             ),
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
-  // ================= SAVE =================
-  Future<void> _saveTask() async {
-    if (!_formKey.currentState!.validate()) return;
+  Widget _buildPrioritySelector() {
+    return Row(
+      children: [
+        _priorityButton(1, "Low", Colors.green),
+        const SizedBox(width: 8),
+        _priorityButton(2, "Med", Colors.orange),
+        const SizedBox(width: 8),
+        _priorityButton(3, "High", Colors.red),
+      ],
+    );
+  }
 
-    if (reminderEnabled && reminderAt == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select reminder time')),
-      );
-      return;
-    }
+  Widget _buildSettingsGroup() {
+    const darkText = Color(0xFF111827);
 
-    try {
-      final notifier = ref.read(tasksProvider.notifier);
-
-      if (widget.task == null) {
-        await notifier.addTask(
-          _titleCtrl.text.trim(),
-          _descCtrl.text.trim(),
-          priority: _priority,
-          dueDate: dueDate,
-        );
-      } else {
-        final updated = widget.task!.copyWith(
-          title: _titleCtrl.text.trim(),
-          description: drift.Value(
-            _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
+            title: const Text(
+              "Due Date", 
+              style: TextStyle(fontWeight: FontWeight.w600, color: darkText)
+            ),
+            subtitle: Text(
+              dueDate == null ? "Not set" : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+            onTap: _pickDueDate,
           ),
-          priority: drift.Value(_priority),
-          dueDate: drift.Value(dueDate),
-          reminderEnabled: reminderEnabled,
-          reminderAt: drift.Value(reminderAt),
-        );
+          
+          const Divider(height: 1, indent: 60),
 
-        await notifier.updateTask(updated);
-      }
+          Theme(
+            data: Theme.of(context).copyWith(
+              listTileTheme: const ListTileThemeData(
+                iconColor: AppColors.primary,
+                titleTextStyle: TextStyle(fontWeight: FontWeight.w600, color: darkText, fontSize: 16),
+                subtitleTextStyle: TextStyle(color: Colors.grey),
+              ),
+            ),
+            child: ReminderSection(
+              initialEnabled: reminderEnabled,
+              initialTime: reminderAt,
+              onChanged: (enabled, time) {
+                setState(() {
+                  reminderEnabled = enabled;
+                  reminderAt = time;
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
 
+  Widget _priorityButton(int value, String label, Color color) {
+    final isSelected = _priority == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _priority = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isSelected ? color : Colors.grey.shade200),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("Delete Task?"),
+        content: const Text("Are you sure you want to remove this task? This cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("Cancel", style: TextStyle(color: Colors.grey.shade600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && widget.task != null) {
+      await ref.read(tasksProvider.notifier).deleteTask(widget.task!.id);
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
     }
   }
-  Widget _priorityChip(int value, String label, Color color) {
-  return Padding(
-    padding: const EdgeInsets.only(right: 8),
-    child: ChoiceChip(
-      label: Text(label),
-      selected: _priority == value,
-      selectedColor: color.withOpacity(0.2),
-      labelStyle: TextStyle(
-        color: _priority == value ? color : Colors.black,
-        fontWeight: FontWeight.bold,
-      ),
-      onSelected: (_) {
-        setState(() => _priority = value);
-      },
-    ),
-  );
-}
 
+  Future<void> _pickDueDate() async {
+    final date = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+      initialDate: dueDate ?? DateTime.now(),
+    );
+    if (date != null) setState(() => dueDate = date);
+  }
+
+  Future<void> _saveTask() async {
+    if (!_formKey.currentState!.validate()) return;
+    final notifier = ref.read(tasksProvider.notifier);
+    final title = _titleCtrl.text.trim();
+    final description = _descCtrl.text.trim();
+
+    if (widget.task == null) {
+      await notifier.addTask(title, description, priority: _priority, dueDate: dueDate);
+    } else {
+      final updated = widget.task!.copyWith(
+        title: title,
+        description: drift.Value(description.isEmpty ? null : description),
+        priority: drift.Value(_priority),
+        dueDate: drift.Value(dueDate),
+        reminderEnabled: reminderEnabled,
+        reminderAt: drift.Value(reminderAt),
+      );
+      await notifier.updateTask(updated);
+    }
+    if (mounted) Navigator.pop(context, true);
+  }
 }

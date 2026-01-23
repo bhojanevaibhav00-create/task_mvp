@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +7,6 @@ import 'package:task_mvp/core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../data/models/enums.dart';
 import '../../notifications/presentation/notification_screen.dart';
 
@@ -18,240 +18,180 @@ class DashboardScreen extends ConsumerWidget {
     final tasks = ref.watch(tasksProvider);
     final unreadCount = ref.watch(unreadNotificationCountProvider);
 
-    final completed =
-        tasks.where((t) => t.status == TaskStatus.done.name).length;
-    final pending =
-        tasks.where((t) => t.status != TaskStatus.done.name).length;
+    final completed = tasks.where((t) => t.status == TaskStatus.done.name).length;
+    final pending = tasks.where((t) => t.status != TaskStatus.done.name).length;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD), 
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          // ================= PREMIUM APP BAR =================
           SliverAppBar(
             pinned: true,
             expandedHeight: 140,
+            stretch: true,
             backgroundColor: AppColors.primary,
+            elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              title: const Text('Dashboard'),
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+              stretchModes: const [StretchMode.zoomBackground],
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+              title: const Text(
+                'My Workspace',
+                style: TextStyle(
+                  fontSize: 20, 
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
+              ),
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
+                  Positioned(
+                    top: -30,
+                    right: -30,
+                    child: CircleAvatar(
+                      radius: 80, 
+                      backgroundColor: Colors.white.withOpacity(0.1),
+                    ),
+                  ),
+                ],
               ),
             ),
             actions: [
-              Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: CircleAvatar(
-                        radius: 9,
-                        backgroundColor: Colors.red,
-                        child: Text(
-                          unreadCount.toString(),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+              _buildNotificationButton(context, unreadCount),
+              const SizedBox(width: 8),
             ],
           ),
 
-          // ================= BODY =================
           SliverPadding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                const SizedBox(height: 8),
-
-                // ================= SUMMARY =================
+                _buildSectionHeader('Overview', null),
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    _summaryCard(
-                      context,
-                      'Total',
-                      tasks.length.toString(),
-                      Icons.list_alt,
-                      Colors.blue,
-                    ),
+                    _premiumStatCard('Total', tasks.length, Icons.grid_view_rounded, AppColors.primaryGradient),
                     const SizedBox(width: 12),
-                    _summaryCard(
-                      context,
-                      'Pending',
-                      pending.toString(),
-                      Icons.pending_actions,
-                      Colors.orange,
-                    ),
+                    _premiumStatCard('Pending', pending, Icons.bolt_rounded, AppColors.upcomingGradient),
                     const SizedBox(width: 12),
-                    _summaryCard(
-                      context,
-                      'Done',
-                      completed.toString(),
-                      Icons.check_circle,
-                      Colors.green,
-                    ),
+                    _premiumStatCard('Done', completed, Icons.done_all_rounded, AppColors.completedGradient),
                   ],
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
 
-                // ================= QUICK ACTIONS =================
-                const Text(
-                  'Quick Actions',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                _buildSectionHeader('Quick Actions', null),
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    AppButton(
-                      text: 'View Tasks',
-                      onPressed: () => context.push(AppRoutes.tasks),
+                    Expanded(
+                      child: _actionButton(
+                        context, 
+                        'View Tasks', 
+                        Icons.format_list_bulleted_rounded,
+                        Colors.white, 
+                        AppColors.primary,
+                        AppRoutes.tasks, // Navigates to List
+                      ),
                     ),
-                    AppButton(
-                      text: 'Add Task',
-                      onPressed: () => context.push(AppRoutes.tasks),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _actionButton(
+                        context, 
+                        'Add New', 
+                        Icons.add_rounded, 
+                        AppColors.primary, 
+                        Colors.white,
+                        // FIX: Ensure this matches your AppRoutes string (e.g., taskCreate or addTask)
+                        AppRoutes.tasks, 
+                      ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
 
-                // ================= RECENT =================
-                const Text(
-                  'Recent Tasks',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
+                _buildSectionHeader('Recent Tasks', () => context.push(AppRoutes.tasks)),
+                const SizedBox(height: 16),
 
                 if (tasks.isEmpty)
                   _emptyState()
                 else
-                  ...tasks.take(5).map((task) {
-                    final isDone =
-                        task.status == TaskStatus.done.name;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isDone
-                                ? Icons.check_circle
-                                : Icons.circle_outlined,
-                            color: isDone ? Colors.green : Colors.grey,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              task.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                decoration: isDone
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.arrow_forward_ios,
-                                size: 16),
-                            onPressed: () =>
-                                context.push(AppRoutes.tasks),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
+                  ...tasks.take(4).map((task) => _buildTaskItem(context, task)),
               ]),
             ),
           ),
         ],
       ),
-
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.tasks),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Task'),
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.add_task_rounded, color: Colors.white),
+        label: const Text('New Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
 
-  Widget _summaryCard(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildSectionHeader(String title, VoidCallback? onAction) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18, 
+            fontWeight: FontWeight.w800, 
+            color: Color(0xFF1A1C1E), // Fixed dark color
+          ),
+        ),
+        if (onAction != null)
+          TextButton(
+            onPressed: onAction,
+            child: const Text('See All', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+      ],
+    );
+  }
+
+  Widget _premiumStatCard(String title, int value, IconData icon, LinearGradient gradient) {
     return Expanded(
       child: Container(
+        height: 110,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color.withOpacity(0.9), color.withOpacity(0.7)],
-          ),
-          borderRadius: BorderRadius.circular(16),
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: gradient.colors.first.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            )
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(icon, color: Colors.white),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(8)),
+              child: Icon(icon, size: 18, color: Colors.white),
             ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value.toString(),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
           ],
         ),
@@ -259,18 +199,117 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildTaskItem(BuildContext context, dynamic task) {
+    final isDone = task.status == TaskStatus.done.name;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isDone ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            isDone ? Icons.done_all_rounded : Icons.timer_outlined,
+            color: isDone ? Colors.green : Colors.orange,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          task.title,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            decoration: isDone ? TextDecoration.lineThrough : null,
+            color: const Color(0xFF111827), // FORCE DARK TEXT FOR VISIBILITY
+          ),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+        onTap: () => context.push(AppRoutes.tasks),
+      ),
+    );
+  }
+
+  Widget _actionButton(BuildContext context, String label, IconData icon, Color textColor, Color bgColor, String route) {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: bgColor != Colors.white 
+          ? [BoxShadow(color: bgColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] 
+          : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push(route),
+          borderRadius: BorderRadius.circular(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: textColor),
+              const SizedBox(width: 8),
+              Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationButton(BuildContext context, int count) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 26),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NotificationScreen()),
+          ),
+        ),
+        if (count > 0)
+          Positioned(
+            right: 8,
+            top: 10,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                count.toString(),
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _emptyState() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      width: double.infinity,
+      padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: const Center(
-        child: Text(
-          'No tasks yet. Create your first task!',
-          style: TextStyle(fontSize: 14, color: Colors.black54),
-        ),
+      child: Column(
+        children: [
+          Icon(Icons.auto_awesome_motion_rounded, size: 48, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          const Text('All caught up!', style: TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }
