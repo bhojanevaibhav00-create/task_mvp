@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:task_mvp/core/constants/app_colors.dart';
 
 import 'app.dart';
 import 'core/providers/task_providers.dart';
@@ -17,24 +16,18 @@ class AppBootstrap extends ConsumerStatefulWidget {
 }
 
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
-  bool _initialized = false;
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void initState() {
+    super.initState();
 
-    if (!_initialized) {
-      _initialized = true;
+    /// 🔔 App start reminder init + permission + resync
+    Future.microtask(() async {
+      final reminder = ref.read(reminderServiceProvider);
 
-      /// 🔔 App start reminder init + permission + resync
-      Future.microtask(() async {
-        final reminder = ref.read(reminderServiceProvider);
-
-        await reminder.init();
-        await reminder.requestPermission();
-        await reminder.resyncOnAppStart();
-      });
-    }
+      await reminder.init();
+      await reminder.requestPermission();
+      await reminder.resyncOnAppStart();
+    });
   }
 
   @override

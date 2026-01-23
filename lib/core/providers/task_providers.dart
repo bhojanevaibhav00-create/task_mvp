@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/task_repository.dart';
 import 'package:task_mvp/data/repositories/notification_repository.dart';
+import 'package:task_mvp/data/repositories/collaboration_repository.dart';
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/core/services/reminder_service.dart';
 
@@ -18,8 +19,7 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 /// ======================================================
 /// NOTIFICATION REPOSITORY
 /// ======================================================
-final notificationRepositoryProvider =
-    Provider<NotificationRepository>((ref) {
+final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return NotificationRepository(db);
 });
@@ -33,6 +33,17 @@ final reminderServiceProvider = Provider<ReminderService>((ref) {
 });
 
 /// ======================================================
+/// COLLABORATION REPOSITORY
+/// ======================================================
+final collaborationRepositoryProvider = Provider<CollaborationRepository>((
+  ref,
+) {
+  final db = ref.watch(databaseProvider);
+  final notificationRepo = ref.watch(notificationRepositoryProvider);
+  return CollaborationRepository(db, notificationRepo);
+});
+
+/// ======================================================
 /// TASK REPOSITORY
 /// ======================================================
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
@@ -40,11 +51,7 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final notificationRepo = ref.watch(notificationRepositoryProvider);
   final reminderService = ref.watch(reminderServiceProvider);
 
-  return TaskRepository(
-    db,
-    notificationRepo,
-    reminderService,
-  );
+  return TaskRepository(db, notificationRepo, reminderService);
 });
 
 /// ======================================================
@@ -107,8 +114,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
 /// ======================================================
 /// TASKS PROVIDER
 /// ======================================================
-final tasksProvider =
-    StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
+final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
   return TasksNotifier(repository);
 });
@@ -128,8 +134,7 @@ final dateRangeEndProvider = StateProvider<DateTime?>((ref) => null);
 /// ======================================================
 /// FILTERED TASKS STREAM
 /// ======================================================
-final filteredTasksProvider =
-    StreamProvider.autoDispose<List<Task>>((ref) {
+final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
 
   final status = ref.watch(statusFilterProvider);
@@ -170,8 +175,9 @@ final filteredTasksProvider =
 /// ======================================================
 /// ACTIVITY LOGS
 /// ======================================================
-final recentActivityProvider =
-    FutureProvider.autoDispose<List<ActivityLog>>((ref) async {
+final recentActivityProvider = FutureProvider.autoDispose<List<ActivityLog>>((
+  ref,
+) async {
   ref.watch(tasksProvider);
   final repository = ref.watch(taskRepositoryProvider);
   return repository.getRecentActivity();
