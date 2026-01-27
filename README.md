@@ -189,6 +189,10 @@ These files define the domain logic and data structures used throughout the app.
   - **`next`**: Implements the state machine logic to determine the next status in the workflow.
   - **`label`**: Returns a user-friendly string for display.
 
+- **`project_role.dart`**:
+  - Defines the `ProjectRole` enum (`owner`, `admin`, `member`) used for permission management.
+  - Includes `label` getter for UI display and `fromString` factory for database serialization.
+
 ### 2. Repositories (`lib/data/repositories/`)
 
 The repository pattern is used to abstract the data source (Drift Database).
@@ -216,6 +220,8 @@ The repository pattern is used to abstract the data source (Drift Database).
   - **Purpose**: Handles project membership and task assignment logic.
   - **Methods**: `assignTask`, `unassignTask`, `addMember`, `removeMember`, `updateMemberRole`.
   - **Features**: Enforces "Last Owner" safety constraints and triggers notifications/logs on assignment.
+  - **Safety Rules**:
+    - **Last Owner Protection**: To ensure project accessibility, the system prevents removing the last user with the `owner` role from a project. Similarly, the last owner cannot be downgraded to `admin` or `member` unless another owner exists.
 
 ### 3. Seed Data (`lib/data/seed_data.dart`)
 
