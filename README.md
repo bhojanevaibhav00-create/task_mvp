@@ -264,7 +264,7 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 
 ## Recent Updates
 
-### UI Integration Readiness (Today)
+### UI Integration Readiness
 
 - **Role Management**:
   - **New Model**: Introduced `ProjectRole` enum (Owner, Admin, Member) for strict typing.
