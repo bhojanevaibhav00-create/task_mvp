@@ -1,22 +1,28 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_colors.dart';
 
-class ProjectSkeleton extends StatelessWidget {
-  const ProjectSkeleton({super.key});
+class ProjectListSkeleton extends StatelessWidget {
+  const ProjectListSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(height: 16, width: 150, color: Colors.grey.shade300),
-            const SizedBox(height: 8),
-            Container(height: 12, width: 100, color: Colors.grey.shade300),
-          ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 6,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.3,
+      ),
+      itemBuilder: (_, __) => Container(
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColors.cardDark.withOpacity(0.6)
+              : AppColors.cardLight.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
     );

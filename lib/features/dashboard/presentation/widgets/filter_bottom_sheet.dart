@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/enums.dart';
 import '../../../../data/models/tag_model.dart';
+import '../../../../core/constants/app_colors.dart';
 
 void openFilterBottomSheet({
   required BuildContext context,
@@ -21,26 +22,29 @@ void openFilterBottomSheet({
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => _FilterBottomSheet(
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => _FilterSheet(
       allTags: allTags,
-      initialStatus: statusFilters,
-      initialPriority: priorityFilters,
-      initialTags: tagFilters,
-      initialDueBucket: dueBucket,
-      initialSort: sort,
+      status: statusFilters,
+      priority: priorityFilters,
+      tags: tagFilters,
+      dueBucket: dueBucket,
+      sort: sort,
       onApply: onApply,
     ),
   );
 }
 
-class _FilterBottomSheet extends StatefulWidget {
+class _FilterSheet extends StatefulWidget {
   final List<Tag> allTags;
-  final Set<TaskStatus> initialStatus;
-  final Set<Priority> initialPriority;
-  final Set<Tag> initialTags;
-  final String? initialDueBucket;
-  final String? initialSort;
+  final Set<TaskStatus> status;
+  final Set<Priority> priority;
+  final Set<Tag> tags;
+  final String? dueBucket;
+  final String? sort;
   final Function(
       Set<TaskStatus>,
       Set<Priority>,
@@ -49,73 +53,112 @@ class _FilterBottomSheet extends StatefulWidget {
       String?,
       ) onApply;
 
-  const _FilterBottomSheet({
+  const _FilterSheet({
     required this.allTags,
-    required this.initialStatus,
-    required this.initialPriority,
-    required this.initialTags,
-    required this.initialDueBucket,
-    required this.initialSort,
+    required this.status,
+    required this.priority,
+    required this.tags,
+    required this.dueBucket,
+    required this.sort,
     required this.onApply,
   });
 
   @override
-  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
+  State<_FilterSheet> createState() => _FilterSheetState();
 }
 
-class _FilterBottomSheetState extends State<_FilterBottomSheet> {
+class _FilterSheetState extends State<_FilterSheet> {
   late Set<TaskStatus> status;
   late Set<Priority> priority;
   late Set<Tag> tags;
   String? dueBucket;
-  String? sort;
 
   @override
   void initState() {
     super.initState();
-    status = {...widget.initialStatus};
-    priority = {...widget.initialPriority};
-    tags = {...widget.initialTags};
-    dueBucket = widget.initialDueBucket;
-    sort = widget.initialSort;
+    status = {...widget.status};
+    priority = {...widget.priority};
+    tags = {...widget.tags};
+    dueBucket = widget.dueBucket;
   }
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      builder: (_, controller) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            _dragHandle(),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
-                controller: controller,
-                children: [
-                  _header(),
-                  const SizedBox(height: 16),
-                  _section("Status", TaskStatus.values.map(_statusChip).toList()),
-                  _section("Priority", Priority.values.map(_priorityChip).toList()),
-                  _section("Due", ["Today", "Overdue", "Next 7 Days"].map(_dueChip).toList()),
-                  _section("Tags", widget.allTags.map(_tagChip).toList()),
-                ],
-              ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _dragHandle(),
+          const SizedBox(height: 16),
+
+          Text(
+            'Filters',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: isDark
+                  ? AppColors.textPrimaryDark
+                  : AppColors.textPrimaryLight,
             ),
-            const SizedBox(height: 12),
-            _actions(),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20),
+
+          _section(
+            'Status',
+            TaskStatus.values.map(_statusChip).toList(),
+          ),
+          _section(
+            'Priority',
+            Priority.values.map(_priorityChip).toList(),
+          ),
+          _section(
+            'Due',
+            ['Today', 'Overdue', 'Next 7 Days'].map(_dueChip).toList(),
+          ),
+
+          const SizedBox(height: 20),
+
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    widget.onApply(
+                      status,
+                      priority,
+                      tags,
+                      dueBucket,
+                      widget.sort,
+                    );
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Apply'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+
+  // ================= UI HELPERS =================
 
   Widget _dragHandle() {
     return Center(
@@ -130,169 +173,100 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
-  Widget _header() {
-    return Row(
-      children: [
-        const Text(
-          "Filters",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        ),
-        const Spacer(),
-        TextButton(
-          onPressed: () {
-            setState(() {
-              status.clear();
-              priority.clear();
-              tags.clear();
-              dueBucket = null;
-              sort = null;
-            });
-          },
-          child: const Text("Clear all"),
-        ),
-      ],
-    );
-  }
-
   Widget _section(String title, List<Widget> chips) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 12),
-          Wrap(spacing: 10, runSpacing: 10, children: chips),
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: chips),
         ],
       ),
     );
   }
 
+  // ================= CHIPS =================
+
   Widget _statusChip(TaskStatus s) {
     final selected = status.contains(s);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ChoiceChip(
-      label: Text(_statusLabel(s)),
-      selected: selected,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: selected ? Theme.of(context).primaryColor : Colors.black87,
+      label: Text(
+        s.name,
+        style: TextStyle(
+          color: selected
+              ? Colors.white
+              : isDark
+              ? AppColors.textPrimaryDark
+              : AppColors.textPrimaryLight,
+          fontWeight: FontWeight.w600,
+        ),
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => setState(() {
-        selected ? status.remove(s) : status.add(s);
-      }),
+      selected: selected,
+      selectedColor: AppColors.primary,
+      backgroundColor:
+      isDark ? AppColors.cardDark : AppColors.chipBackground,
+      onSelected: (_) =>
+          setState(() => selected ? status.remove(s) : status.add(s)),
     );
   }
 
   Widget _priorityChip(Priority p) {
     final selected = priority.contains(p);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ChoiceChip(
-      label: Text(p.name.toUpperCase()),
-      selected: selected,
-      selectedColor: Colors.orange.withOpacity(0.2),
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: selected ? Colors.orange : Colors.black87,
+      label: Text(
+        p.name,
+        style: TextStyle(
+          color: selected
+              ? Colors.white
+              : isDark
+              ? AppColors.textPrimaryDark
+              : AppColors.textPrimaryLight,
+          fontWeight: FontWeight.w600,
+        ),
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => setState(() {
-        selected ? priority.remove(p) : priority.add(p);
-      }),
+      selected: selected,
+      selectedColor: AppColors.primary,
+      backgroundColor:
+      isDark ? AppColors.cardDark : AppColors.chipBackground,
+      onSelected: (_) =>
+          setState(() => selected ? priority.remove(p) : priority.add(p)),
     );
   }
 
   Widget _dueChip(String d) {
     final selected = dueBucket == d;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ChoiceChip(
-      label: Text(d),
-      selected: selected,
-      selectedColor: Colors.blue.withOpacity(0.2),
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: selected ? Colors.blue : Colors.black87,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => setState(() {
-        dueBucket = selected ? null : d;
-      }),
-    );
-  }
-
-  Widget _tagChip(Tag t) {
-    final selected = tags.contains(t);
-    return ChoiceChip(
-      label: Text(t.label),
-      selected: selected,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: selected ? Theme.of(context).primaryColor : Colors.black87,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => setState(() {
-        selected ? tags.remove(t) : tags.add(t);
-      }),
-    );
-  }
-
-  Widget _actions() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
+      label: Text(
+        d,
+        style: TextStyle(
+          color: selected
+              ? Colors.white
+              : isDark
+              ? AppColors.textPrimaryDark
+              : AppColors.textPrimaryLight,
+          fontWeight: FontWeight.w600,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            onPressed: () {
-              widget.onApply(status, priority, tags, dueBucket, sort);
-              Navigator.pop(context);
-            },
-            child: const Text("Apply Filters"),
-          ),
-        ),
-      ],
+      ),
+      selected: selected,
+      selectedColor: AppColors.primary,
+      backgroundColor:
+      isDark ? AppColors.cardDark : AppColors.chipBackground,
+      onSelected: (_) =>
+          setState(() => dueBucket = selected ? null : d),
     );
-  }
-
-  String _statusLabel(TaskStatus s) {
-    switch (s) {
-      case TaskStatus.todo:
-        return "To Do";
-      case TaskStatus.inProgress:
-        return "In Progress";
-      case TaskStatus.done:
-        return "Done";
-      case TaskStatus.review:
-        return "Review";
-    }
   }
 }

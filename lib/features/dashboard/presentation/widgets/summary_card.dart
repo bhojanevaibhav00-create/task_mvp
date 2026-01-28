@@ -1,45 +1,80 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class SummaryCard extends StatelessWidget {
   final String title;
-  final int count;
-  final LinearGradient gradient;
+  final String value;
+  final IconData icon;
+  final List<Color> gradientColors;
 
   const SummaryCard({
     super.key,
     required this.title,
-    required this.count,
-    required this.gradient,
+    required this.value,
+    required this.icon,
+    required this.gradientColors,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          const SizedBox(height: 8),
-          Text(
-            count.toString(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
+          borderRadius: BorderRadius.circular(AppColors.cardRadius),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black38 : Colors.black12,
+              blurRadius: 10,
+              offset: const Offset(0, 6),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Value
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            // Title
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,33 +1,42 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_colors.dart';
 
-class SummaryTile extends StatelessWidget {
-  final String title;
-  final int count;
-  final Gradient gradient;
-
-  const SummaryTile({
-    super.key,
-    required this.title,
-    required this.count,
-    required this.gradient,
-  });
+class SummarySkeleton extends StatelessWidget {
+  const SummarySkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Expanded(
       child: Container(
+        height: 120,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(16),
+          color: isDark ? AppColors.cardDark : AppColors.cardLight,
+          borderRadius: BorderRadius.circular(AppColors.cardRadius),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            _bar(width: 28, height: 28),
+            const SizedBox(height: 16),
+            _bar(width: 60, height: 20),
             const SizedBox(height: 8),
-            Text(count.toString(), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            _bar(width: 80, height: 12),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _bar({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.chipBackground,
+        borderRadius: BorderRadius.circular(8),
       ),
     );
   }

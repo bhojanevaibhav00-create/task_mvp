@@ -8,31 +8,37 @@ import 'package:task_mvp/core/theme/theme_controller.dart';
 final notificationsProvider = StateProvider<bool>((ref) => true);
 
 class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
+  SettingsScreen({super.key}); // ✅ non-const (safe)
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notificationsEnabled = ref.watch(notificationsProvider);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor:
+      isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
+
+      // ================= APP BAR (Dashboard style) =================
       appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
-        foregroundColor: AppColors.primary, // consistent color
+        backgroundColor: Colors.transparent,
+        title: const Text('Settings'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.primaryGradient,
+          ),
+        ),
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _sectionTitle(context, 'General'),
+          _sectionTitle('General'),
 
-          // Dark Mode Toggle
+          // ================= DARK MODE =================
           _settingTile(
             icon: Icons.dark_mode,
-            iconColor: AppColors.primary,
             label: 'Dark Mode',
             trailing: ValueListenableBuilder<ThemeMode>(
               valueListenable: ThemeController.themeMode,
@@ -46,81 +52,72 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          // Notifications Toggle
+          // ================= NOTIFICATIONS =================
           _settingTile(
             icon: Icons.notifications,
-            iconColor: AppColors.primary,
             label: 'Notifications',
             trailing: Switch(
               value: notificationsEnabled,
-              onChanged: (v) => ref.read(notificationsProvider.notifier).state = v,
+              onChanged: (v) =>
+              ref.read(notificationsProvider.notifier).state = v,
               activeColor: AppColors.primary,
             ),
           ),
 
           const SizedBox(height: 24),
-          _sectionTitle(context, 'Account'),
+          _sectionTitle('Account'),
 
           _settingTile(
             icon: Icons.person,
-            iconColor: AppColors.primary,
             label: 'Profile',
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                MaterialPageRoute(builder: (_) => ProfileScreen()),
               );
             },
           ),
           _settingTile(
             icon: Icons.lock,
-            iconColor: AppColors.primary,
             label: 'Change Password',
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+                MaterialPageRoute(builder: (_) => ChangePasswordScreen()),
               );
             },
           ),
 
           const SizedBox(height: 24),
-          _sectionTitle(context, 'About'),
+          _sectionTitle('About'),
 
           _settingTile(
             icon: Icons.info_outline,
-            iconColor: AppColors.primary,
             label: 'App Version',
             trailing: Text('1.0.0', style: AppTextStyles.body),
           ),
           _settingTile(
             icon: Icons.help_outline,
-            iconColor: AppColors.primary,
             label: 'Help & Support',
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const HelpScreen()),
+                MaterialPageRoute(builder: (_) => HelpScreen()),
               );
             },
           ),
           _settingTile(
             icon: Icons.logout,
-            iconColor: AppColors.primary,
             label: 'Logout',
-            onTap: () {
-              _showLogoutDialog(context);
-            },
+            onTap: () => _showLogoutDialog(context),
           ),
         ],
       ),
     );
   }
 
-  // =========================
-  // Section Title
-  // =========================
-  Widget _sectionTitle(BuildContext context, String title) {
+  // ================= SECTION TITLE =================
+  Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Text(
@@ -128,20 +125,17 @@ class SettingsScreen extends ConsumerWidget {
         style: AppTextStyles.body.copyWith(
           fontWeight: FontWeight.w700,
           fontSize: 14,
-          color: AppColors.primary, // consistent color
+          color: AppColors.primary,
           letterSpacing: 1.2,
         ),
       ),
     );
   }
 
-  // =========================
-  // Setting Tile
-  // =========================
+  // ================= SETTING TILE =================
   Widget _settingTile({
     required IconData icon,
     required String label,
-    Color iconColor = Colors.black,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
@@ -153,17 +147,14 @@ class SettingsScreen extends ConsumerWidget {
       ),
       child: ListTile(
         onTap: onTap,
-        leading: Icon(icon, color: iconColor),
+        leading: Icon(icon, color: AppColors.primary),
         title: Text(label, style: AppTextStyles.body),
         trailing: trailing ?? const Icon(Icons.chevron_right),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       ),
     );
   }
 
-  // =========================
-  // Logout Dialog
-  // =========================
+  // ================= LOGOUT DIALOG =================
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -176,10 +167,7 @@ class SettingsScreen extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Implement logout logic
-            },
+            onPressed: () => Navigator.pop(context),
             child: const Text('Logout'),
           ),
         ],
@@ -188,29 +176,37 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-// =========================
-// Profile / Change Password / Help Screens
-// =========================
+// ================= SUB SCREENS =================
+
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  ProfileScreen({super.key}); // ✅ non-const
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: AppBar(title: const Text('Profile')));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile')),
+    );
   }
 }
 
 class ChangePasswordScreen extends StatelessWidget {
-  const ChangePasswordScreen({super.key});
+  ChangePasswordScreen({super.key}); // ✅ non-const
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: AppBar(title: const Text('Change Password')));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Change Password')),
+    );
   }
 }
 
 class HelpScreen extends StatelessWidget {
-  const HelpScreen({super.key});
+  HelpScreen({super.key}); // ✅ non-const
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: AppBar(title: const Text('Help & Support')));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Help & Support')),
+    );
   }
 }

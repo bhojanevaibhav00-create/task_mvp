@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/providers/notification_providers.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/notification_providers.dart';
 
 class NotificationScreen extends ConsumerWidget {
   const NotificationScreen({super.key});
@@ -12,27 +14,47 @@ class NotificationScreen extends ConsumerWidget {
     final repo = ref.read(notificationRepositoryProvider);
 
     return Scaffold(
+      // ================= APP BAR =================
       appBar: AppBar(
-        title: const Text('Notifications'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        title: const Text(
+          'Notifications',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.primaryGradient, // ✅ SAME AS DASHBOARD
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () async {
-              // Mark all as read
-              final notifications =
-                  await repo.listNotifications();
+              final notifications = await repo.listNotifications();
               for (final n in notifications) {
                 if (!n.isRead) {
                   await repo.markRead(n.id);
                 }
               }
             },
-            child: const Text('Mark all read'),
+            child: const Text(
+              'Mark all read',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
+
+      // ================= BODY =================
       body: notificationsAsync.when(
         loading: () =>
-            const Center(child: CircularProgressIndicator()),
+        const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (notifications) {
           if (notifications.isEmpty) {
@@ -51,20 +73,19 @@ class NotificationScreen extends ConsumerWidget {
 
               return ListTile(
                 tileColor:
-                    n.isRead ? null : Colors.blue.shade50,
+                n.isRead ? null : AppColors.primarySoft,
                 leading: Icon(
                   n.isRead
                       ? Icons.notifications_none
                       : Icons.notifications_active,
-                  color: n.isRead
-                      ? Colors.grey
-                      : Colors.blue,
+                  color:
+                  n.isRead ? Colors.grey : AppColors.primary,
                 ),
                 title: Text(
                   n.title,
                   style: TextStyle(
                     fontWeight:
-                        n.isRead ? FontWeight.normal : FontWeight.bold,
+                    n.isRead ? FontWeight.normal : FontWeight.bold,
                   ),
                 ),
                 subtitle: Text(n.message),
@@ -73,12 +94,10 @@ class NotificationScreen extends ConsumerWidget {
                   style: const TextStyle(fontSize: 12),
                 ),
                 onTap: () async {
-                  // mark as read
                   if (!n.isRead) {
                     await repo.markRead(n.id);
                   }
 
-                  // deep link to task
                   if (n.taskId != null) {
                     context.go('/tasks/${n.taskId}');
                   }
