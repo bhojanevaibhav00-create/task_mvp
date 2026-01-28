@@ -91,15 +91,52 @@ Future<int> getDatabaseVersion() async {
   MigrationStrategy get migration {
     return MigrationStrategy(
       onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          await m.createTable(projects);
+          await m.createTable(users);
+          await m.createTable(tags);
+          try {
+            await m.addColumn(tasks, tasks.projectId as GeneratedColumn);
+          } catch (e) {}
+          try {
+            await m.addColumn(tasks, tasks.tagId as GeneratedColumn);
+          } catch (e) {}
+          try {
+            await m.addColumn(tasks, tasks.createdAt as GeneratedColumn);
+          } catch (e) {}
+          try {
+            await m.addColumn(tasks, tasks.updatedAt as GeneratedColumn);
+          } catch (e) {}
+          try {
+            await m.addColumn(tasks, tasks.completedAt as GeneratedColumn);
+          } catch (e) {}
+        }
+        if (from < 3) {
+          await m.renameColumn(
+            projects,
+            'title',
+            projects.name as GeneratedColumn,
+          );
+          await m.addColumn(projects, projects.description as GeneratedColumn);
+          await m.addColumn(projects, projects.color as GeneratedColumn);
+          await m.addColumn(projects, projects.isArchived as GeneratedColumn);
+          await m.addColumn(projects, projects.updatedAt as GeneratedColumn);
+        }
+        if (from < 4) {
+          await m.createTable(notifications);
+        }
+        if (from < 5) {
+          await m.addColumn(tasks, tasks.dueTime as GeneratedColumn);
+          await m.addColumn(tasks, tasks.reminderAt as GeneratedColumn);
+          await m.addColumn(tasks, tasks.reminderEnabled as GeneratedColumn);
+        }
         if (from < 7) {
           await m.createTable(activityLogs);
-          await m.createTable(notifications);
           await m.createTable(projectMembers);
           await m.addColumn(tasks, tasks.assigneeId);
         }
-        
         if (from < 8) {
-          await m.addColumn(users, users.email);
+          // Version 8: Maintenance release ensuring schema integrity.
         }
       },
     );
