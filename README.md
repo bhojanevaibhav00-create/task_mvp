@@ -26,11 +26,6 @@ We use Drift's `MigrationStrategy` to handle upgrades safely without data loss.
 - **Version 8 Update**:
   - Validated migration path for `ActivityLogs`.
   - Consolidated schema definitions.
-    }
-
-  ```
-
-  ```
 
 - **Safety**: This ensures that users upgrading from version 1 directly to version 7 will execute all intermediate migration steps sequentially (or cumulatively if structured that way).
 
