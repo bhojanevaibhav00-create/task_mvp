@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// Alias 'db' for consistency with your other project files
 import '../../../data/database/database.dart' as db;
 import '../../../core/providers/collaboration_providers.dart';
 import '../../../core/constants/app_colors.dart';
+import '../widgets/add_member_dialog.dart'; // 🚀 खात्री करा की ही फाईल तुम्ही तयार केली आहे
 
 class ProjectMembersScreen extends ConsumerWidget {
   final int projectId;
@@ -11,7 +11,6 @@ class ProjectMembersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watching the provider that performs the innerJoin between Members and Users
     final membersAsync = ref.watch(projectMembersProvider(projectId));
     const darkText = Color(0xFF111827);
 
@@ -27,9 +26,14 @@ class ProjectMembersScreen extends ConsumerWidget {
         centerTitle: false,
         iconTheme: const IconThemeData(color: darkText),
       ),
+      // 🚀 पायरी १: Add Member Flow साठी Floating Action Button ॲड केले
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
+        onPressed: () => _showAddMemberDialog(context),
+        child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+      ),
       body: membersAsync.when(
         data: (List<MemberWithUser> membersList) {
-          // 🚀 DEBUG LOG: Check your terminal/debug console for this message
           debugPrint("Project ID $projectId: Found ${membersList.length} members");
 
           if (membersList.isEmpty) {
@@ -55,6 +59,13 @@ class ProjectMembersScreen extends ConsumerWidget {
     );
   }
 
+  void _showAddMemberDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AddMemberDialog(projectId: projectId),
+    );
+  }
+
   Widget _buildMemberTile(
     BuildContext context, 
     WidgetRef ref, 
@@ -64,7 +75,6 @@ class ProjectMembersScreen extends ConsumerWidget {
     final member = item.member;
     final user = item.user;
 
-    // LAST OWNER PROTECTION LOGIC: Prevents deleting the only owner
     final isOwner = member.role.toLowerCase() == 'owner';
     final ownerCount = allMembers.where((m) => m.member.role.toLowerCase() == 'owner').length;
     final isLastOwner = isOwner && ownerCount <= 1;
@@ -110,11 +120,22 @@ class ProjectMembersScreen extends ConsumerWidget {
         trailing: IconButton(
           icon: Icon(
             Icons.person_remove_rounded,
+            // 🚀 पायरी २: Last-owner protection व्हिज्युअली दाखवण्यासाठी रंग बदलला
             color: isLastOwner ? Colors.grey.shade300 : Colors.redAccent,
           ),
-          onPressed: isLastOwner 
-              ? null 
-              : () => _confirmRemoval(context, ref, item, allMembers),
+          onPressed: () {
+            if (isLastOwner) {
+              // 🚀 पायरी ३: प्रोटेक्शन मेसेज दाखवणे
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("At least 1 Owner required"),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            } else {
+              _confirmRemoval(context, ref, item, allMembers);
+            }
+          },
         ),
       ),
     );

@@ -44,7 +44,7 @@ class TaskCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // 1. STATUS TOGGLE
+                // १. STATUS TOGGLE
                 GestureDetector(
                   onTap: onToggleDone,
                   child: AnimatedContainer(
@@ -66,7 +66,7 @@ class TaskCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
 
-                // 2. TASK INFO
+                // २. TASK INFO
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,30 +97,33 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
 
-                // 3. ASSIGNEE AVATAR (NEW FOR SPRINT 6)
+                // ३. ASSIGNEE AVATAR (SPRINT 7 UPDATE)
+                // जर टास्क कोणाला असाईन केला असेल, तरच हे दिसेल
                 if (task.assigneeId != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: AppColors.primary.withOpacity(0.1),
-                      child: Text(
-                        // Displaying 'U' for User + ID since we have raw ID
-                        "U${task.assigneeId}", 
-                        style: const TextStyle(
-                          fontSize: 10, 
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                    child: Tooltip(
+                      message: "Assigned to Team Member",
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        child: const Icon(
+                          Icons.person_rounded, 
+                          size: 16, 
+                          color: AppColors.primary
                         ),
                       ),
                     ),
                   ),
 
-                // 4. DELETE ACTION
+                // ४. DELETE ACTION
                 if (onDelete != null)
                   IconButton(
-                    icon: Icon(Icons.delete_outline_rounded, 
-                    color: Colors.red.withOpacity(0.7), size: 22),
+                    icon: Icon(
+                      Icons.delete_outline_rounded, 
+                      color: Colors.red.withOpacity(0.7), 
+                      size: 22
+                    ),
                     onPressed: onDelete,
                   ),
               ],

@@ -17,43 +17,33 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 });
 
 /// ======================================================
-/// NOTIFICATION REPOSITORY
+/// REPOSITORY PROVIDERS
 /// ======================================================
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return NotificationRepository(db);
 });
 
-/// ======================================================
-/// REMINDER SERVICE
-/// ======================================================
 final reminderServiceProvider = Provider<ReminderService>((ref) {
   final db = ref.watch(databaseProvider);
   return ReminderService(db);
 });
 
-/// ======================================================
-/// COLLABORATION REPOSITORY
-/// ======================================================
 final collaborationRepositoryProvider = Provider<CollaborationRepository>((ref) {
   final db = ref.watch(databaseProvider);
   final notificationRepo = ref.watch(notificationRepositoryProvider);
   return CollaborationRepository(db, notificationRepo);
 });
 
-/// ======================================================
-/// TASK REPOSITORY
-/// ======================================================
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final db = ref.watch(databaseProvider);
   final notificationRepo = ref.watch(notificationRepositoryProvider);
   final reminderService = ref.watch(reminderServiceProvider);
-
   return TaskRepository(db, notificationRepo, reminderService);
 });
 
 /// ======================================================
-/// TASKS NOTIFIER (FIXED FOR SPRINT 6)
+/// TASKS NOTIFIER (Handling Manual State Updates)
 /// ======================================================
 class TasksNotifier extends StateNotifier<List<Task>> {
   final TaskRepository _repository;
@@ -70,14 +60,14 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     }
   }
 
-  // FIX: Added assigneeId and projectId to support Collaboration Wiring
+  // Integration for Sprint 7: Support for assignee and projects
   Future<void> addTask(
     String title,
     String description, {
     int priority = 1,
     DateTime? dueDate,
-    int? assigneeId, // <--- Successfully added
-    int? projectId,  // <--- Successfully added
+    int? assigneeId, 
+    int? projectId,  
   }) async {
     final companion = TasksCompanion.insert(
       title: title,
@@ -85,7 +75,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       priority: drift.Value(priority),
       status: drift.Value(TaskStatus.todo.name),
       dueDate: drift.Value(dueDate),
-      assigneeId: drift.Value(assigneeId), // <--- Now mapped to DB
+      assigneeId: drift.Value(assigneeId),
       projectId: drift.Value(projectId),
       createdAt: drift.Value(DateTime.now()),
     );
@@ -103,63 +93,28 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     await _repository.deleteTask(id);
     await loadTasks();
   }
-
-  Future<void> deleteAllTasks() async {
-    await _repository.deleteAllTasks();
-    await loadTasks();
-  }
-
-  Future<void> seedData() async {
-    await _repository.seedDatabase();
-    await loadTasks();
-  }
 }
 
 /// ======================================================
-/// TASKS PROVIDER
+/// FILTERED TASKS STREAM (BEST FOR UI WITH .when())
 /// ======================================================
-final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
-  final repository = ref.watch(taskRepositoryProvider);
-  return TasksNotifier(repository);
-});
-
-/// ======================================================
-/// FILTER PROVIDERS
-/// ======================================================
-final statusFilterProvider = StateProvider<String>((ref) => 'all');
-final sortByProvider = StateProvider<String>((ref) => 'date');
-final overdueFilterProvider = StateProvider<bool>((ref) => false);
-final priorityFilterProvider = StateProvider<int?>((ref) => null);
-final tagFilterProvider = StateProvider<int?>((ref) => null);
-final projectFilterProvider = StateProvider<int?>((ref) => null);
-final dateRangeStartProvider = StateProvider<DateTime?>((ref) => null);
-final dateRangeEndProvider = StateProvider<DateTime?>((ref) => null);
-
-/// ======================================================
-/// FILTERED TASKS STREAM
-/// ======================================================
+// This provider is a StreamProvider, use this in your Dashboard Widgets
 final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
 
+  // Watching filter states for automatic UI updates
   final status = ref.watch(statusFilterProvider);
   final sortBy = ref.watch(sortByProvider);
   final overdue = ref.watch(overdueFilterProvider);
   final priority = ref.watch(priorityFilterProvider);
-  final tagId = ref.watch(tagFilterProvider);
   final projectId = ref.watch(projectFilterProvider);
-  final start = ref.watch(dateRangeStartProvider);
-  final end = ref.watch(dateRangeEndProvider);
 
   List<String>? statuses;
   if (status != 'all') statuses = [status];
 
-  String repoSort = 'updated_at_desc';
-  if (sortBy == 'priority') repoSort = 'priority_desc';
-  if (sortBy == 'date') repoSort = 'due_date_asc';
-
-  DateTime? fromDate = start;
-  DateTime? toDate = end;
-
+  // Logic for overdue filtering
+  DateTime? fromDate;
+  DateTime? toDate;
   if (overdue) {
     fromDate = DateTime(1970);
     toDate = DateTime.now();
@@ -167,9 +122,8 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
 
   return repository.watchTasks(
     statuses: statuses,
-    sortBy: repoSort,
+    sortBy: sortBy == 'date' ? 'due_date_asc' : 'priority_desc',
     priority: priority,
-    tagId: tagId,
     projectId: projectId,
     fromDate: fromDate,
     toDate: toDate,
@@ -177,12 +131,24 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
 });
 
 /// ======================================================
-/// ACTIVITY LOGS
+/// COLLABORATION & USER PROVIDERS (NEW)
 /// ======================================================
-final recentActivityProvider = FutureProvider.autoDispose<List<ActivityLog>>((
-  ref,
-) async {
-  ref.watch(tasksProvider);
+final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
-  return repository.getRecentActivity();
+  return TasksNotifier(repository);
 });
+
+// To display team members on the Dashboard
+final allUsersProvider = FutureProvider.autoDispose<List<User>>((ref) async {
+  final db = ref.watch(databaseProvider);
+  return await db.select(db.users).get();
+});
+
+/// ======================================================
+/// FILTER STATE PROVIDERS
+/// ======================================================
+final statusFilterProvider = StateProvider<String>((ref) => 'all');
+final sortByProvider = StateProvider<String>((ref) => 'date');
+final overdueFilterProvider = StateProvider<bool>((ref) => false);
+final priorityFilterProvider = StateProvider<int?>((ref) => null);
+final projectFilterProvider = StateProvider<int?>((ref) => null);

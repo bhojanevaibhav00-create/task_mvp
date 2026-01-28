@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../../../data/models/enums.dart';
+// 🚀 Importing the database model for TaskStatus and Priority
+import '../../../../data/database/database.dart' as db;
 import '../../../../data/models/tag_model.dart';
+import '../../../../core/constants/app_colors.dart';
 
 void openFilterBottomSheet({
   required BuildContext context,
   required List<Tag> allTags,
-  required Set<TaskStatus> statusFilters,
-  required Set<Priority> priorityFilters,
+  // 🚀 Changed TaskStatus to use database enum
+  required Set<String> statusFilters, 
+  required Set<int> priorityFilters,
   required Set<Tag> tagFilters,
   required String? dueBucket,
   required String? sort,
   required Function(
-      Set<TaskStatus>,
-      Set<Priority>,
+      Set<String>,
+      Set<int>,
       Set<Tag>,
       String?,
       String?,
@@ -21,9 +24,9 @@ void openFilterBottomSheet({
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
     ),
     builder: (_) {
       return _FilterBottomSheet(
@@ -41,14 +44,14 @@ void openFilterBottomSheet({
 
 class _FilterBottomSheet extends StatefulWidget {
   final List<Tag> allTags;
-  final Set<TaskStatus> initialStatus;
-  final Set<Priority> initialPriority;
+  final Set<String> initialStatus;
+  final Set<int> initialPriority;
   final Set<Tag> initialTags;
   final String? initialDueBucket;
   final String? initialSort;
   final Function(
-      Set<TaskStatus>,
-      Set<Priority>,
+      Set<String>,
+      Set<int>,
       Set<Tag>,
       String?,
       String?,
@@ -69,8 +72,8 @@ class _FilterBottomSheet extends StatefulWidget {
 }
 
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
-  late Set<TaskStatus> status;
-  late Set<Priority> priority;
+  late Set<String> status;
+  late Set<int> priority;
   late Set<Tag> tags;
   String? dueBucket;
   String? sort;
@@ -78,6 +81,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   @override
   void initState() {
     super.initState();
+    // Synchronizing with initial values passed from the parent
     status = {...widget.initialStatus};
     priority = {...widget.initialPriority};
     tags = {...widget.initialTags};
@@ -88,29 +92,32 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      top: false,
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          16,
-          12,
-          16,
-          MediaQuery.of(context).viewInsets.bottom + 16,
+          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _dragHandle(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             _header(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            _cardSection("Status", TaskStatus.values.map(_statusChip).toList()),
-            _cardSection("Priority", Priority.values.map(_priorityChip).toList()),
-            _cardSection("Due", ["Today", "Overdue", "Next 7 Days"].map(_dueChip).toList()),
+            // Status Filter Section
+            _cardSection("Status", ["todo", "inProgress", "done", "review"].map(_statusChip).toList()),
+            
+            // Priority Filter Section (Using DB int values)
+            _cardSection("Priority", [1, 2, 3].map(_priorityChip).toList()),
+            
+            // Due Date Filter Section
+            _cardSection("Due Date", ["Today", "Overdue", "Upcoming"].map(_dueChip).toList()),
+            
+            // Dynamic Tags Filter Section
             _cardSection("Tags", widget.allTags.map(_tagChip).toList()),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             _actions(),
           ],
         ),
@@ -118,16 +125,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
-  // ================= UI COMPONENTS =================
+  // ================= PREMIUM UI COMPONENTS =================
 
   Widget _dragHandle() {
     return Center(
       child: Container(
-        width: 40,
+        width: 48,
         height: 5,
         decoration: BoxDecoration(
-          color: Colors.grey.shade400,
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(10),
         ),
       ),
     );
@@ -135,23 +142,20 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   Widget _header() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         const Text(
-          "Filters",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          "Filter Tasks",
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
         ),
-        const Spacer(),
         TextButton(
-          onPressed: () {
-            setState(() {
-              status.clear();
-              priority.clear();
-              tags.clear();
-              dueBucket = null;
-              sort = null;
-            });
-          },
-          child: const Text("Clear all"),
+          onPressed: () => setState(() {
+            status.clear();
+            priority.clear();
+            tags.clear();
+            dueBucket = null;
+          }),
+          child: const Text("Reset All", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -159,100 +163,70 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   Widget _cardSection(String title, List<Widget> chips) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withOpacity(0.03)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 10),
-          Wrap(spacing: 10, runSpacing: 10, children: chips),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blueGrey)),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, runSpacing: 8, children: chips),
         ],
       ),
     );
   }
 
-  Widget _statusChip(TaskStatus s) {
-    final selected = status.contains(s);
+  Widget _statusChip(String s) {
+    final isSelected = status.contains(s);
     return ChoiceChip(
-      label: Text(_statusLabel(s)),
-      selected: selected,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.15),
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: selected ? Theme.of(context).primaryColor : Colors.black87,
-      ),
+      label: Text(s.toUpperCase()),
+      selected: isSelected,
+      onSelected: (_) => setState(() => isSelected ? status.remove(s) : status.add(s)),
+      selectedColor: AppColors.primary.withOpacity(0.1),
+      labelStyle: TextStyle(color: isSelected ? AppColors.primary : Colors.black87, fontWeight: FontWeight.bold, fontSize: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => setState(() {
-        selected ? status.remove(s) : status.add(s);
-      }),
     );
   }
 
-  Widget _priorityChip(Priority p) {
-    final selected = priority.contains(p);
+  Widget _priorityChip(int p) {
+    final isSelected = priority.contains(p);
+    final labels = {1: "LOW", 2: "MEDIUM", 3: "HIGH"};
+    final colors = {1: Colors.green, 2: Colors.orange, 3: Colors.red};
+
     return ChoiceChip(
-      label: Text(p.name.toUpperCase()),
-      selected: selected,
-      selectedColor: Colors.orange.withOpacity(0.15),
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: selected ? Colors.orange : Colors.black87,
-      ),
+      label: Text(labels[p]!),
+      selected: isSelected,
+      onSelected: (_) => setState(() => isSelected ? priority.remove(p) : priority.add(p)),
+      selectedColor: colors[p]!.withOpacity(0.1),
+      labelStyle: TextStyle(color: isSelected ? colors[p] : Colors.black87, fontWeight: FontWeight.bold, fontSize: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => setState(() {
-        selected ? priority.remove(p) : priority.add(p);
-      }),
     );
   }
 
   Widget _dueChip(String d) {
-    final selected = dueBucket == d;
+    final isSelected = dueBucket == d;
     return ChoiceChip(
       label: Text(d),
-      selected: selected,
-      selectedColor: Colors.blue.withOpacity(0.15),
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: selected ? Colors.blue : Colors.black87,
-      ),
+      selected: isSelected,
+      onSelected: (_) => setState(() => dueBucket = isSelected ? null : d),
+      selectedColor: Colors.blue.withOpacity(0.1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => setState(() {
-        dueBucket = selected ? null : d;
-      }),
     );
   }
 
   Widget _tagChip(Tag t) {
-    final selected = tags.contains(t);
+    final isSelected = tags.contains(t);
     return ChoiceChip(
       label: Text(t.label),
-      selected: selected,
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.15),
-      backgroundColor: Colors.grey.shade100,
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w600,
-        color: selected ? Theme.of(context).primaryColor : Colors.black87,
-      ),
+      selected: isSelected,
+      onSelected: (_) => setState(() => isSelected ? tags.remove(t) : tags.add(t)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (_) => setState(() {
-        selected ? tags.remove(t) : tags.add(t);
-      }),
     );
   }
 
@@ -260,43 +234,29 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
+          child: TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 0,
             ),
             onPressed: () {
               widget.onApply(status, priority, tags, dueBucket, sort);
               Navigator.pop(context);
             },
-            child: const Text("Apply Filters"),
+            child: const Text("Apply Filters", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ),
       ],
     );
-  }
-
-  String _statusLabel(TaskStatus s) {
-    switch (s) {
-      case TaskStatus.todo:
-        return "To Do";
-      case TaskStatus.inProgress:
-        return "In Progress";
-      case TaskStatus.done:
-        return "Done";
-      case TaskStatus.review:
-        return "Review";
-    }
   }
 }
