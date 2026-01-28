@@ -180,6 +180,27 @@ class CollaborationRepository {
     );
   }
 
+  /// Lists users who are NOT currently members of the specified project.
+  Future<List<User>> listAvailableUsersNotInProject(int projectId) {
+    final membersSubquery = _db.selectOnly(_db.projectMembers)
+      ..addColumns([_db.projectMembers.userId])
+      ..where(_db.projectMembers.projectId.equals(projectId));
+
+    return (_db.select(_db.users)
+          ..where((u) => u.id.isNotInQuery(membersSubquery)))
+        .get();
+  }
+
+  /// Fetches a single user by ID.
+  Future<User?> getUserById(int userId) {
+    return (_db.select(_db.users)..where((u) => u.id.equals(userId))).getSingleOrNull();
+  }
+
+  /// Searches for users by name.
+  Future<List<User>> searchUsers(String query) {
+    return (_db.select(_db.users)..where((u) => u.name.contains(query))).get();
+  }
+
   // --- Private Helpers ---
   Future<int> _countOwners(int projectId) async {
     final countExp = _db.projectMembers.userId.count();

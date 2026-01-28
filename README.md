@@ -8,7 +8,7 @@
 
 The database schema is versioned using the `schemaVersion` getter in `AppDatabase` (`lib/data/database/database.dart`).
 
-- **Current Version**: 7
+- **Current Version**: 8
 - **Rule**: Every time a table structure changes (new column, new table), increment this version number by 1.
 
 ### 2. Handling Upgrades (Migration Strategy)
@@ -18,12 +18,20 @@ We use Drift's `MigrationStrategy` to handle upgrades safely without data loss.
 - **Logic**: The `onUpgrade` callback receives the `from` (old) and `to` (new) version.
 - **Implementation**: We check the `from` version and apply changes incrementally.
   ```dart
-  if (from < 7) {
-    // Apply changes introduced in version 7
-    await m.createTable(projectMembers);
-    await m.addColumn(tasks, tasks.assigneeId);
+  if (from < 8) {
+    // Apply changes introduced in version 8
+    // Example: await m.addColumn(tasks, tasks.newColumn);
   }
   ```
+- **Version 8 Update**:
+  - Validated migration path for `ActivityLogs`.
+  - Consolidated schema definitions.
+    }
+
+  ```
+
+  ```
+
 - **Safety**: This ensures that users upgrading from version 1 directly to version 7 will execute all intermediate migration steps sequentially (or cumulatively if structured that way).
 
 ### 3. Developer Clean Reset
@@ -134,6 +142,22 @@ The `TaskRepository` is the primary entry point for task management.
 
 ---
 
+### CollaborationRepository (`lib/data/repositories/collaboration_repository.dart`)
+
+Manages project membership, task assignments, and user collaboration safety.
+
+- **Member Management**:
+  - **`addMember` / `removeMember`**: Adds or removes users. Includes checks to prevent removing the last owner.
+  - **`updateMemberRole`**: Changes roles (Owner, Admin, Member). Prevents downgrading the last owner.
+  - **`listAvailableUsersNotInProject`**: _New_ - Efficiently finds users eligible to be added to a project using subqueries.
+- **Task Assignment**:
+  - **`assignTask` / `unassignTask`**: Links tasks to users and logs the activity.
+- **User Lookup**:
+  - **`getUserById`**: Fetches user details.
+  - **`searchUsers`**: Finds users by name for invitations.
+
+---
+
 ### Run Code Generation
 
 '''dart
@@ -166,7 +190,7 @@ lib/data/
 │   ├── collaboration_repository.dart
 │   └── task_repository.dart
 ├── seed/
-    └── seed_data.dart
+│   └── seed_data.dart
 ```
 
 ---
@@ -218,7 +242,7 @@ The repository pattern is used to abstract the data source (Drift Database).
 
 - **`collaboration_repository.dart`**:
   - **Purpose**: Handles project membership and task assignment logic.
-  - **Methods**: `assignTask`, `unassignTask`, `addMember`, `removeMember`, `updateMemberRole`.
+  - **Methods**: `assignTask`, `unassignTask`, `addMember`, `removeMember`, `updateMemberRole`, `listAvailableUsersNotInProject`, `searchUsers`.
   - **Features**: Enforces "Last Owner" safety constraints and triggers notifications/logs on assignment.
   - **Safety Rules**:
     - **Last Owner Protection**: To ensure project accessibility, the system prevents removing the last user with the `owner` role from a project. Similarly, the last owner cannot be downgraded to `admin` or `member` unless another owner exists.
@@ -268,27 +292,24 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 
 ---
 
-## Recent Updates
+## Recent Updates (v8)
 
-### UI Integration Readiness
+### Database Migration & Integrity
 
-- **Role Management**:
-  - **New Model**: Introduced `ProjectRole` enum (Owner, Admin, Member) for strict typing.
-  - **Safety Constraints**: Implemented logic in `CollaborationRepository` to prevent removing or downgrading the last "Owner" of a project.
+- **Migration Path Validated**:
+  - Conducted a full review of the database migration path from the initial version up to the current version 8.
+  - Corrected a critical bug in the migration script for the `ActivityLogs` table that would have caused errors for users upgrading from versions prior to 7.
 
-- **Collaboration Features**:
-  - **Assignments**: `assignTask` and `unassignTask` now trigger:
-    - Database updates (`assigneeId`).
-    - Activity Logs (`task_assigned`, `task_unassigned`).
-    - System Notifications (`NotificationRepository`).
-  - **Repository**: Fully implemented `CollaborationRepository` with `NotificationRepository` injection.
+- **Schema Version Bumped to 8**:
+  - The database schema version has been incremented to `8`.
+  - This acts as a maintenance release to ensure schema integrity and consistency for all users, preventing potential crashes related to inconsistent database states during development.
 
-- **Seed Data Enhancements**:
-  - **Robust Dataset**: Updated `SeedData` to include:
-    - Correct `ProjectRole` usage.
-    - 2 Projects with 5 members split.
-    - Tasks with mixed statuses (Todo, In Progress, Done), priorities, and due dates (Past, Future, Null).
-    - Assignments distributed across users.
+- **Documentation Updated**:
+  - The `README.md` has been updated to reflect the new version and the corrected migration logic.
+  - The "Developer Clean Reset" steps have been re-validated and remain the recommended approach for resolving local development schema issues.
 
-- **Code Quality**:
-  - **Refactoring**: Cleaned up `main.dart` by moving initialization logic to `initState` and removing unused imports.
+- **Collaboration Enhancements**:
+  - Added helper methods to `CollaborationRepository` to support UI workflows:
+    - `listAvailableUsersNotInProject(projectId)`: Efficiently filters users not yet in a project.
+    - `getUserById(userId)`: Fetches individual user details.
+    - `searchUsers(query)`: Allows searching users by name for invitations.

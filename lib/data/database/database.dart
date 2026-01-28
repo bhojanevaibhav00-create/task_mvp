@@ -93,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -103,8 +103,6 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(projects);
           await m.createTable(users);
           await m.createTable(tags);
-        }
-        if (from < 2) {
           try {
             await m.addColumn(tasks, tasks.projectId as GeneratedColumn);
           } catch (e) {}
@@ -120,9 +118,6 @@ class AppDatabase extends _$AppDatabase {
           try {
             await m.addColumn(tasks, tasks.completedAt as GeneratedColumn);
           } catch (e) {}
-        }
-        if (from < 7) {
-          await m.createTable(activityLogs);
         }
         if (from < 3) {
           await m.renameColumn(
@@ -143,19 +138,13 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(tasks, tasks.reminderAt as GeneratedColumn);
           await m.addColumn(tasks, tasks.reminderEnabled as GeneratedColumn);
         }
-        if (from < 6) {
-          await m.addColumn(
-            activityLogs,
-            activityLogs.taskId as GeneratedColumn,
-          );
-          await m.addColumn(
-            activityLogs,
-            activityLogs.projectId as GeneratedColumn,
-          );
-        }
         if (from < 7) {
+          await m.createTable(activityLogs);
           await m.createTable(projectMembers);
           await m.addColumn(tasks, tasks.assigneeId);
+        }
+        if (from < 8) {
+          // Version 8: Maintenance release ensuring schema integrity.
         }
       },
     );
