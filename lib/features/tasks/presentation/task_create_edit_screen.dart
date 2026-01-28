@@ -3,14 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
 import '../../../core/providers/task_providers.dart';
+// Added the collaboration provider for the assignee list
+import '../../../core/providers/collaboration_providers.dart'; 
 import '../../../data/database/database.dart';
 import '../../../core/constants/app_colors.dart';
 import 'widgets/reminder_section.dart';
 
 class TaskCreateEditScreen extends ConsumerStatefulWidget {
   final Task? task;
+  // Sprint 6 requires a projectId to fetch valid members for assignment
+  final int? projectId; 
 
-  const TaskCreateEditScreen({super.key, this.task});
+  const TaskCreateEditScreen({super.key, this.task, this.projectId});
 
   @override
   ConsumerState<TaskCreateEditScreen> createState() => _TaskCreateEditScreenState();
@@ -26,6 +30,8 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   DateTime? reminderAt;
   int _priority = 1;
   DateTime? dueDate;
+  // NEW: Track the assigned user
+  int? _selectedAssigneeId; 
 
   @override
   void initState() {
@@ -36,6 +42,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     reminderAt = widget.task?.reminderAt;
     _priority = widget.task?.priority ?? 1;
     dueDate = widget.task?.dueDate;
+    _selectedAssigneeId = widget.task?.assigneeId;
   }
 
   @override
@@ -74,6 +81,11 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
                       _buildInputGroup(),
                       const SizedBox(height: 24),
                       
+                      // NEW: ASSIGNEE SECTION
+                      _buildSectionLabel("ASSIGN TO"),
+                      _buildAssigneeSelector(),
+                      const SizedBox(height: 24),
+
                       _buildSectionLabel("PRIORITY"),
                       _buildPrioritySelector(),
                       const SizedBox(height: 24),
@@ -105,6 +117,43 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     );
   }
 
+  // --- NEW ASSIGNEE SELECTOR ---
+  Widget _buildAssigneeSelector() {
+    // If we don't have a projectId, we can't fetch members
+    final pid = widget.projectId ?? widget.task?.projectId;
+    if (pid == null) return const Text("Select a project first to assign members");
+
+    final membersAsync = ref.watch(projectMembersProvider(pid));
+
+    return membersAsync.when(
+      data: (members) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<int>(
+            isExpanded: true,
+            value: _selectedAssigneeId,
+            hint: const Text("Select Assignee"),
+            items: [
+              const DropdownMenuItem(value: null, child: Text("Unassigned")),
+              ...members.map((m) => DropdownMenuItem(
+                value: m.member.userId,
+                child: Text(m.user.name),
+              )),
+            ],
+            onChanged: (val) => setState(() => _selectedAssigneeId = val),
+          ),
+        ),
+      ),
+      loading: () => const LinearProgressIndicator(),
+      error: (_, __) => const Text("Error loading members"),
+    );
+  }
+
   Widget _buildCustomAppBar(bool isEdit) {
     return SafeArea(
       bottom: false,
@@ -122,7 +171,6 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
               style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
-            // DELETE BUTTON: Only visible if editing
             if (isEdit)
               IconButton(
                 icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
@@ -319,7 +367,14 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     final description = _descCtrl.text.trim();
 
     if (widget.task == null) {
-      await notifier.addTask(title, description, priority: _priority, dueDate: dueDate);
+      // Pass the assigneeId during creation
+      await notifier.addTask(
+        title, 
+        description, 
+        priority: _priority, 
+        dueDate: dueDate,
+        assigneeId: _selectedAssigneeId,
+      );
     } else {
       final updated = widget.task!.copyWith(
         title: title,
@@ -328,6 +383,8 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
         dueDate: drift.Value(dueDate),
         reminderEnabled: reminderEnabled,
         reminderAt: drift.Value(reminderAt),
+        // Update assignee
+        assigneeId: drift.Value(_selectedAssigneeId), 
       );
       await notifier.updateTask(updated);
     }

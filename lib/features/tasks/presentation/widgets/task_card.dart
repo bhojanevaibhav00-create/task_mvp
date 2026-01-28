@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-// 1. REMOVE the old manual task_model import
-// import '../../../../data/models/task_model.dart'; 
-
-// 2. ADD the database import instead (this matches TaskListScreen)
 import '../../../../data/database/database.dart'; 
 import '../../../../data/models/enums.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class TaskCard extends StatelessWidget {
-  // Now 'Task' refers to the one in database.dart
   final Task task; 
   final VoidCallback onTap;
   final VoidCallback onToggleDone;
@@ -23,12 +19,11 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Logic remains exactly the same
     final isDone = task.status == TaskStatus.done.name;
     const primaryText = Color(0xFF111827);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12), // Added margin for spacing
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -49,6 +44,7 @@ class TaskCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
+                // 1. STATUS TOGGLE
                 GestureDetector(
                   onTap: onToggleDone,
                   child: AnimatedContainer(
@@ -69,6 +65,8 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
+
+                // 2. TASK INFO
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +80,6 @@ class TaskCard extends StatelessWidget {
                           decoration: isDone ? TextDecoration.lineThrough : null,
                         ),
                       ),
-                      // Drift uses null for empty descriptions, so we check for both
                       if (task.description != null && task.description!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
@@ -99,6 +96,27 @@ class TaskCard extends StatelessWidget {
                     ],
                   ),
                 ),
+
+                // 3. ASSIGNEE AVATAR (NEW FOR SPRINT 6)
+                if (task.assigneeId != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: AppColors.primary.withOpacity(0.1),
+                      child: Text(
+                        // Displaying 'U' for User + ID since we have raw ID
+                        "U${task.assigneeId}", 
+                        style: const TextStyle(
+                          fontSize: 10, 
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 4. DELETE ACTION
                 if (onDelete != null)
                   IconButton(
                     icon: Icon(Icons.delete_outline_rounded, 

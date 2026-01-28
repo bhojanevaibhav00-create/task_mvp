@@ -2,9 +2,6 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 part 'database.g.dart';
 
-// here is the database definition and no. of classes is actually a tables.
-// These classes represent tables in your DB
-
 class Tasks extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text().withLength(min: 1, max: 50)();
@@ -13,13 +10,11 @@ class Tasks extends Table {
   DateTimeColumn get dueDate => dateTime().nullable()();
   TextColumn get dueTime => text().nullable()();
   DateTimeColumn get reminderAt => dateTime().nullable()();
-  BoolColumn get reminderEnabled =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get reminderEnabled => boolean().withDefault(const Constant(false))();
   IntColumn get priority => integer().nullable()();
   IntColumn get projectId => integer().nullable().references(Projects, #id)();
   IntColumn get tagId => integer().nullable().references(Tags, #id)();
-  DateTimeColumn get createdAt =>
-      dateTime().nullable().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().nullable().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   IntColumn get assigneeId => integer().nullable().references(Users, #id)();
@@ -38,6 +33,8 @@ class Projects extends Table {
 class Users extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 50)();
+  
+  TextColumn get email => text().nullable()(); 
 }
 
 class Tags extends Table {
@@ -57,7 +54,7 @@ class ActivityLogs extends Table {
 
 class Notifications extends Table {
   IntColumn get id => integer().autoIncrement()();
-  TextColumn get type => text()(); // e.g., 'reminder', 'system', 'alert'
+  TextColumn get type => text()();
   TextColumn get title => text()();
   TextColumn get message => text()();
   IntColumn get taskId => integer().nullable().references(Tasks, #id)();
@@ -71,27 +68,22 @@ class ProjectMembers extends Table {
   IntColumn get userId => integer().references(Users, #id)();
   TextColumn get role => text()();
   DateTimeColumn get joinedAt => dateTime().withDefault(currentDateAndTime)();
-
   @override
   Set<Column> get primaryKey => {projectId, userId};
 }
 
-//Set Up the Database Class
+
 
 @DriftDatabase(
-  tables: [
-    Tasks,
-    Projects,
-    Users,
-    Tags,
-    ActivityLogs,
-    Notifications,
-    ProjectMembers,
-  ],
+  tables: [Tasks, Projects, Users, Tags, ActivityLogs, Notifications, ProjectMembers],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
-
+Future<int> getDatabaseVersion() async {
+    final result = await customSelect('PRAGMA user_version;').getSingle();
+    return result.read<int>('user_version');
+  }
+  
   @override
   int get schemaVersion => 8;
 
@@ -150,13 +142,5 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<int> getDatabaseVersion() async {
-    final result = await customSelect('PRAGMA user_version;').getSingle();
-    return result.read<int>('user_version');
-  }
-
-  static QueryExecutor _openConnection() {
-    // This handles finding the right folder on the device automatically
-    return driftDatabase(name: 'my_app_database');
-  }
+  static QueryExecutor _openConnection() => driftDatabase(name: 'my_app_database');
 }

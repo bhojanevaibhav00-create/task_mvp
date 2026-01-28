@@ -35,9 +35,7 @@ final reminderServiceProvider = Provider<ReminderService>((ref) {
 /// ======================================================
 /// COLLABORATION REPOSITORY
 /// ======================================================
-final collaborationRepositoryProvider = Provider<CollaborationRepository>((
-  ref,
-) {
+final collaborationRepositoryProvider = Provider<CollaborationRepository>((ref) {
   final db = ref.watch(databaseProvider);
   final notificationRepo = ref.watch(notificationRepositoryProvider);
   return CollaborationRepository(db, notificationRepo);
@@ -55,7 +53,7 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
 });
 
 /// ======================================================
-/// TASKS NOTIFIER
+/// TASKS NOTIFIER (FIXED FOR SPRINT 6)
 /// ======================================================
 class TasksNotifier extends StateNotifier<List<Task>> {
   final TaskRepository _repository;
@@ -72,11 +70,14 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     }
   }
 
+  // FIX: Added assigneeId and projectId to support Collaboration Wiring
   Future<void> addTask(
     String title,
     String description, {
     int priority = 1,
     DateTime? dueDate,
+    int? assigneeId, // <--- Successfully added
+    int? projectId,  // <--- Successfully added
   }) async {
     final companion = TasksCompanion.insert(
       title: title,
@@ -84,6 +85,9 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       priority: drift.Value(priority),
       status: drift.Value(TaskStatus.todo.name),
       dueDate: drift.Value(dueDate),
+      assigneeId: drift.Value(assigneeId), // <--- Now mapped to DB
+      projectId: drift.Value(projectId),
+      createdAt: drift.Value(DateTime.now()),
     );
 
     await _repository.createTask(companion);
