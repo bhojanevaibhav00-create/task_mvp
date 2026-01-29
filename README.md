@@ -1,6 +1,15 @@
 # Database, Models & Offline CRUD
 
 ---
+## Demo Script Flow
+
+- **Login**: Enter user ID and password.
+- **Dashboard**: View overview stats. In "Recent Tasks", tap the filter icon and apply a filter by **Status** and **Priority**.
+- **Add Task**: Use the quick action, fill in the details (Title, Priority, Due Date), and save.
+- **My Tasks**: Navigate to the "My Tasks" screen and use the search bar to find the newly created task.
+- **Notifications**: Tap the bell icon to view alerts for the new task.
+
+---
 
 ## Migration & Upgrade Safety
 
@@ -360,16 +369,6 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
   This allowed rapid visual verification of filtering and sorting logic without manual entry.
 
 **Note**: The seed script is designed to be **idempotent**. It checks for existing records (by name/title) before inserting, so you can safely press "Seed Data" multiple times during development without creating duplicate users, projects, or tasks.
-
----
-
-## Demo Script Flow
-
-- **Login**: Enter user ID and password.
-- **Dashboard**: View overview stats. In "Recent Tasks", tap the filter icon and apply a filter by **Status** and **Priority**.
-- **Add Task**: Use the quick action, fill in the details (Title, Priority, Due Date), and save.
-- **My Tasks**: Navigate to the "My Tasks" screen and use the search bar to find the newly created task.
-- **Notifications**: Tap the bell icon to view alerts for the new task.
 
 ---
 
