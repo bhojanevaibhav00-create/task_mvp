@@ -1,40 +1,34 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:task_mvp/core/constants/app_colors.dart';
-import '../domain/task_entity.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
-class TaskDetailScreen extends StatefulWidget {
-  final TaskEntity task;
+// Use the database alias to match TaskList and TaskCreate screens
+import '../../../data/database/database.dart' as db;
+import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/task_providers.dart';
+
+class TaskDetailScreen extends ConsumerStatefulWidget {
+  final db.Task task;
 
   const TaskDetailScreen({super.key, required this.task});
 
   @override
-  State<TaskDetailScreen> createState() => _TaskDetailScreenState();
+  ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
 }
 
-class _TaskDetailScreenState extends State<TaskDetailScreen> {
-  // Color mapping based on status for dynamic UI
-  Color _getStatusColor(TaskStatus status) {
-    switch (status) {
-      case TaskStatus.done:
-        return Colors.green;
-      case TaskStatus.inProgress:
-        return Colors.orange;
-      default:
-        return AppColors.primary;
-    }
-  }
-
-  void _changeStatus() {
-    setState(() {
-      widget.task.status =
-          TaskStatus.values[(widget.task.status.index + 1) % TaskStatus.values.length];
-    });
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
+  
+  Color _getStatusColor(String status) {
+    if (status == 'done') return Colors.green;
+    if (status == 'inProgress') return Colors.orange;
+    return AppColors.primary;
   }
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _getStatusColor(widget.task.status);
+    final statusColor = _getStatusColor(widget.task.status ?? 'todo');
+    final dateFormat = DateFormat('MMM dd, yyyy');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
@@ -46,19 +40,19 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           padding: const EdgeInsets.all(8.0),
           child: CircleAvatar(
             backgroundColor: Colors.white,
-            child: BackButton(color: Colors.black87),
+            child: BackButton(color: Colors.black87, onPressed: () => Navigator.pop(context)),
           ),
         ),
       ),
       body: Stack(
         children: [
-          // Background Gradient Blobs for depth
+          // Visual Depth Blob
           Positioned(
             top: -50,
             right: -50,
             child: CircleAvatar(
-              radius: 100,
-              backgroundColor: statusColor.withOpacity(0.1),
+              radius: 120,
+              backgroundColor: statusColor.withOpacity(0.08),
             ),
           ),
           
@@ -72,58 +66,42 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Status Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: statusColor.withOpacity(0.2)),
-                        ),
-                        child: Text(
-                          widget.task.status.name.toUpperCase(),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                      ),
+                      _buildStatusBadge(statusColor),
                       const SizedBox(height: 20),
 
                       // Title
                       Text(
                         widget.task.title,
                         style: const TextStyle(
-                          fontSize: 32,
+                          fontSize: 28,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF1A1C1E),
                           height: 1.2,
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
 
-                      // Information Grid
-                      _buildInfoSection(),
+                      // Information Grid (Real Data)
+                      _buildInfoSection(dateFormat),
                       
                       const SizedBox(height: 32),
 
+                      // Assignee Section (New for Sprint 6)
+                      if (widget.task.assigneeId != null) ...[
+                        const Text("ASSIGNED TO", style: _sectionHeaderStyle),
+                        const SizedBox(height: 12),
+                        _buildAssigneeTile(),
+                        const SizedBox(height: 32),
+                      ],
+
                       // Description Section
-                      const Text(
-                        "DESCRIPTION",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
+                      const Text("DESCRIPTION", style: _sectionHeaderStyle),
                       const SizedBox(height: 12),
                       Text(
-                        "No additional details provided for this task. You can edit the task to add more context and notes.",
+                        widget.task.description ?? "No additional details provided.",
                         style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.black.withOpacity(0.7),
+                          fontSize: 15,
+                          color: Colors.black.withOpacity(0.6),
                           height: 1.6,
                         ),
                       ),
@@ -132,7 +110,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ),
               ),
               
-              // Bottom Action Bar
               _buildBottomAction(statusColor),
             ],
           ),
@@ -141,32 +118,70 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  Widget _buildInfoSection() {
+  Widget _buildStatusBadge(Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Text(
+        (widget.task.status ?? 'TODO').toUpperCase(),
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.1),
+      ),
+    );
+  }
+
+  Widget _buildInfoSection(DateFormat df) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _infoTile(Icons.calendar_today_rounded, "Due Date", "Today"),
-          Container(height: 30, width: 1, color: Colors.grey.shade200),
-          _infoTile(Icons.priority_high_rounded, "Priority", "High"),
-          Container(height: 30, width: 1, color: Colors.grey.shade200),
-          _infoTile(Icons.category_rounded, "Category", "Work"),
+          _infoTile(Icons.calendar_month_rounded, "Due Date", 
+              widget.task.dueDate != null ? df.format(widget.task.dueDate!) : "No Date"),
+          _vDivider(),
+          _infoTile(Icons.priority_high_rounded, "Priority", 
+              _getPriorityText(widget.task.priority ?? 1)),
         ],
       ),
     );
   }
+
+  Widget _buildAssigneeTile() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: AppColors.primary.withOpacity(0.1),
+            child: Text("U${widget.task.assigneeId}", style: const TextStyle(color: AppColors.primary, fontSize: 12)),
+          ),
+          const SizedBox(width: 12),
+          Text("Member ID: ${widget.task.assigneeId}", style: const TextStyle(fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  String _getPriorityText(int p) {
+    if (p == 3) return "High";
+    if (p == 2) return "Medium";
+    return "Low";
+  }
+
+  Widget _vDivider() => Container(height: 30, width: 1, color: Colors.grey.shade100);
 
   Widget _infoTile(IconData icon, String label, String value) {
     return Column(
@@ -181,7 +196,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   Widget _buildBottomAction(Color statusColor) {
     return Container(
-      padding: EdgeInsets.fromLTRB(24, 20, 24, 20 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + MediaQuery.of(context).padding.bottom),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -191,7 +206,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         children: [
           Expanded(
             child: ElevatedButton(
-              onPressed: _changeStatus,
+              onPressed: () {
+                // Logic to cycle status via ref.read(tasksProvider.notifier)
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: statusColor,
                 foregroundColor: Colors.white,
@@ -199,24 +216,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: const Text(
-                'Update Progress',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: const Text('Update Status', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            height: 56,
-            width: 56,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.edit_note_rounded, color: Colors.black87),
           ),
         ],
       ),
     );
   }
 }
+
+const _sectionHeaderStyle = TextStyle(
+  fontSize: 11,
+  fontWeight: FontWeight.w800,
+  color: Color(0xFF8E8E8E),
+  letterSpacing: 1.5,
+);

@@ -10,21 +10,17 @@ class TaskRepository implements ITaskRepository {
   final NotificationRepository _notificationRepo;
   final ReminderService _reminderService;
 
-  /// ================= CONSTRUCTOR =================
   TaskRepository(this._db, this._notificationRepo, this._reminderService);
 
-  // ================= CREATE =================
   @override
   Future<int> createTask(TasksCompanion task) async {
     final id = await _db.into(_db.tasks).insert(task);
     final createdTask = await getTaskById(id);
 
-    // schedule reminder
     if (createdTask != null) {
       await _reminderService.schedule(createdTask);
     }
 
-    // activity + notification
     if (task.title.present) {
       await _logActivity(
         'created',
@@ -43,11 +39,9 @@ class TaskRepository implements ITaskRepository {
         ),
       );
     }
-
     return id;
   }
 
-  // ================= READ =================
   @override
   Future<List<Task>> getAllTasks() => _db.select(_db.tasks).get();
 
@@ -70,34 +64,20 @@ class TaskRepository implements ITaskRepository {
     if (priority != null) {
       query.where((t) => t.priority.equals(priority));
     }
-
     if (hasDueDate != null) {
-      query.where(
-        (t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull(),
-      );
+      query.where((t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull());
     }
-
     if (fromDate != null && toDate != null) {
       query.where((t) => t.dueDate.isBetweenValues(fromDate, toDate));
     }
-
     if (tagId != null) query.where((t) => t.tagId.equals(tagId));
     if (projectId != null) query.where((t) => t.projectId.equals(projectId));
 
     query.orderBy([
       switch (sortBy) {
-        'priority_desc' => (t) => OrderingTerm(
-          expression: t.priority,
-          mode: OrderingMode.desc,
-        ),
-        'due_date_asc' => (t) => OrderingTerm(
-          expression: t.dueDate,
-          mode: OrderingMode.asc,
-        ),
-        _ => (t) => OrderingTerm(
-          expression: t.updatedAt,
-          mode: OrderingMode.desc,
-        ),
+        'priority_desc' => (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.desc),
+        'due_date_asc' => (t) => OrderingTerm(expression: t.dueDate, mode: OrderingMode.asc),
+        _ => (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
       },
     ]);
 
@@ -106,12 +86,9 @@ class TaskRepository implements ITaskRepository {
 
   @override
   Future<Task?> getTaskById(int id) {
-    return (_db.select(
-      _db.tasks,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    return (_db.select(_db.tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  // ================= REMINDERS QUERY =================
   @override
   Future<List<Task>> fetchUpcomingReminders(DateTime from, DateTime to) {
     return (_db.select(_db.tasks)
@@ -121,24 +98,19 @@ class TaskRepository implements ITaskRepository {
         .get();
   }
 
-  // ================= UPDATE =================
   @override
   Future<bool> updateTask(Task task) async {
     final old = await getTaskById(task.id);
     if (old == null) return false;
 
-    // cancel reminder if completed
     if (task.status == 'done') {
       await _reminderService.cancel(task.id);
     }
-
-    // reschedule reminder if enabled
     if (task.reminderEnabled == true) {
       await _reminderService.schedule(task);
     }
 
     final now = DateTime.now();
-
     final updated = task.copyWith(
       updatedAt: Value(now),
       completedAt: Value(task.status == 'done' ? now : null),
@@ -147,13 +119,7 @@ class TaskRepository implements ITaskRepository {
     final ok = await _db.update(_db.tasks).replace(updated);
 
     if (ok) {
-      await _logActivity(
-        'edited',
-        'Task updated',
-        taskId: task.id,
-        projectId: task.projectId,
-      );
-
+      await _logActivity('edited', 'Task updated', taskId: task.id, projectId: task.projectId);
       await _notificationRepo.addNotification(
         NotificationsCompanion.insert(
           type: 'task',
@@ -164,11 +130,9 @@ class TaskRepository implements ITaskRepository {
         ),
       );
     }
-
     return ok;
   }
 
-  // ================= DELETE =================
   @override
   Future<int> deleteTask(int id) async {
     await _reminderService.cancel(id);
@@ -180,36 +144,23 @@ class TaskRepository implements ITaskRepository {
     return _db.delete(_db.tasks).go();
   }
 
-  // ================= SEED =================
   @override
   Future<void> seedDatabase() => SeedData(_db).seed();
 
-  // ================= VERSION =================
+  // 🚀 FIXED METHOD
   @override
   Future<int> getDatabaseVersion() => _db.getDatabaseVersion();
 
-  // ================= ACTIVITY =================
   @override
   Future<List<ActivityLog>> getRecentActivity() {
     return (_db.select(_db.activityLogs)
-          ..orderBy([
-            (t) =>
-                OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc),
-          ])
+          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)])
           ..limit(20))
         .get();
   }
 
-  // ================= PRIVATE =================
-  Future<void> _logActivity(
-    String action,
-    String description, {
-    int? taskId,
-    int? projectId,
-  }) async {
-    await _db
-        .into(_db.activityLogs)
-        .insert(
+  Future<void> _logActivity(String action, String description, {int? taskId, int? projectId}) async {
+    await _db.into(_db.activityLogs).insert(
           ActivityLogsCompanion.insert(
             action: action,
             description: Value(description),
