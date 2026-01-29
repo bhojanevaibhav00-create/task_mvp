@@ -249,6 +249,82 @@ The repository pattern is used to abstract the data source (Drift Database).
 
 ---
 
+## Helper Methods & Utilities Reference
+
+This section provides a comprehensive guide to the helper methods and utilities available in the project, categorized by their domain. These methods abstract complex logic, ensuring the UI remains clean and declarative.
+
+### 1. Repository Helpers (Data Aggregation)
+
+These methods perform complex database queries or aggregations to prepare data for the UI.
+
+#### `ProjectRepository.watchProjectStatistics`
+
+- **Location**: `lib/data/repositories/project_repository.dart`
+- **Usage**: `StreamBuilder(stream: projectRepo.watchProjectStatistics(), ...)`
+- **Purpose**: Real-time dashboard metrics.
+- **Logic**: Joins `Projects` and `Tasks`. Calculates:
+  - `progress`: (Completed Tasks / Total Tasks).
+  - `overdueTasks`: Tasks where `dueDate < now` AND `status != done`.
+  - `upcomingTasks`: Tasks where `dueDate > now`.
+
+#### `CollaborationRepository.listAvailableUsersNotInProject`
+
+- **Location**: `lib/data/repositories/collaboration_repository.dart`
+- **Usage**: Populating the "Add Member" dialog.
+- **Purpose**: Prevents duplicate memberships.
+- **Logic**: `SELECT * FROM users WHERE id NOT IN (SELECT userId FROM project_members WHERE projectId = ?)`.
+
+#### `TaskRepository.getRecentActivity`
+
+- **Location**: `lib/data/repositories/task_repository.dart`
+- **Usage**: Home screen "Recent Activity" feed.
+- **Purpose**: Audit trail visualization.
+- **Logic**: Returns the latest 20 `ActivityLogs` entries, sorted by time descending.
+
+#### `CollaborationRepository.searchUsers`
+
+- **Location**: `lib/data/repositories/collaboration_repository.dart`
+- **Usage**: User search autocomplete.
+- **Logic**: SQL `LIKE %query%` on the user name field.
+
+### 2. Domain Logic Helpers (Extensions & Filters)
+
+These helpers reside in the `models` folder and handle business rules.
+
+#### `TaskFilters.apply`
+
+- **Location**: `lib/data/models/task_filters.dart`
+- **Usage**: `final visibleTasks = TaskFilters.apply(allTasks, query: 'bug', status: ...);`
+- **Purpose**: Centralized filtering logic for search bars and sidebars.
+- **Logic**:
+  - Checks text match in `title` or `description`.
+  - Checks date ranges (e.g., `isToday`, `isOverdue`).
+  - Filters by `Priority` and `Tag`.
+
+#### `TaskStatus.next` (Extension)
+
+- **Location**: `lib/data/models/task_extensions.dart`
+- **Usage**: `task.status.next()` inside a button callback.
+- **Purpose**: Enforces the workflow state machine.
+- **Logic**: `todo` → `inProgress` → `review` → `done`.
+
+#### `TaskStatus.label` / `ProjectRole.label` (Extension)
+
+- **Location**: `lib/data/models/task_extensions.dart` / `project_role.dart`
+- **Usage**: `Text(task.status.label)`
+- **Purpose**: Converts internal enum names (camelCase) to user-friendly display strings (Title Case).
+
+### 3. Development Helpers
+
+#### `SeedData.seed`
+
+- **Location**: `lib/data/seed/seed_data.dart`
+- **Usage**: Triggered by "Seed Database" button in Settings/DevTools.
+- **Purpose**: Rapidly populates the app with realistic test data.
+- **Logic**: Idempotent insert (checks for existence before adding) to prevent duplicates.
+
+---
+
 ## Testing & Validation Notes
 
 ### Edge Case Validation
@@ -284,6 +360,36 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
   This allowed rapid visual verification of filtering and sorting logic without manual entry.
 
 **Note**: The seed script is designed to be **idempotent**. It checks for existing records (by name/title) before inserting, so you can safely press "Seed Data" multiple times during development without creating duplicate users, projects, or tasks.
+
+---
+
+## Demo Script Flow
+
+Use this flow to demonstrate the core capabilities of the MVP:
+
+1. **Data Seeding**
+   - Navigate to **Settings** (or DevTools).
+   - Tap **"Seed Database"**.
+   - _Result_: The app populates with sample users, projects ("Mobile App Redesign"), and tasks.
+
+2. **Dashboard Overview**
+   - Return to the **Home/Dashboard** screen.
+   - Observe the **Project Cards**.
+   - _Check_: "Mobile App Redesign" should show a progress bar and task counts (e.g., "1 Overdue").
+
+3. **Task Workflow**
+   - Tap on the "Mobile App Redesign" project.
+   - Find a task in **"To Do"** (e.g., "API Integration").
+   - Tap the task to open details.
+   - Change Status to **"In Progress"**.
+   - _Result_: The task moves to the "In Progress" section/tab.
+
+4. **Collaboration Simulation**
+   - In the Project view, tap the **"Members"** icon/button.
+   - Tap **"Add Member"**.
+   - Select a user (e.g., "Evan Wright") from the list.
+   - _Result_: The user is added to the list.
+   - _Constraint Check_: Try removing the "Owner" (Alice). The app should block this action.
 
 ---
 
