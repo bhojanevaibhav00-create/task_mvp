@@ -8,7 +8,6 @@ import '../../../core/providers/task_providers.dart';
 import '../../../data/models/enums.dart';
 import '../../../core/constants/app_colors.dart';
 
-import '../../projects/presentation/project_members_screen.dart';
 import 'task_create_edit_screen.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/task_card.dart';
 import 'package:task_mvp/core/providers/notification_providers.dart';
@@ -29,16 +28,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _navigateToMembers() {
-    final currentProjectId = ref.read(projectFilterProvider) ?? 1;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProjectMembersScreen(projectId: currentProjectId),
-      ),
-    );
   }
 
   void _openCreateTask() {
@@ -69,20 +58,18 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         physics: const BouncingScrollPhysics(),
         slivers: [
           _buildSliverAppBar(),
-          _buildCollaborationTools(),
+          _buildSearchHeader(),
           filteredTasksAsync.when(
             loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
             error: (e, _) => SliverFillRemaining(child: Center(child: Text('Error: $e'))),
             data: (dynamic tasksData) {
               final List tasks = tasksData is List ? tasksData : [];
               
-              // Apply search filter
               final visibleTasks = tasks.where((t) {
                 final task = t as db.Task;
                 return task.title.toLowerCase().contains(_searchQuery.toLowerCase());
               }).toList();
 
-              // 🚀 FIX: Correctly show "No tasks found" when the list is empty
               if (visibleTasks.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
@@ -100,7 +87,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                         padding: const EdgeInsets.only(bottom: 12),
                         child: TaskCard(
                           task: task,
-                          onTap: () => _openEditTask(task), // Task is clickable again
+                          onTap: () => _openEditTask(task),
                           onToggleDone: () {
                             final isDone = task.status == TaskStatus.done.name;
                             final newStatus = isDone ? TaskStatus.todo.name : TaskStatus.done.name;
@@ -141,47 +128,17 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         background: Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
       ),
       actions: [
-        // 🚀 FIX: Removed the extra "People" icon here to avoid two options
         _buildNotificationIcon(ref),
         const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildCollaborationTools() {
+  Widget _buildSearchHeader() {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTeamShortcutChip(),
-            const SizedBox(height: 16),
-            _buildSearchBar(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTeamShortcutChip() {
-    return GestureDetector(
-      onTap: _navigateToMembers,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.group_add_rounded, size: 18, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text("Manage Project Team", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
-          ],
-        ),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+        child: _buildSearchBar(),
       ),
     );
   }
@@ -189,18 +146,26 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white, // Background of the bar
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
       ),
       child: TextField(
         controller: _searchController,
         onChanged: (v) => setState(() => _searchQuery = v),
-        decoration: const InputDecoration(
+        // ✅ FIX: Explicitly set text style to be dark so it's visible on white background
+        style: const TextStyle(color: Color(0xFF111827), fontSize: 15),
+        decoration: InputDecoration(
           hintText: 'Search your tasks...',
-          prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF6B7280)),
+          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)), // Grey hint
+          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6B7280)),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          // Ensure background is solid
+          filled: true,
+          fillColor: Colors.white,
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
         ),
       ),
     );

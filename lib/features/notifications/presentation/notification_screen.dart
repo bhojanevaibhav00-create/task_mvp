@@ -11,7 +11,6 @@ class NotificationScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notificationsAsync = ref.watch(notificationsStreamProvider);
     final repo = ref.read(notificationRepositoryProvider);
-    final theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
@@ -22,7 +21,6 @@ class NotificationScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         foregroundColor: const Color(0xFF1A1C1E),
         actions: [
-          // Styled TextButton for 'Mark all read'
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: TextButton(
@@ -32,7 +30,7 @@ class NotificationScreen extends ConsumerWidget {
                   if (!n.isRead) await repo.markRead(n.id);
                 }
               },
-              child: Text(
+              child: const Text(
                 'Mark all read',
                 style: TextStyle(
                   color: AppColors.primary,
@@ -58,8 +56,7 @@ class NotificationScreen extends ConsumerWidget {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final n = notifications[index];
-
-              return _buildNotificationCard(context, n, repo, theme);
+              return _buildNotificationCard(context, n, repo);
             },
           );
         },
@@ -67,7 +64,7 @@ class NotificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, dynamic n, dynamic repo, ThemeData theme) {
+  Widget _buildNotificationCard(BuildContext context, dynamic n, dynamic repo) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -86,19 +83,23 @@ class NotificationScreen extends ConsumerWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
+              // 1. Mark as read immediately
               if (!n.isRead) await repo.markRead(n.id);
-              if (n.taskId != null) context.go('/tasks/${n.taskId}');
+              
+              // 2. Deep Linking Logic for Sprint 7
+              // Check if it's an assignment and has a valid taskId
+              if (n.taskId != null) {
+                // Using .push instead of .go to keep the bottom nav intact
+                context.push('/tasks/${n.taskId}');
+              }
             },
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icon with dynamic indicator
-                  _buildLeadingIcon(n.isRead),
+                  _buildLeadingIcon(n.isRead, n.type),
                   const SizedBox(width: 16),
-                  
-                  // Content
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,7 +148,15 @@ class NotificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLeadingIcon(bool isRead) {
+  Widget _buildLeadingIcon(bool isRead, String type) {
+    // Sprint 7: Choose icon based on notification type
+    IconData iconData;
+    if (type == 'assignment') {
+      iconData = Icons.assignment_ind_rounded;
+    } else {
+      iconData = isRead ? Icons.notifications_none_rounded : Icons.notifications_active_rounded;
+    }
+
     return Stack(
       children: [
         Container(
@@ -157,7 +166,7 @@ class NotificationScreen extends ConsumerWidget {
             shape: BoxShape.circle,
           ),
           child: Icon(
-            isRead ? Icons.notifications_none_rounded : Icons.notifications_active_rounded,
+            iconData,
             color: isRead ? Colors.grey.shade400 : AppColors.primary,
             size: 22,
           ),
@@ -192,10 +201,10 @@ class NotificationScreen extends ConsumerWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A1C1E)),
           ),
           const SizedBox(height: 8),
-          Text(
-            'We\'ll let you know when something\nimportant happens.',
+          const Text(
+            'New assignments will appear here.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade500, height: 1.5),
+            style: TextStyle(color: Colors.grey, height: 1.5),
           ),
         ],
       ),

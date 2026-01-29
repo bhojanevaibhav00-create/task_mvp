@@ -1,8 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
-// Alias 'db' is mandatory here
 import '../../data/database/database.dart' as db;
 import 'task_providers.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+ // Ensure databaseProvider is accessible
+import '../../../data/database/database.dart';
+
+// ✅ Move this here to make it accessible to all screens
+final allProjectsProvider = FutureProvider.autoDispose<List<Project>>((ref) async {
+  final db = ref.watch(databaseProvider);
+  return await db.select(db.projects).get();
+});
 
 class MemberWithUser {
   final db.ProjectMember member;
@@ -10,7 +18,7 @@ class MemberWithUser {
   MemberWithUser(this.member, this.user);
 }
 
-/// 🚀 PROVIDER: प्रोजेक्ट मेंबर्सची यादी 'innerJoin' वापरून मिळवण्यासाठी
+/// PROVIDER: Fetches the list of project members using an inner join with the Users table
 final projectMembersProvider = FutureProvider.family<List<MemberWithUser>, int>((ref, projectId) async {
   final database = ref.watch(databaseProvider);
   
@@ -35,12 +43,12 @@ final projectMembersProvider = FutureProvider.family<List<MemberWithUser>, int>(
   }).toList();
 });
 
-/// 🚀 NOTIFIER: मेंबर ॲड/रिमूव्ह करणे आणि ॲक्टिव्हिटी लॉग करणे
+/// NOTIFIER: Handles Adding/Removing members and enforcing Role Safety rules
 class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
   final db.AppDatabase database;
   CollaborationNotifier(this.database) : super(const AsyncValue.data(null));
 
-  // --- १. मेंबर ॲड करणे (Add Member Flow) ---
+  // --- 1. Add Member logic ---
   Future<void> addMember(int projectId, int userId, String role) async {
     state = const AsyncValue.loading();
     try {
@@ -52,7 +60,7 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
         ),
       );
 
-      // ✅ Activity Log: नवीन मेंबर ॲड केल्याची नोंद करणे
+      // Log activity to the database
       await _logCollaborationActivity(
         projectId: projectId,
         action: 'Member Added',
@@ -65,35 +73,43 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  // --- २. मेंबर रिमूव्ह करणे (Remove Member Flow) ---
+  // --- 2. Remove Member logic with Last-Owner Protection ---
   Future<void> removeMember(int projectId, int userId, List<MemberWithUser> allMembers) async {
+    state = const AsyncValue.loading();
     try {
-      final owners = allMembers.where((m) => m.member.role.toLowerCase() == 'owner').toList();
+      // Find the specific member we want to delete
       final memberToDelete = allMembers.firstWhere((m) => m.member.userId == userId);
+      
+      // Filter list to find all current owners
+      final owners = allMembers.where((m) => m.member.role.toLowerCase() == 'owner').toList();
 
-      // 🔐 Last-owner protection logic
+      // ROLE SAFETY CHECK:
+      // If the member to delete is an Owner, check if they are the ONLY owner left.
       if (memberToDelete.member.role.toLowerCase() == 'owner' && owners.length <= 1) {
-        throw Exception("At least 1 Owner required");
+        throw Exception("Safety Error: Cannot remove the last owner. Project must have at least one owner.");
       }
 
+      // Proceed with deletion if check passes
       await (database.delete(database.projectMembers)
         ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
         .go();
       
-      
+      // Log the removal activity
       await _logCollaborationActivity(
         projectId: projectId,
         action: 'Member Removed',
-        details: 'User ID $userId removed from project',
+        details: 'User ${memberToDelete.user.name} removed from project',
       );
         
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      // Re-throw to allow the UI to catch the specific safety error message
+      rethrow; 
     }
   }
 
-  // --- ३. खाजगी पद्धत: Activity + Notifications integration ---
+  // --- 3. Private Helper: Logs collaboration events to Activity table ---
   Future<void> _logCollaborationActivity({
     required int projectId,
     required String action,

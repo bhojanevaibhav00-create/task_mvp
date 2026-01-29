@@ -43,12 +43,16 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
 });
 
 /// ======================================================
-/// TASKS NOTIFIER (Handling Manual State Updates)
+/// TASKS NOTIFIER
+/// ======================================================
+/// ======================================================
+/// TASKS NOTIFIER (Handling Activity Logs & Notifications)
 /// ======================================================
 class TasksNotifier extends StateNotifier<List<Task>> {
   final TaskRepository _repository;
+  final Ref _ref; 
 
-  TasksNotifier(this._repository) : super([]) {
+  TasksNotifier(this._repository, this._ref) : super([]) {
     loadTasks();
   }
 
@@ -60,7 +64,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     }
   }
 
-  // Integration for Sprint 7: Support for assignee and projects
+  // --- Sprint 7: Task Creation with Activity + Notification ---
   Future<void> addTask(
     String title,
     String description, {
@@ -80,13 +84,55 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       createdAt: drift.Value(DateTime.now()),
     );
 
-    await _repository.createTask(companion);
+    final taskId = await _repository.createTask(companion);
+
+    // 🚀 FIXED: Trigger Collab Events directly via DB
+    if (assigneeId != null) {
+      await _triggerCollabEvents(taskId, "Task Assigned: $title", projectId);
+    }
+
     await loadTasks();
   }
 
+  // --- Sprint 7: Update with Assignment Change Detection ---
   Future<void> updateTask(Task task) async {
+    // Find the old state to see if assignee changed
+    final oldTask = state.firstWhere((t) => t.id == task.id, orElse: () => task);
+    
     await _repository.updateTask(task);
+
+    // 🚀 FIXED: Trigger events if a new person is assigned
+    if (task.assigneeId != null && task.assigneeId != oldTask.assigneeId) {
+      await _triggerCollabEvents(task.id, "You were assigned to: ${task.title}", task.projectId);
+    }
+
     await loadTasks();
+  }
+
+  /// 🛡️ Private helper to log Activity and create Notifications
+  /// Directly uses the Database to avoid 'createNotification' method errors
+  Future<void> _triggerCollabEvents(int taskId, String msg, int? pId) async {
+    final db = _ref.read(databaseProvider);
+
+    // 1. Insert into Activity Table
+    await db.into(db.activityLogs).insert(ActivityLogsCompanion.insert(
+      action: 'Task Assignment',
+      description: drift.Value(msg),
+      taskId: drift.Value(taskId),
+      projectId: drift.Value(pId),
+      timestamp: drift.Value(DateTime.now()),
+    ));
+
+    // 2. Insert into Notifications Table (Fixed error here)
+    await db.into(db.notifications).insert(NotificationsCompanion.insert(
+      type: 'assignment',
+      title: 'New Assignment',
+      message: msg,
+      taskId: drift.Value(taskId),
+      projectId: drift.Value(pId),
+      createdAt: drift.Value(DateTime.now()),
+      isRead: const drift.Value(false), // Ensure default value is set
+    ));
   }
 
   Future<void> deleteTask(int id) async {
@@ -96,13 +142,14 @@ class TasksNotifier extends StateNotifier<List<Task>> {
 }
 
 /// ======================================================
-/// FILTERED TASKS STREAM (BEST FOR UI WITH .when())
+/// TASKS PROVIDER
 /// ======================================================
-// This provider is a StreamProvider, use this in your Dashboard Widgets
+final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
+  final repository = ref.watch(taskRepositoryProvider);
+  return TasksNotifier(repository, ref); 
+});
 final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
-
-  // Watching filter states for automatic UI updates
   final status = ref.watch(statusFilterProvider);
   final sortBy = ref.watch(sortByProvider);
   final overdue = ref.watch(overdueFilterProvider);
@@ -112,7 +159,6 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
   List<String>? statuses;
   if (status != 'all') statuses = [status];
 
-  // Logic for overdue filtering
   DateTime? fromDate;
   DateTime? toDate;
   if (overdue) {
@@ -130,15 +176,6 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
   );
 });
 
-/// ======================================================
-/// COLLABORATION & USER PROVIDERS (NEW)
-/// ======================================================
-final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
-  final repository = ref.watch(taskRepositoryProvider);
-  return TasksNotifier(repository);
-});
-
-// To display team members on the Dashboard
 final allUsersProvider = FutureProvider.autoDispose<List<User>>((ref) async {
   final db = ref.watch(databaseProvider);
   return await db.select(db.users).get();

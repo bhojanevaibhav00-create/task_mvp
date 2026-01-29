@@ -8,6 +8,8 @@ class TaskCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onToggleDone;
   final VoidCallback? onDelete;
+  // Added optional assignee name to show initials
+  final String? assigneeName; 
 
   const TaskCard({
     super.key,
@@ -15,6 +17,7 @@ class TaskCard extends StatelessWidget {
     required this.onTap,
     required this.onToggleDone,
     this.onDelete,
+    this.assigneeName,
   });
 
   @override
@@ -44,7 +47,7 @@ class TaskCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // १. STATUS TOGGLE
+                // 1. STATUS TOGGLE
                 GestureDetector(
                   onTap: onToggleDone,
                   child: AnimatedContainer(
@@ -66,7 +69,7 @@ class TaskCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
 
-                // २. TASK INFO
+                // 2. TASK INFO
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,26 +100,35 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
 
-                // ३. ASSIGNEE AVATAR (SPRINT 7 UPDATE)
-                // जर टास्क कोणाला असाईन केला असेल, तरच हे दिसेल
+                // 3. ASSIGNEE AVATAR (SPRINT 7 UPDATE)
+                // Shows initials if name is provided, otherwise a generic person icon
                 if (task.assigneeId != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Tooltip(
-                      message: "Assigned to Team Member",
+                      message: "Assigned to ${assigneeName ?? 'Team Member'}",
                       child: CircleAvatar(
                         radius: 14,
                         backgroundColor: AppColors.primary.withOpacity(0.1),
-                        child: const Icon(
-                          Icons.person_rounded, 
-                          size: 16, 
-                          color: AppColors.primary
-                        ),
+                        child: assigneeName != null && assigneeName!.isNotEmpty
+                            ? Text(
+                                assigneeName![0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10, 
+                                  fontWeight: FontWeight.bold, 
+                                  color: AppColors.primary
+                                ),
+                              )
+                            : const Icon(
+                                Icons.person_rounded, 
+                                size: 14, 
+                                color: AppColors.primary
+                              ),
                       ),
                     ),
                   ),
 
-                // ४. DELETE ACTION
+                // 4. DELETE ACTION
                 if (onDelete != null)
                   IconButton(
                     icon: Icon(
