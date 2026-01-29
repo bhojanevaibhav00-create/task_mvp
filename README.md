@@ -365,31 +365,11 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 
 ## Demo Script Flow
 
-Use this flow to demonstrate the core capabilities of the MVP:
-
-1. **Data Seeding**
-   - Navigate to **Settings** (or DevTools).
-   - Tap **"Seed Database"**.
-   - _Result_: The app populates with sample users, projects ("Mobile App Redesign"), and tasks.
-
-2. **Dashboard Overview**
-   - Return to the **Home/Dashboard** screen.
-   - Observe the **Project Cards**.
-   - _Check_: "Mobile App Redesign" should show a progress bar and task counts (e.g., "1 Overdue").
-
-3. **Task Workflow**
-   - Tap on the "Mobile App Redesign" project.
-   - Find a task in **"To Do"** (e.g., "API Integration").
-   - Tap the task to open details.
-   - Change Status to **"In Progress"**.
-   - _Result_: The task moves to the "In Progress" section/tab.
-
-4. **Collaboration Simulation**
-   - In the Project view, tap the **"Members"** icon/button.
-   - Tap **"Add Member"**.
-   - Select a user (e.g., "Evan Wright") from the list.
-   - _Result_: The user is added to the list.
-   - _Constraint Check_: Try removing the "Owner" (Alice). The app should block this action.
+- **Login**: Enter user ID and password.
+- **Dashboard**: View overview stats. In "Recent Tasks", tap the filter icon and apply a filter by **Status** and **Priority**.
+- **Add Task**: Use the quick action, fill in the details (Title, Priority, Due Date), and save.
+- **My Tasks**: Navigate to the "My Tasks" screen and use the search bar to find the newly created task.
+- **Notifications**: Tap the bell icon to view alerts for the new task.
 
 ---
 
