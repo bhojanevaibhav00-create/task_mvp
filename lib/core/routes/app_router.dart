@@ -13,6 +13,9 @@ import '../../features/tasks/presentation/task_list_screen.dart';
 // Notifications
 import '../../features/notifications/presentation/notification_screen.dart';
 
+// Project Screens (Added for Sprint 7)
+import '../../features/projects/presentation/screens/project_detail_screen.dart'; // ✅ Import your new screen
+
 // Other Screens
 import '../../features/demo/presentation/demo_screen.dart';
 import '../../features/test/presentation/test_screen.dart';
@@ -34,6 +37,16 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.dashboard,
       builder: (context, state) => const DashboardScreen(),
+    ),
+
+    // ================= PROJECTS (Sprint 7) =================
+    GoRoute(
+      path: '/projects/:projectId', // Matches the path pushed from Dashboard
+      builder: (context, state) {
+        // Extract the ID from the URL path and convert to int
+        final projectId = int.parse(state.pathParameters['projectId']!);
+        return ProjectDetailScreen(projectId: projectId);
+      },
     ),
 
     // ================= TASKS =================

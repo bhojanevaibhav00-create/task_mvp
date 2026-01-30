@@ -8,6 +8,8 @@ class TaskCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onToggleDone;
   final VoidCallback? onDelete;
+  // Added optional assignee name to show initials
+  final String? assigneeName; 
 
   const TaskCard({
     super.key,
@@ -15,6 +17,7 @@ class TaskCard extends StatelessWidget {
     required this.onTap,
     required this.onToggleDone,
     this.onDelete,
+    this.assigneeName,
   });
 
   @override
@@ -97,21 +100,30 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
 
-                // 3. ASSIGNEE AVATAR (NEW FOR SPRINT 6)
+                // 3. ASSIGNEE AVATAR (SPRINT 7 UPDATE)
+                // Shows initials if name is provided, otherwise a generic person icon
                 if (task.assigneeId != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: AppColors.primary.withOpacity(0.1),
-                      child: Text(
-                        // Displaying 'U' for User + ID since we have raw ID
-                        "U${task.assigneeId}", 
-                        style: const TextStyle(
-                          fontSize: 10, 
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
+                    child: Tooltip(
+                      message: "Assigned to ${assigneeName ?? 'Team Member'}",
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        child: assigneeName != null && assigneeName!.isNotEmpty
+                            ? Text(
+                                assigneeName![0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10, 
+                                  fontWeight: FontWeight.bold, 
+                                  color: AppColors.primary
+                                ),
+                              )
+                            : const Icon(
+                                Icons.person_rounded, 
+                                size: 14, 
+                                color: AppColors.primary
+                              ),
                       ),
                     ),
                   ),
@@ -119,8 +131,11 @@ class TaskCard extends StatelessWidget {
                 // 4. DELETE ACTION
                 if (onDelete != null)
                   IconButton(
-                    icon: Icon(Icons.delete_outline_rounded, 
-                    color: Colors.red.withOpacity(0.7), size: 22),
+                    icon: Icon(
+                      Icons.delete_outline_rounded, 
+                      color: Colors.red.withOpacity(0.7), 
+                      size: 22
+                    ),
                     onPressed: onDelete,
                   ),
               ],
