@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/notification_providers.dart';
 
@@ -14,37 +13,38 @@ class NotificationScreen extends ConsumerWidget {
     final repo = ref.read(notificationRepositoryProvider);
 
     return Scaffold(
-      // ================= APP BAR =================
+      backgroundColor: const Color(0xFFF8F9FD),
+      // ================= APP BAR (Merged Style) =================
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         title: const Text(
           'Notifications',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            gradient: AppColors.primaryGradient, // ✅ SAME AS DASHBOARD
+            gradient: AppColors.primaryGradient, // ✅ VAISHNAVI: Matches Dashboard
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () async {
-              final notifications = await repo.listNotifications();
-              for (final n in notifications) {
-                if (!n.isRead) {
-                  await repo.markRead(n.id);
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: TextButton(
+              onPressed: () async {
+                final notifications = await repo.listNotifications();
+                for (final n in notifications) {
+                  if (!n.isRead) await repo.markRead(n.id);
                 }
-              }
-            },
-            child: const Text(
-              'Mark all read',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+              },
+              child: const Text(
+                'Mark all read',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
             ),
           ),
@@ -53,59 +53,168 @@ class NotificationScreen extends ConsumerWidget {
 
       // ================= BODY =================
       body: notificationsAsync.when(
-        loading: () =>
-        const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (notifications) {
           if (notifications.isEmpty) {
-            return const Center(
-              child: Text(
-                'No notifications yet',
-                style: TextStyle(fontSize: 16),
-              ),
-            );
+            return _buildEmptyState();
           }
 
-          return ListView.builder(
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             itemCount: notifications.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final n = notifications[index];
-
-              return ListTile(
-                tileColor:
-                n.isRead ? null : AppColors.primarySoft,
-                leading: Icon(
-                  n.isRead
-                      ? Icons.notifications_none
-                      : Icons.notifications_active,
-                  color:
-                  n.isRead ? Colors.grey : AppColors.primary,
-                ),
-                title: Text(
-                  n.title,
-                  style: TextStyle(
-                    fontWeight:
-                    n.isRead ? FontWeight.normal : FontWeight.bold,
-                  ),
-                ),
-                subtitle: Text(n.message),
-                trailing: Text(
-                  _formatTime(n.createdAt),
-                  style: const TextStyle(fontSize: 12),
-                ),
-                onTap: () async {
-                  if (!n.isRead) {
-                    await repo.markRead(n.id);
-                  }
-
-                  if (n.taskId != null) {
-                    context.go('/tasks/${n.taskId}');
-                  }
-                },
-              );
+              // ✅ MAIN: Use the custom card for better UI and Deep Linking
+              return _buildNotificationCard(context, n, repo);
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildNotificationCard(BuildContext context, dynamic n, dynamic repo) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              // 1. Mark as read immediately
+              if (!n.isRead) await repo.markRead(n.id);
+              
+              // 2. ✅ MAIN: Deep Linking Logic for Sprint 7
+              if (n.taskId != null) {
+                context.push('/tasks/${n.taskId}');
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLeadingIcon(n.isRead, n.type),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                n.title,
+                                style: TextStyle(
+                                  fontWeight: n.isRead ? FontWeight.w600 : FontWeight.w800,
+                                  fontSize: 15,
+                                  color: n.isRead ? Colors.grey.shade700 : const Color(0xFF1A1C1E),
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _formatTime(n.createdAt),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade500,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          n.message,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: n.isRead ? Colors.grey.shade500 : Colors.grey.shade700,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeadingIcon(bool isRead, String type) {
+    IconData iconData;
+    if (type == 'assignment') {
+      iconData = Icons.assignment_ind_rounded;
+    } else {
+      iconData = isRead ? Icons.notifications_none_rounded : Icons.notifications_active_rounded;
+    }
+
+    return Stack(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isRead ? Colors.grey.shade100 : AppColors.primary.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            iconData,
+            color: isRead ? Colors.grey.shade400 : AppColors.primary,
+            size: 22,
+          ),
+        ),
+        if (!isRead)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              height: 10,
+              width: 10,
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications_off_rounded, size: 60, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          const Text(
+            'Quiet for now',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A1C1E)),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'New assignments will appear here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, height: 1.5),
+          ),
+        ],
       ),
     );
   }

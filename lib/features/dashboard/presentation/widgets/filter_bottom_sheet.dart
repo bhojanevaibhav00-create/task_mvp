@@ -1,38 +1,36 @@
 import 'package:flutter/material.dart';
-import '../../../../data/models/enums.dart';
+import '../../../../data/database/database.dart' as db;
 import '../../../../data/models/tag_model.dart';
 import '../../../../core/constants/app_colors.dart';
 
+/// Entry point to open the Filter Bottom Sheet
 void openFilterBottomSheet({
   required BuildContext context,
   required List<Tag> allTags,
-  required Set<TaskStatus> statusFilters,
-  required Set<Priority> priorityFilters,
+  required Set<String> statusFilters,
+  required Set<int> priorityFilters,
   required Set<Tag> tagFilters,
   required String? dueBucket,
   required String? sort,
   required Function(
-      Set<TaskStatus>,
-      Set<Priority>,
-      Set<Tag>,
-      String?,
-      String?,
-      ) onApply,
+    Set<String>,
+    Set<int>,
+    Set<Tag>,
+    String?,
+    String?,
+  ) onApply,
 }) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
+    backgroundColor: Colors.transparent, // Set to transparent to show container shape
     builder: (_) => _FilterSheet(
       allTags: allTags,
-      status: statusFilters,
-      priority: priorityFilters,
-      tags: tagFilters,
-      dueBucket: dueBucket,
-      sort: sort,
+      initialStatus: statusFilters,
+      initialPriority: priorityFilters,
+      initialTags: tagFilters,
+      initialDueBucket: dueBucket,
+      initialSort: sort,
       onApply: onApply,
     ),
   );
@@ -40,26 +38,26 @@ void openFilterBottomSheet({
 
 class _FilterSheet extends StatefulWidget {
   final List<Tag> allTags;
-  final Set<TaskStatus> status;
-  final Set<Priority> priority;
-  final Set<Tag> tags;
-  final String? dueBucket;
-  final String? sort;
+  final Set<String> initialStatus;
+  final Set<int> initialPriority;
+  final Set<Tag> initialTags;
+  final String? initialDueBucket;
+  final String? initialSort;
   final Function(
-      Set<TaskStatus>,
-      Set<Priority>,
-      Set<Tag>,
-      String?,
-      String?,
-      ) onApply;
+    Set<String>,
+    Set<int>,
+    Set<Tag>,
+    String?,
+    String?,
+  ) onApply;
 
   const _FilterSheet({
     required this.allTags,
-    required this.status,
-    required this.priority,
-    required this.tags,
-    required this.dueBucket,
-    required this.sort,
+    required this.initialStatus,
+    required this.initialPriority,
+    required this.initialTags,
+    required this.initialDueBucket,
+    required this.initialSort,
     required this.onApply,
   });
 
@@ -68,205 +66,195 @@ class _FilterSheet extends StatefulWidget {
 }
 
 class _FilterSheetState extends State<_FilterSheet> {
-  late Set<TaskStatus> status;
-  late Set<Priority> priority;
+  late Set<String> status;
+  late Set<int> priority;
   late Set<Tag> tags;
   String? dueBucket;
+  String? sort;
 
   @override
   void initState() {
     super.initState();
-    status = {...widget.status};
-    priority = {...widget.priority};
-    tags = {...widget.tags};
-    dueBucket = widget.dueBucket;
+    status = {...widget.initialStatus};
+    priority = {...widget.initialPriority};
+    tags = {...widget.initialTags};
+    dueBucket = widget.initialDueBucket;
+    sort = widget.initialSort;
   }
 
   @override
   Widget build(BuildContext context) {
+    // ✅ VAISHNAVI: Theme-aware color logic
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 16,
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _dragHandle(),
-          const SizedBox(height: 16),
-
-          Text(
-            'Filters',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: isDark
-                  ? AppColors.textPrimaryDark
-                  : AppColors.textPrimaryLight,
-            ),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20,
           ),
-          const SizedBox(height: 20),
-
-          _section(
-            'Status',
-            TaskStatus.values.map(_statusChip).toList(),
-          ),
-          _section(
-            'Priority',
-            Priority.values.map(_priorityChip).toList(),
-          ),
-          _section(
-            'Due',
-            ['Today', 'Overdue', 'Next 7 Days'].map(_dueChip).toList(),
-          ),
-
-          const SizedBox(height: 20),
-
-          Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    widget.onApply(
-                      status,
-                      priority,
-                      tags,
-                      dueBucket,
-                      widget.sort,
-                    );
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Apply'),
-                ),
-              ),
+              _dragHandle(),
+              const SizedBox(height: 16),
+              _header(isDark),
+              const SizedBox(height: 24),
+
+              // ✅ MAIN: Functional Sections with VAISHNAVI: Dark Mode Styling
+              _cardSection("Status", ["todo", "inProgress", "done", "review"].map(_statusChip).toList(), isDark),
+              _cardSection("Priority", [1, 2, 3].map(_priorityChip).toList(), isDark),
+              _cardSection("Due Date", ["Today", "Overdue", "Upcoming"].map(_dueChip).toList(), isDark),
+              _cardSection("Tags", widget.allTags.map(_tagChip).toList(), isDark),
+
+              const SizedBox(height: 24),
+              _actions(isDark),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  // ================= UI HELPERS =================
-
-  Widget _dragHandle() {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 5,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade400,
-          borderRadius: BorderRadius.circular(8),
         ),
       ),
     );
   }
 
-  Widget _section(String title, List<Widget> chips) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+  // ================= UI COMPONENTS =================
+
+  Widget _dragHandle() {
+    return Center(
+      child: Container(
+        width: 48, height: 5,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
+  Widget _header(bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          "Filter Tasks",
+          style: TextStyle(
+            fontSize: 22, 
+            fontWeight: FontWeight.bold, 
+            color: isDark ? Colors.white : const Color(0xFF1E293B)
+          ),
+        ),
+        TextButton(
+          onPressed: () => setState(() {
+            status.clear(); priority.clear(); tags.clear(); dueBucket = null;
+          }),
+          child: const Text("Reset All", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  Widget _cardSection(String title, List<Widget> chips, bool isDark) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 10),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey)),
+          const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: chips),
         ],
       ),
     );
   }
 
-  // ================= CHIPS =================
-
-  Widget _statusChip(TaskStatus s) {
-    final selected = status.contains(s);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _statusChip(String s) {
+    final isSelected = status.contains(s);
     return ChoiceChip(
-      label: Text(
-        s.name,
-        style: TextStyle(
-          color: selected
-              ? Colors.white
-              : isDark
-              ? AppColors.textPrimaryDark
-              : AppColors.textPrimaryLight,
-          fontWeight: FontWeight.w600,
-        ),
+      label: Text(s.toUpperCase()),
+      selected: isSelected,
+      onSelected: (_) => setState(() => isSelected ? status.remove(s) : status.add(s)),
+      selectedColor: AppColors.primary.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? AppColors.primary : Colors.blueGrey, 
+        fontWeight: FontWeight.bold, fontSize: 11
       ),
-      selected: selected,
-      selectedColor: AppColors.primary,
-      backgroundColor:
-      isDark ? AppColors.cardDark : AppColors.chipBackground,
-      onSelected: (_) =>
-          setState(() => selected ? status.remove(s) : status.add(s)),
     );
   }
 
-  Widget _priorityChip(Priority p) {
-    final selected = priority.contains(p);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _priorityChip(int p) {
+    final isSelected = priority.contains(p);
+    final labels = {1: "LOW", 2: "MEDIUM", 3: "HIGH"};
+    final colors = {1: Colors.green, 2: Colors.orange, 3: Colors.red};
 
     return ChoiceChip(
-      label: Text(
-        p.name,
-        style: TextStyle(
-          color: selected
-              ? Colors.white
-              : isDark
-              ? AppColors.textPrimaryDark
-              : AppColors.textPrimaryLight,
-          fontWeight: FontWeight.w600,
-        ),
+      label: Text(labels[p]!),
+      selected: isSelected,
+      onSelected: (_) => setState(() => isSelected ? priority.remove(p) : priority.add(p)),
+      selectedColor: colors[p]!.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? colors[p] : Colors.blueGrey, 
+        fontWeight: FontWeight.bold, fontSize: 11
       ),
-      selected: selected,
-      selectedColor: AppColors.primary,
-      backgroundColor:
-      isDark ? AppColors.cardDark : AppColors.chipBackground,
-      onSelected: (_) =>
-          setState(() => selected ? priority.remove(p) : priority.add(p)),
     );
   }
 
   Widget _dueChip(String d) {
-    final selected = dueBucket == d;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final isSelected = dueBucket == d;
     return ChoiceChip(
-      label: Text(
-        d,
-        style: TextStyle(
-          color: selected
-              ? Colors.white
-              : isDark
-              ? AppColors.textPrimaryDark
-              : AppColors.textPrimaryLight,
-          fontWeight: FontWeight.w600,
+      label: Text(d),
+      selected: isSelected,
+      onSelected: (_) => setState(() => dueBucket = isSelected ? null : d),
+      selectedColor: Colors.blue.withOpacity(0.2),
+    );
+  }
+
+  Widget _tagChip(Tag t) {
+    final isSelected = tags.contains(t);
+    return ChoiceChip(
+      label: Text(t.label),
+      selected: isSelected,
+      onSelected: (_) => setState(() => isSelected ? tags.remove(t) : tags.add(t)),
+    );
+  }
+
+  Widget _actions(bool isDark) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel", style: TextStyle(color: isDark ? Colors.white70 : Colors.grey, fontWeight: FontWeight.bold)),
+          ),
         ),
-      ),
-      selected: selected,
-      selectedColor: AppColors.primary,
-      backgroundColor:
-      isDark ? AppColors.cardDark : AppColors.chipBackground,
-      onSelected: (_) =>
-          setState(() => dueBucket = selected ? null : d),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 0,
+            ),
+            onPressed: () {
+              widget.onApply(status, priority, tags, dueBucket, sort);
+              Navigator.pop(context);
+            },
+            child: const Text("Apply Filters", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
     );
   }
 }

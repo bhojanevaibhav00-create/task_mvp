@@ -5,7 +5,7 @@ class SeedData {
   final AppDatabase db;
 
   SeedData(this.db);
-
+  //updated seeds.
   /// Populates the database with mock users, projects, members, and assigned tasks.
   Future<void> seed() async {
     // 1. Create Users
@@ -72,13 +72,13 @@ class SeedData {
     // 3. Add Project Members
     final memberships = {
       'Mobile App Redesign': [
-        {'user': 'Alice Johnson', 'role': 'admin'},
-        {'user': 'Bob Smith', 'role': 'member'},
-        {'user': 'Charlie Davis', 'role': 'viewer'},
+        {'user': 'Alice Johnson', 'role': 'owner'},
+        {'user': 'Bob Smith', 'role': 'admin'},
+        {'user': 'Charlie Davis', 'role': 'member'},
       ],
       'Backend Migration': [
         {'user': 'Alice Johnson', 'role': 'member'},
-        {'user': 'Diana Prince', 'role': 'admin'},
+        {'user': 'Diana Prince', 'role': 'owner'},
         {'user': 'Evan Wright', 'role': 'member'},
       ],
     };
@@ -112,6 +112,7 @@ class SeedData {
     }
 
     // 4. Create Tasks with Assignments
+    final now = DateTime.now();
     final tasks = [
       {
         'title': 'Design System Setup',
@@ -119,6 +120,7 @@ class SeedData {
         'assignee': 'Alice Johnson',
         'status': 'done',
         'priority': 3,
+        'dueDate': now.subtract(const Duration(days: 5)), // Past
       },
       {
         'title': 'Login Screen UI',
@@ -126,6 +128,7 @@ class SeedData {
         'assignee': 'Bob Smith',
         'status': 'in_progress',
         'priority': 2,
+        'dueDate': now.add(const Duration(days: 2)), // Future
       },
       {
         'title': 'API Integration',
@@ -133,6 +136,7 @@ class SeedData {
         'assignee': 'Bob Smith',
         'status': 'todo',
         'priority': 2,
+        'dueDate': now, // Today
       },
       {
         'title': 'User Acceptance Testing',
@@ -140,6 +144,7 @@ class SeedData {
         'assignee': 'Charlie Davis',
         'status': 'todo',
         'priority': 1,
+        'dueDate': null, // Anytime
       },
       {
         'title': 'Database Schema',
@@ -147,6 +152,7 @@ class SeedData {
         'assignee': 'Diana Prince',
         'status': 'done',
         'priority': 3,
+        'dueDate': now.subtract(const Duration(days: 10)), // Past
       },
       {
         'title': 'Auth Middleware',
@@ -154,6 +160,15 @@ class SeedData {
         'assignee': 'Evan Wright',
         'status': 'in_progress',
         'priority': 3,
+        'dueDate': now.add(const Duration(days: 5)), // Future
+      },
+      {
+        'title': 'Legacy Code Cleanup',
+        'project': 'Backend Migration',
+        'assignee': 'Alice Johnson',
+        'status': 'todo',
+        'priority': 1,
+        'dueDate': now.subtract(const Duration(days: 2)), // Overdue
       },
     ];
 
@@ -161,6 +176,7 @@ class SeedData {
       final pid = projectIds[t['project'] as String];
       final uid = userIds[t['assignee'] as String];
       final title = t['title'] as String;
+      final dueDate = t['dueDate'] as DateTime?;
 
       if (pid != null && uid != null) {
         // Check if task already exists to prevent duplicates
@@ -181,6 +197,7 @@ class SeedData {
                   assigneeId: Value(uid),
                   status: Value(t['status'] as String),
                   priority: Value(t['priority'] as int),
+                  dueDate: Value(dueDate),
                   createdAt: Value(DateTime.now()),
                   updatedAt: Value(DateTime.now()),
                 ),

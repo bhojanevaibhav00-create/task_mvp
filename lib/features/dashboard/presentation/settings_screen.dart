@@ -4,11 +4,11 @@ import 'package:task_mvp/core/constants/app_colors.dart';
 import 'package:task_mvp/core/theme/app_text_styles.dart';
 import 'package:task_mvp/core/theme/theme_controller.dart';
 
-// Notifications Provider
+// ✅ Global Notifications Provider
 final notificationsProvider = StateProvider<bool>((ref) => true);
 
 class SettingsScreen extends ConsumerWidget {
-  SettingsScreen({super.key}); // ✅ non-const (safe)
+  const SettingsScreen({super.key}); // Changed to const for optimization
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,19 +16,19 @@ class SettingsScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-      isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
+      backgroundColor: isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
 
-      // ================= APP BAR (Dashboard style) =================
+      // ================= APP BAR (Synced with Dashboard style) =================
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        title: const Text('Settings'),
+        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: AppColors.primaryGradient,
           ),
         ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
 
       body: ListView(
@@ -40,6 +40,7 @@ class SettingsScreen extends ConsumerWidget {
           _settingTile(
             icon: Icons.dark_mode,
             label: 'Dark Mode',
+            isDark: isDark,
             trailing: ValueListenableBuilder<ThemeMode>(
               valueListenable: ThemeController.themeMode,
               builder: (_, mode, __) {
@@ -56,10 +57,10 @@ class SettingsScreen extends ConsumerWidget {
           _settingTile(
             icon: Icons.notifications,
             label: 'Notifications',
+            isDark: isDark,
             trailing: Switch(
               value: notificationsEnabled,
-              onChanged: (v) =>
-              ref.read(notificationsProvider.notifier).state = v,
+              onChanged: (v) => ref.read(notificationsProvider.notifier).state = v,
               activeColor: AppColors.primary,
             ),
           ),
@@ -70,22 +71,14 @@ class SettingsScreen extends ConsumerWidget {
           _settingTile(
             icon: Icons.person,
             label: 'Profile',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ProfileScreen()),
-              );
-            },
+            isDark: isDark,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
           ),
           _settingTile(
             icon: Icons.lock,
             label: 'Change Password',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ChangePasswordScreen()),
-              );
-            },
+            isDark: isDark,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen())),
           ),
 
           const SizedBox(height: 24),
@@ -94,21 +87,19 @@ class SettingsScreen extends ConsumerWidget {
           _settingTile(
             icon: Icons.info_outline,
             label: 'App Version',
-            trailing: Text('1.0.0', style: AppTextStyles.body),
+            isDark: isDark,
+            trailing: Text('1.0.0', style: AppTextStyles.body.copyWith(color: isDark ? Colors.white70 : Colors.black54)),
           ),
           _settingTile(
             icon: Icons.help_outline,
             label: 'Help & Support',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => HelpScreen()),
-              );
-            },
+            isDark: isDark,
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpScreen())),
           ),
           _settingTile(
             icon: Icons.logout,
             label: 'Logout',
+            isDark: isDark,
             onTap: () => _showLogoutDialog(context),
           ),
         ],
@@ -136,20 +127,22 @@ class SettingsScreen extends ConsumerWidget {
   Widget _settingTile({
     required IconData icon,
     required String label,
+    required bool isDark,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: AppColors.cardElevation,
+      color: isDark ? AppColors.cardDark : Colors.white,
+      elevation: isDark ? 0 : 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.cardRadius),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
         onTap: onTap,
         leading: Icon(icon, color: AppColors.primary),
-        title: Text(label, style: AppTextStyles.body),
-        trailing: trailing ?? const Icon(Icons.chevron_right),
+        title: Text(label, style: AppTextStyles.body.copyWith(color: isDark ? Colors.white : Colors.black87)),
+        trailing: trailing ?? Icon(Icons.chevron_right, color: isDark ? Colors.white38 : Colors.black26),
       ),
     );
   }
@@ -168,7 +161,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Logout'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -176,37 +170,22 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-// ================= SUB SCREENS =================
+// ================= SUB SCREENS (Placeholder logic) =================
 
 class ProfileScreen extends StatelessWidget {
-  ProfileScreen({super.key}); // ✅ non-const
-
+  const ProfileScreen({super.key});
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Profile')));
 }
 
 class ChangePasswordScreen extends StatelessWidget {
-  ChangePasswordScreen({super.key}); // ✅ non-const
-
+  const ChangePasswordScreen({super.key});
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Change Password')),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Change Password')));
 }
 
 class HelpScreen extends StatelessWidget {
-  HelpScreen({super.key}); // ✅ non-const
-
+  const HelpScreen({super.key});
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Help & Support')),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Help & Support')));
 }

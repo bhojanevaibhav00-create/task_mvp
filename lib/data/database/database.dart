@@ -2,9 +2,6 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 part 'database.g.dart';
 
-// here is the database definition and no. of classes is actually a tables.
-// These classes represent tables in your DB
-
 class Tasks extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text().withLength(min: 1, max: 50)();
@@ -13,13 +10,11 @@ class Tasks extends Table {
   DateTimeColumn get dueDate => dateTime().nullable()();
   TextColumn get dueTime => text().nullable()();
   DateTimeColumn get reminderAt => dateTime().nullable()();
-  BoolColumn get reminderEnabled =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get reminderEnabled => boolean().withDefault(const Constant(false))();
   IntColumn get priority => integer().nullable()();
   IntColumn get projectId => integer().nullable().references(Projects, #id)();
   IntColumn get tagId => integer().nullable().references(Tags, #id)();
-  DateTimeColumn get createdAt =>
-      dateTime().nullable().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().nullable().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   IntColumn get assigneeId => integer().nullable().references(Users, #id)();
@@ -38,6 +33,8 @@ class Projects extends Table {
 class Users extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 50)();
+  
+  TextColumn get email => text().nullable()(); 
 }
 
 class Tags extends Table {
@@ -57,7 +54,7 @@ class ActivityLogs extends Table {
 
 class Notifications extends Table {
   IntColumn get id => integer().autoIncrement()();
-  TextColumn get type => text()(); // e.g., 'reminder', 'system', 'alert'
+  TextColumn get type => text()();
   TextColumn get title => text()();
   TextColumn get message => text()();
   IntColumn get taskId => integer().nullable().references(Tasks, #id)();
@@ -71,29 +68,24 @@ class ProjectMembers extends Table {
   IntColumn get userId => integer().references(Users, #id)();
   TextColumn get role => text()();
   DateTimeColumn get joinedAt => dateTime().withDefault(currentDateAndTime)();
-
   @override
   Set<Column> get primaryKey => {projectId, userId};
 }
 
-//Set Up the Database Class
+
 
 @DriftDatabase(
-  tables: [
-    Tasks,
-    Projects,
-    Users,
-    Tags,
-    ActivityLogs,
-    Notifications,
-    ProjectMembers,
-  ],
+  tables: [Tasks, Projects, Users, Tags, ActivityLogs, Notifications, ProjectMembers],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
-
+Future<int> getDatabaseVersion() async {
+    final result = await customSelect('PRAGMA user_version;').getSingle();
+    return result.read<int>('user_version');
+  }
+  
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -103,8 +95,6 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(projects);
           await m.createTable(users);
           await m.createTable(tags);
-        }
-        if (from < 2) {
           try {
             await m.addColumn(tasks, tasks.projectId as GeneratedColumn);
           } catch (e) {}
@@ -120,9 +110,6 @@ class AppDatabase extends _$AppDatabase {
           try {
             await m.addColumn(tasks, tasks.completedAt as GeneratedColumn);
           } catch (e) {}
-        }
-        if (from < 7) {
-          await m.createTable(activityLogs);
         }
         if (from < 3) {
           await m.renameColumn(
@@ -143,31 +130,17 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(tasks, tasks.reminderAt as GeneratedColumn);
           await m.addColumn(tasks, tasks.reminderEnabled as GeneratedColumn);
         }
-        if (from < 6) {
-          await m.addColumn(
-            activityLogs,
-            activityLogs.taskId as GeneratedColumn,
-          );
-          await m.addColumn(
-            activityLogs,
-            activityLogs.projectId as GeneratedColumn,
-          );
-        }
         if (from < 7) {
+          await m.createTable(activityLogs);
           await m.createTable(projectMembers);
           await m.addColumn(tasks, tasks.assigneeId);
+        }
+        if (from < 8) {
+          // Version 8: Maintenance release ensuring schema integrity.
         }
       },
     );
   }
 
-  Future<int> getDatabaseVersion() async {
-    final result = await customSelect('PRAGMA user_version;').getSingle();
-    return result.read<int>('user_version');
-  }
-
-  static QueryExecutor _openConnection() {
-    // This handles finding the right folder on the device automatically
-    return driftDatabase(name: 'my_app_database');
-  }
+  static QueryExecutor _openConnection() => driftDatabase(name: 'my_app_database');
 }

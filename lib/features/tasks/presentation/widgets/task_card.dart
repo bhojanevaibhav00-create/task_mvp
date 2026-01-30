@@ -1,114 +1,146 @@
 import 'package:flutter/material.dart';
-import 'package:task_mvp/data/database/database.dart';
-import 'package:task_mvp/data/models/enums.dart';
+import '../../../../data/database/database.dart'; 
+import '../../../../data/models/enums.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class TaskCard extends StatelessWidget {
-  final Task task;
+  final Task task; 
   final VoidCallback onTap;
   final VoidCallback onToggleDone;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
+  // Added optional assignee name to show initials
+  final String? assigneeName; 
 
   const TaskCard({
     super.key,
     required this.task,
     required this.onTap,
     required this.onToggleDone,
-    required this.onDelete,
+    this.onDelete,
+    this.assigneeName,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDone = task.status == TaskStatus.done.name;
-    final priority = task.priority ?? 1;
+    const primaryText = Color(0xFF111827);
 
-    Color priorityColor = priority == 3
-        ? Colors.red
-        : priority == 2
-            ? Colors.orange
-            : Colors.green;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            IconButton(
-              icon: Icon(
-                isDone ? Icons.check_circle : Icons.circle_outlined,
-                color: isDone ? Colors.green : Colors.grey,
-              ),
-              onPressed: onToggleDone,
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      decoration:
-                          isDone ? TextDecoration.lineThrough : null,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // 1. STATUS TOGGLE
+                GestureDetector(
+                  onTap: onToggleDone,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: isDone ? Colors.green : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDone ? Colors.green : Colors.grey.shade300,
+                        width: 2,
+                      ),
                     ),
+                    child: isDone
+                        ? const Icon(Icons.check, size: 16, color: Colors.white)
+                        : null,
                   ),
-                  const SizedBox(height: 6),
-                  Row(
+                ),
+                const SizedBox(width: 16),
+
+                // 2. TASK INFO
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (task.dueDate != null)
-                        Text(
-                          'Due ${task.dueDate!.day}/${task.dueDate!.month}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: priorityColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          priority == 3
-                              ? 'High'
-                              : priority == 2
-                                  ? 'Medium'
-                                  : 'Low',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: priorityColor,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      Text(
+                        task.title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isDone ? Colors.grey : primaryText,
+                          decoration: isDone ? TextDecoration.lineThrough : null,
                         ),
                       ),
+                      if (task.description != null && task.description!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            task.description!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-                ],
-              ),
+                ),
+
+                // 3. ASSIGNEE AVATAR (SPRINT 7 UPDATE)
+                // Shows initials if name is provided, otherwise a generic person icon
+                if (task.assigneeId != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Tooltip(
+                      message: "Assigned to ${assigneeName ?? 'Team Member'}",
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        child: assigneeName != null && assigneeName!.isNotEmpty
+                            ? Text(
+                                assigneeName![0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 10, 
+                                  fontWeight: FontWeight.bold, 
+                                  color: AppColors.primary
+                                ),
+                              )
+                            : const Icon(
+                                Icons.person_rounded, 
+                                size: 14, 
+                                color: AppColors.primary
+                              ),
+                      ),
+                    ),
+                  ),
+
+                // 4. DELETE ACTION
+                if (onDelete != null)
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete_outline_rounded, 
+                      color: Colors.red.withOpacity(0.7), 
+                      size: 22
+                    ),
+                    onPressed: onDelete,
+                  ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: onDelete,
-            )
-          ],
+          ),
         ),
       ),
     );
