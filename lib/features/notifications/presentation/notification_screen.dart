@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/providers/notification_providers.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/notification_providers.dart';
 
 class NotificationScreen extends ConsumerWidget {
   const NotificationScreen({super.key});
@@ -14,12 +14,20 @@ class NotificationScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
+      // ================= APP BAR (Merged Style) =================
       appBar: AppBar(
-        title: const Text('Notifications', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
-        foregroundColor: const Color(0xFF1A1C1E),
+        foregroundColor: Colors.white,
+        title: const Text(
+          'Notifications',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.primaryGradient, // ✅ VAISHNAVI: Matches Dashboard
+          ),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
@@ -33,7 +41,7 @@ class NotificationScreen extends ConsumerWidget {
               child: const Text(
                 'Mark all read',
                 style: TextStyle(
-                  color: AppColors.primary,
+                  color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
@@ -42,6 +50,8 @@ class NotificationScreen extends ConsumerWidget {
           ),
         ],
       ),
+
+      // ================= BODY =================
       body: notificationsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -51,11 +61,12 @@ class NotificationScreen extends ConsumerWidget {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             itemCount: notifications.length,
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final n = notifications[index];
+              // ✅ MAIN: Use the custom card for better UI and Deep Linking
               return _buildNotificationCard(context, n, repo);
             },
           );
@@ -86,10 +97,8 @@ class NotificationScreen extends ConsumerWidget {
               // 1. Mark as read immediately
               if (!n.isRead) await repo.markRead(n.id);
               
-              // 2. Deep Linking Logic for Sprint 7
-              // Check if it's an assignment and has a valid taskId
+              // 2. ✅ MAIN: Deep Linking Logic for Sprint 7
               if (n.taskId != null) {
-                // Using .push instead of .go to keep the bottom nav intact
                 context.push('/tasks/${n.taskId}');
               }
             },
@@ -149,7 +158,6 @@ class NotificationScreen extends ConsumerWidget {
   }
 
   Widget _buildLeadingIcon(bool isRead, String type) {
-    // Sprint 7: Choose icon based on notification type
     IconData iconData;
     if (type == 'assignment') {
       iconData = Icons.assignment_ind_rounded;

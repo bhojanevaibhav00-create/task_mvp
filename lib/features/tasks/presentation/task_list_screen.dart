@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
-import '../../../data/database/database.dart' as db;
-import '../../../core/providers/task_providers.dart';
-import '../../../data/models/enums.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/task_providers.dart';
+import '../../../core/providers/notification_providers.dart';
+import '../../../data/database/database.dart' as db;
+import '../../../data/models/enums.dart';
 
+import '../../notifications/presentation/notification_screen.dart';
 import 'task_create_edit_screen.dart';
-import 'package:task_mvp/features/tasks/presentation/widgets/task_card.dart';
-import 'package:task_mvp/core/providers/notification_providers.dart';
-import 'package:task_mvp/features/notifications/presentation/notification_screen.dart';
+import 'widgets/task_card.dart';
+import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
+import 'package:task_mvp/features/dashboard/presentation/widgets/task_list_empty_state.dart';
+import 'package:task_mvp/features/dashboard/presentation/widgets/task_list_skeleton.dart';
 
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
@@ -30,6 +33,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     super.dispose();
   }
 
+  // ✅ MERGED: Uses standard Navigator but maintains loadTasks logic
   void _openCreateTask() {
     Navigator.push(
       context,
@@ -51,29 +55,33 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredTasksAsync = ref.watch(filteredTasksProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
+      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          _buildSliverAppBar(),
-          _buildSearchHeader(),
+          _buildSliverAppBar(isDark),
+          _buildSearchHeader(isDark),
           filteredTasksAsync.when(
-            loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+            // ✅ VAISHNAVI: Uses the specialized Skeleton
+            loading: () => const SliverFillRemaining(child: TaskListSkeleton()),
             error: (e, _) => SliverFillRemaining(child: Center(child: Text('Error: $e'))),
             data: (dynamic tasksData) {
               final List tasks = tasksData is List ? tasksData : [];
               
               final visibleTasks = tasks.where((t) {
                 final task = t as db.Task;
-                return task.title.toLowerCase().contains(_searchQuery.toLowerCase());
+                return task.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                       (task.description ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
               }).toList();
 
               if (visibleTasks.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
-                  child: _buildEmptyState(),
+                  // ✅ VAISHNAVI: Uses the specialized Empty State
+                  child: TaskListEmptyState(onAddTask: _openCreateTask),
                 );
               }
 
@@ -116,7 +124,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     );
   }
 
-  Widget _buildSliverAppBar() {
+  Widget _buildSliverAppBar(bool isDark) {
     return SliverAppBar(
       pinned: true,
       expandedHeight: 120,
@@ -129,43 +137,48 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       ),
       actions: [
         _buildNotificationIcon(ref),
+        IconButton(
+          icon: const Icon(Icons.filter_list, color: Colors.white),
+          onPressed: () => openFilterBottomSheet(
+            context: context,
+            allTags: const [],
+            statusFilters: {},
+            priorityFilters: {},
+            tagFilters: {},
+            dueBucket: null,
+            sort: null,
+            onApply: (_, __, ___, ____, _____) {},
+          ),
+        ),
         const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildSearchHeader() {
+  Widget _buildSearchHeader(bool isDark) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
-        child: _buildSearchBar(),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white, // Background of the bar
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (v) => setState(() => _searchQuery = v),
-        // ✅ FIX: Explicitly set text style to be dark so it's visible on white background
-        style: const TextStyle(color: Color(0xFF111827), fontSize: 15),
-        decoration: InputDecoration(
-          hintText: 'Search your tasks...',
-          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)), // Grey hint
-          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6B7280)),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
-          // Ensure background is solid
-          filled: true,
-          fillColor: Colors.white,
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.inputBackgroundDark : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+          ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (v) => setState(() => _searchQuery = v),
+            style: TextStyle(color: isDark ? Colors.white : const Color(0xFF111827), fontSize: 15),
+            decoration: InputDecoration(
+              hintText: 'Search your tasks...',
+              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6B7280)),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 15),
+              filled: true,
+              fillColor: Colors.transparent,
+            ),
+          ),
         ),
       ),
     );
@@ -182,8 +195,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         ),
         if (unreadCount > 0)
           Positioned(
-            right: 8,
-            top: 10,
+            right: 8, top: 10,
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
@@ -191,22 +203,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             ),
           ),
       ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off_rounded, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text(
-            _searchQuery.isEmpty ? 'No tasks found' : 'No results for "$_searchQuery"',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey.shade500),
-          ),
-        ],
-      ),
     );
   }
 }

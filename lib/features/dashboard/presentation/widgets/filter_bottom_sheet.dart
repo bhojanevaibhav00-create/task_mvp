@@ -1,48 +1,42 @@
 import 'package:flutter/material.dart';
-// 🚀 Importing the database model for TaskStatus and Priority
 import '../../../../data/database/database.dart' as db;
 import '../../../../data/models/tag_model.dart';
 import '../../../../core/constants/app_colors.dart';
 
+/// Entry point to open the Filter Bottom Sheet
 void openFilterBottomSheet({
   required BuildContext context,
   required List<Tag> allTags,
-  // 🚀 Changed TaskStatus to use database enum
-  required Set<String> statusFilters, 
+  required Set<String> statusFilters,
   required Set<int> priorityFilters,
   required Set<Tag> tagFilters,
   required String? dueBucket,
   required String? sort,
   required Function(
-      Set<String>,
-      Set<int>,
-      Set<Tag>,
-      String?,
-      String?,
-      ) onApply,
+    Set<String>,
+    Set<int>,
+    Set<Tag>,
+    String?,
+    String?,
+  ) onApply,
 }) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+    backgroundColor: Colors.transparent, // Set to transparent to show container shape
+    builder: (_) => _FilterSheet(
+      allTags: allTags,
+      initialStatus: statusFilters,
+      initialPriority: priorityFilters,
+      initialTags: tagFilters,
+      initialDueBucket: dueBucket,
+      initialSort: sort,
+      onApply: onApply,
     ),
-    builder: (_) {
-      return _FilterBottomSheet(
-        allTags: allTags,
-        initialStatus: statusFilters,
-        initialPriority: priorityFilters,
-        initialTags: tagFilters,
-        initialDueBucket: dueBucket,
-        initialSort: sort,
-        onApply: onApply,
-      );
-    },
   );
 }
 
-class _FilterBottomSheet extends StatefulWidget {
+class _FilterSheet extends StatefulWidget {
   final List<Tag> allTags;
   final Set<String> initialStatus;
   final Set<int> initialPriority;
@@ -50,14 +44,14 @@ class _FilterBottomSheet extends StatefulWidget {
   final String? initialDueBucket;
   final String? initialSort;
   final Function(
-      Set<String>,
-      Set<int>,
-      Set<Tag>,
-      String?,
-      String?,
-      ) onApply;
+    Set<String>,
+    Set<int>,
+    Set<Tag>,
+    String?,
+    String?,
+  ) onApply;
 
-  const _FilterBottomSheet({
+  const _FilterSheet({
     required this.allTags,
     required this.initialStatus,
     required this.initialPriority,
@@ -68,10 +62,10 @@ class _FilterBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
+  State<_FilterSheet> createState() => _FilterSheetState();
 }
 
-class _FilterBottomSheetState extends State<_FilterBottomSheet> {
+class _FilterSheetState extends State<_FilterSheet> {
   late Set<String> status;
   late Set<int> priority;
   late Set<Tag> tags;
@@ -81,7 +75,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   @override
   void initState() {
     super.initState();
-    // Synchronizing with initial values passed from the parent
     status = {...widget.initialStatus};
     priority = {...widget.initialPriority};
     tags = {...widget.initialTags};
@@ -91,47 +84,49 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _dragHandle(),
-            const SizedBox(height: 16),
-            _header(),
-            const SizedBox(height: 24),
+    // ✅ VAISHNAVI: Theme-aware color logic
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-            // Status Filter Section
-            _cardSection("Status", ["todo", "inProgress", "done", "review"].map(_statusChip).toList()),
-            
-            // Priority Filter Section (Using DB int values)
-            _cardSection("Priority", [1, 2, 3].map(_priorityChip).toList()),
-            
-            // Due Date Filter Section
-            _cardSection("Due Date", ["Today", "Overdue", "Upcoming"].map(_dueChip).toList()),
-            
-            // Dynamic Tags Filter Section
-            _cardSection("Tags", widget.allTags.map(_tagChip).toList()),
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _dragHandle(),
+              const SizedBox(height: 16),
+              _header(isDark),
+              const SizedBox(height: 24),
 
-            const SizedBox(height: 24),
-            _actions(),
-          ],
+              // ✅ MAIN: Functional Sections with VAISHNAVI: Dark Mode Styling
+              _cardSection("Status", ["todo", "inProgress", "done", "review"].map(_statusChip).toList(), isDark),
+              _cardSection("Priority", [1, 2, 3].map(_priorityChip).toList(), isDark),
+              _cardSection("Due Date", ["Today", "Overdue", "Upcoming"].map(_dueChip).toList(), isDark),
+              _cardSection("Tags", widget.allTags.map(_tagChip).toList(), isDark),
+
+              const SizedBox(height: 24),
+              _actions(isDark),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ================= PREMIUM UI COMPONENTS =================
+  // ================= UI COMPONENTS =================
 
   Widget _dragHandle() {
     return Center(
       child: Container(
-        width: 48,
-        height: 5,
+        width: 48, height: 5,
         decoration: BoxDecoration(
           color: Colors.grey.shade300,
           borderRadius: BorderRadius.circular(10),
@@ -140,20 +135,21 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
-  Widget _header() {
+  Widget _header(bool isDark) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
+        Text(
           "Filter Tasks",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          style: TextStyle(
+            fontSize: 22, 
+            fontWeight: FontWeight.bold, 
+            color: isDark ? Colors.white : const Color(0xFF1E293B)
+          ),
         ),
         TextButton(
           onPressed: () => setState(() {
-            status.clear();
-            priority.clear();
-            tags.clear();
-            dueBucket = null;
+            status.clear(); priority.clear(); tags.clear(); dueBucket = null;
           }),
           child: const Text("Reset All", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
         ),
@@ -161,20 +157,20 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
-  Widget _cardSection(String title, List<Widget> chips) {
+  Widget _cardSection(String title, List<Widget> chips, bool isDark) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: isDark ? AppColors.cardDark : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.03)),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blueGrey)),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey)),
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: chips),
         ],
@@ -188,9 +184,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       label: Text(s.toUpperCase()),
       selected: isSelected,
       onSelected: (_) => setState(() => isSelected ? status.remove(s) : status.add(s)),
-      selectedColor: AppColors.primary.withOpacity(0.1),
-      labelStyle: TextStyle(color: isSelected ? AppColors.primary : Colors.black87, fontWeight: FontWeight.bold, fontSize: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      selectedColor: AppColors.primary.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? AppColors.primary : Colors.blueGrey, 
+        fontWeight: FontWeight.bold, fontSize: 11
+      ),
     );
   }
 
@@ -203,9 +201,11 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       label: Text(labels[p]!),
       selected: isSelected,
       onSelected: (_) => setState(() => isSelected ? priority.remove(p) : priority.add(p)),
-      selectedColor: colors[p]!.withOpacity(0.1),
-      labelStyle: TextStyle(color: isSelected ? colors[p] : Colors.black87, fontWeight: FontWeight.bold, fontSize: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      selectedColor: colors[p]!.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? colors[p] : Colors.blueGrey, 
+        fontWeight: FontWeight.bold, fontSize: 11
+      ),
     );
   }
 
@@ -215,8 +215,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       label: Text(d),
       selected: isSelected,
       onSelected: (_) => setState(() => dueBucket = isSelected ? null : d),
-      selectedColor: Colors.blue.withOpacity(0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      selectedColor: Colors.blue.withOpacity(0.2),
     );
   }
 
@@ -226,17 +225,16 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       label: Text(t.label),
       selected: isSelected,
       onSelected: (_) => setState(() => isSelected ? tags.remove(t) : tags.add(t)),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 
-  Widget _actions() {
+  Widget _actions(bool isDark) {
     return Row(
       children: [
         Expanded(
           child: TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: Text("Cancel", style: TextStyle(color: isDark ? Colors.white70 : Colors.grey, fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(width: 16),
