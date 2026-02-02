@@ -17,7 +17,6 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ VAISHNAVI: Theme-aware logic for Sprint 7 QA
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Expanded(
@@ -29,8 +28,8 @@ class SummaryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              // ✅ VAISHNAVI: Adaptive shadow color
-              color: isDark ? Colors.black38 : gradient.colors.first.withOpacity(0.3),
+              // ✅ FIX: Improved shadow density for dark mode
+              color: isDark ? Colors.black54 : gradient.colors.first.withOpacity(0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -38,7 +37,6 @@ class SummaryCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // ✅ MAIN: Background Decorative Icon for premium look
             if (icon != null)
               Positioned(
                 right: -12,
@@ -54,7 +52,6 @@ class SummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Icon Header (Vaishnavi style)
                 if (icon != null)
                   Container(
                     padding: const EdgeInsets.all(6),

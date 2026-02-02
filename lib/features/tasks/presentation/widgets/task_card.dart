@@ -8,7 +8,6 @@ class TaskCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onToggleDone;
   final VoidCallback? onDelete;
-  // Added optional assignee name to show initials
   final String? assigneeName; 
 
   const TaskCard({
@@ -22,18 +21,20 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDone = task.status == TaskStatus.done.name;
-    const primaryText = Color(0xFF111827);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        // ✅ PREMIUM WHITE THEME: Using solid white for light mode
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(16), // Softer corners
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
+            // ✅ SUBTLE SHADOW: Avoids "dirty" look on white backgrounds
+            color: isDark ? Colors.black45 : Colors.black.withOpacity(0.03),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -42,34 +43,36 @@ class TaskCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                // 1. STATUS TOGGLE
+                // 1. STATUS TOGGLE (Consistent Checkbox)
                 GestureDetector(
                   onTap: onToggleDone,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 26,
-                    height: 26,
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
                       color: isDone ? Colors.green : Colors.transparent,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isDone ? Colors.green : Colors.grey.shade300,
+                        color: isDone 
+                            ? Colors.green 
+                            : (isDark ? Colors.white24 : Colors.grey.shade300),
                         width: 2,
                       ),
                     ),
                     child: isDone
-                        ? const Icon(Icons.check, size: 16, color: Colors.white)
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
                         : null,
                   ),
                 ),
                 const SizedBox(width: 16),
 
-                // 2. TASK INFO
+                // 2. TASK INFO (High Contrast Text)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,22 +80,25 @@ class TaskCard extends StatelessWidget {
                       Text(
                         task.title,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: isDone ? Colors.grey : primaryText,
+                          // ✅ FIX: High-contrast text for white theme visibility
+                          color: isDone 
+                              ? Colors.grey.shade400 
+                              : (isDark ? Colors.white : const Color(0xFF1F2937)),
                           decoration: isDone ? TextDecoration.lineThrough : null,
                         ),
                       ),
                       if (task.description != null && task.description!.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.only(top: 2),
                           child: Text(
                             task.description!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade500,
+                              fontSize: 12,
+                              color: isDark ? Colors.white54 : Colors.black45,
                             ),
                           ),
                         ),
@@ -100,47 +106,48 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
 
-                // 3. ASSIGNEE AVATAR (SPRINT 7 UPDATE)
-                // Shows initials if name is provided, otherwise a generic person icon
+                // 3. ASSIGNEE AVATAR
                 if (task.assigneeId != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Tooltip(
-                      message: "Assigned to ${assigneeName ?? 'Team Member'}",
-                      child: CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
-                        child: assigneeName != null && assigneeName!.isNotEmpty
-                            ? Text(
-                                assigneeName![0].toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 10, 
-                                  fontWeight: FontWeight.bold, 
-                                  color: AppColors.primary
-                                ),
-                              )
-                            : const Icon(
-                                Icons.person_rounded, 
-                                size: 14, 
-                                color: AppColors.primary
-                              ),
-                      ),
-                    ),
-                  ),
+                  _buildAssigneeAvatar(isDark),
 
-                // 4. DELETE ACTION
+                // 4. DELETE ACTION (Subtle delete icon)
                 if (onDelete != null)
                   IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     icon: Icon(
-                      Icons.delete_outline_rounded, 
-                      color: Colors.red.withOpacity(0.7), 
-                      size: 22
+                      Icons.delete_sweep_outlined, 
+                      color: Colors.red.withOpacity(isDark ? 0.4 : 0.6), 
+                      size: 20
                     ),
                     onPressed: onDelete,
                   ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAssigneeAvatar(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Tooltip(
+        message: "Assigned to ${assigneeName ?? 'Team Member'}",
+        child: CircleAvatar(
+          radius: 12,
+          backgroundColor: AppColors.primary.withOpacity(0.1),
+          child: assigneeName != null && assigneeName!.isNotEmpty
+              ? Text(
+                  assigneeName![0].toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 9, 
+                    fontWeight: FontWeight.bold, 
+                    color: AppColors.primary
+                  ),
+                )
+              : const Icon(Icons.person, size: 12, color: AppColors.primary),
         ),
       ),
     );

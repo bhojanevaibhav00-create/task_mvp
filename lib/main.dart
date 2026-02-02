@@ -4,16 +4,14 @@ import 'package:drift/drift.dart' as drift;
 
 import 'app.dart';
 import 'core/providers/task_providers.dart';
+import 'core/constants/app_colors.dart'; // AppColors 
 import 'data/database/database.dart' as db;
 
-// 🚀 पायरी १: नवीन टेस्ट युजर्स ॲड करण्यासाठी 'Seed' फंक्शन अपडेट करा
+// 🚀 Database Seeding logic 
 Future<void> seedProjectData(db.AppDatabase database) async {
   try {
     final existingUsers = await database.select(database.users).get();
-    
-    // जर डेटाबेस रिकामा असेल, तरच डेटा ॲड करा
     if (existingUsers.isEmpty) {
-      // १. स्वतःला (Vaibhav) मुख्य युजर म्हणून ॲड करा
       final userId = await database.into(database.users).insert(
         db.UsersCompanion.insert(
           name: 'Vaibhav Bhojane', 
@@ -21,17 +19,6 @@ Future<void> seedProjectData(db.AppDatabase database) async {
         ),
       );
 
-      // २. प्रोजेक्ट आणि ओनरशिप सेट करा
-      await database.into(database.projectMembers).insert(
-        db.ProjectMembersCompanion.insert(
-          projectId: 1,
-          userId: userId,
-          role: 'Owner',
-        ),
-      );
-
-      // ३. आजच्या कामासाठी 'Ajinkya' आणि 'Vaishnavi' ला टेस्ट युजर्स म्हणून ॲड करा
-      // यामुळे 'Add Member' डायलॉगमध्ये ही नावे दिसू लागतील
       await database.into(database.users).insert(
         db.UsersCompanion.insert(
           name: 'Ajinkya Ghode', 
@@ -45,8 +32,7 @@ Future<void> seedProjectData(db.AppDatabase database) async {
           email: const drift.Value('vaishnavi@test.com'),
         ),
       );
-
-      debugPrint("✅ Database Seeded with Vaibhav, Ajinkya, and Vaishnavi");
+      debugPrint("✅ Database Seeded Successfully");
     }
   } catch (e) {
     debugPrint("❌ Seed Error: $e");
@@ -67,7 +53,6 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   @override
   void initState() {
     super.initState();
-    // 🚀 पायरी २: ॲप सुरू होताना डेटाबेस सीडिंग सुरू करा
     Future.microtask(() async {
       final database = ref.read(databaseProvider);
       await seedProjectData(database); 
@@ -80,5 +65,30 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   }
 
   @override
-  Widget build(BuildContext context) => const MyApp();
+  Widget build(BuildContext context) {
+    
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Task MVP',
+      
+      
+      themeMode: ThemeMode.system, 
+      
+      theme: ThemeData(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF8F9FD),
+        primaryColor: AppColors.primary,
+        useMaterial3: true,
+      ),
+      
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppColors.scaffoldDark, 
+        primaryColor: AppColors.primary,
+        useMaterial3: true,
+      ),
+      
+      home: const MyApp(), 
+    );
+  }
 }
