@@ -6,6 +6,7 @@ import 'app.dart';
 import 'core/providers/task_providers.dart';
 import 'data/database/database.dart' as db;
 
+// 🚀 Database Seeding logic
 Future<void> seedProjectData(db.AppDatabase database) async {
   try {
     final existingUsers = await database.select(database.users).get();
@@ -95,5 +96,7 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   }
 
   @override
-  Widget build(BuildContext context) => const MyApp();
+  Widget build(BuildContext context) {
+    return const MyApp();
+  }
 }
