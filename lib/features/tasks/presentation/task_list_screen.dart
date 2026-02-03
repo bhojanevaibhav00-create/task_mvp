@@ -27,6 +27,7 @@ class TaskListScreen extends ConsumerStatefulWidget {
 class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  Set<String> _dueBucketFilter = {};
 
   @override
   void dispose() {
@@ -35,11 +36,15 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   }
 
   void _openCreateTask() {
-    context.push('/tasks/new').then((_) => ref.read(tasksProvider.notifier).loadTasks());
+    context
+        .push('/tasks/new')
+        .then((_) => ref.read(tasksProvider.notifier).loadTasks());
   }
 
   void _openEditTask(db.Task task) {
-    context.push('/tasks/${task.id}').then((_) => ref.read(tasksProvider.notifier).loadTasks());
+    context
+        .push('/tasks/${task.id}')
+        .then((_) => ref.read(tasksProvider.notifier).loadTasks());
   }
 
   @override
@@ -47,7 +52,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     final filteredTasksAsync = ref.watch(filteredTasksProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD), 
+      backgroundColor: const Color(0xFFF8F9FD),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -55,11 +60,50 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           _buildSearchHeader(),
           filteredTasksAsync.when(
             loading: () => const SliverFillRemaining(child: TaskListSkeleton()),
-            error: (e, _) => SliverFillRemaining(child: Center(child: Text('Error: $e'))),
+            error: (e, _) =>
+                SliverFillRemaining(child: Center(child: Text('Error: $e'))),
             data: (List<db.Task> tasks) {
-              final visibleTasks = tasks.where((task) {
-                return task.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                       (task.description ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
+              // 1. Apply Due Date Bucket Filter
+              Iterable<db.Task> filteredTasks = tasks;
+              if (_dueBucketFilter.isNotEmpty) {
+                final bucket = _dueBucketFilter.first;
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+
+                filteredTasks = filteredTasks.where((t) {
+                  if (bucket == 'no_date') return t.dueDate == null;
+                  if (t.dueDate == null) return false;
+
+                  final d = DateTime(
+                    t.dueDate!.year,
+                    t.dueDate!.month,
+                    t.dueDate!.day,
+                  );
+                  switch (bucket) {
+                    case 'overdue':
+                      return d.isBefore(today) && t.status != 'done';
+                    case 'today':
+                      return d.isAtSameMomentAs(today);
+                    case 'tomorrow':
+                      return d.isAtSameMomentAs(
+                        today.add(const Duration(days: 1)),
+                      );
+                    case 'this_week':
+                      final nextWeek = today.add(const Duration(days: 7));
+                      return !d.isBefore(today) && d.isBefore(nextWeek);
+                    default:
+                      return true;
+                  }
+                });
+              }
+
+              final visibleTasks = filteredTasks.where((task) {
+                return task.title.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ||
+                    (task.description ?? '').toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    );
               }).toList();
 
               if (visibleTasks.isEmpty) {
@@ -72,26 +116,27 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               return SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final task = visibleTasks[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: TaskCard(
-                          task: task,
-                          onTap: () => _openEditTask(task),
-                          onToggleDone: () {
-                            final isDone = task.status == TaskStatus.done.name;
-                            final newStatus = isDone ? TaskStatus.todo.name : TaskStatus.done.name;
-                            ref.read(tasksProvider.notifier).updateTask(
-                                  task.copyWith(status: drift.Value(newStatus)),
-                                );
-                          },
-                        ),
-                      );
-                    },
-                    childCount: visibleTasks.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final task = visibleTasks[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: TaskCard(
+                        task: task,
+                        onTap: () => _openEditTask(task),
+                        onToggleDone: () {
+                          final isDone = task.status == TaskStatus.done.name;
+                          final newStatus = isDone
+                              ? TaskStatus.todo.name
+                              : TaskStatus.done.name;
+                          ref
+                              .read(tasksProvider.notifier)
+                              .updateTask(
+                                task.copyWith(status: drift.Value(newStatus)),
+                              );
+                        },
+                      ),
+                    );
+                  }, childCount: visibleTasks.length),
                 ),
               );
             },
@@ -100,7 +145,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateTask,
-        label: const Text('Add Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text(
+          'Add Task',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         backgroundColor: AppColors.primary,
         elevation: 6,
@@ -117,8 +165,17 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       iconTheme: const IconThemeData(color: Colors.white),
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-        title: const Text('My Tasks', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-        background: Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
+        title: const Text(
+          'My Tasks',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        background: Container(
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        ),
       ),
       actions: [
         _buildNotificationIcon(ref),
@@ -143,8 +200,8 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               BoxShadow(
                 color: Colors.black.withOpacity(0.05),
                 blurRadius: 15,
-                offset: const Offset(0, 5)
-              )
+                offset: const Offset(0, 5),
+              ),
             ],
           ),
           child: TextField(
@@ -181,14 +238,31 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(color: Color(0xFFF0F4FF), shape: BoxShape.circle),
-            child: const Icon(Icons.assignment_add, color: AppColors.primary, size: 36),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF0F4FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.assignment_add,
+              color: AppColors.primary,
+              size: 36,
+            ),
           ),
           const SizedBox(height: 24),
-          const Text("No tasks found", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: Color(0xFF1A1C1E))),
+          const Text(
+            "No tasks found",
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              color: Color(0xFF1A1C1E),
+            ),
+          ),
           const SizedBox(height: 12),
-          const Text("Your schedule is clear. Add a new task to get started.", 
-            textAlign: TextAlign.center, style: TextStyle(color: Colors.black45, fontSize: 14)),
+          const Text(
+            "Your schedule is clear. Add a new task to get started.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black45, fontSize: 14),
+          ),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _openCreateTask,
@@ -197,7 +271,9 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text("Create Task"),
           ),
@@ -212,18 +288,27 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       alignment: Alignment.center,
       children: [
         IconButton(
-          icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
+          icon: const Icon(
+            Icons.notifications_none_rounded,
+            color: Colors.white,
+            size: 28,
+          ),
           onPressed: () => context.push('/notifications'),
         ),
         if (unreadCount > 0)
           Positioned(
-            right: 8, top: 10,
+            right: 8,
+            top: 10,
             child: CircleAvatar(
               radius: 8,
               backgroundColor: Colors.red,
               child: Text(
                 unreadCount.toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -232,15 +317,52 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   }
 
   void _showFilters() {
+    final currentStatus = ref.read(statusFilterProvider);
+    final currentPriority = ref.read(priorityFilterProvider);
+
     openFilterBottomSheet(
       context: context,
       allTags: const [],
-      statusFilters: {},
-      priorityFilters: {},
+      statusFilters: currentStatus == 'all' ? {} : {currentStatus},
+      priorityFilters: currentPriority == null ? {} : {currentPriority},
       tagFilters: {},
-      dueBucket: null,
+      dueBucket: _dueBucketFilter.isNotEmpty ? _dueBucketFilter.first : null,
       sort: null,
-      onApply: (_, __, ___, ____, _____) {},
+      onApply: (statuses, priorities, tags, dueBucket, sort) {
+        // 1. Update Status
+        if (statuses.isEmpty) {
+          ref.read(statusFilterProvider.notifier).state = 'all';
+        } else {
+          ref.read(statusFilterProvider.notifier).state = statuses.first;
+        }
+
+        // 2. Update Priority
+        if (priorities.isEmpty) {
+          ref.read(priorityFilterProvider.notifier).state = null;
+        } else {
+          ref.read(priorityFilterProvider.notifier).state = priorities.first;
+        }
+
+        // 3. Update Sort
+        if (sort != null) {
+          final s = sort.toString().toLowerCase();
+          if (s.contains('priority')) {
+            ref.read(sortByProvider.notifier).state = 'priority_desc';
+          } else if (s.contains('date') || s.contains('due')) {
+            ref.read(sortByProvider.notifier).state = 'due_date_asc';
+          } else {
+            ref.read(sortByProvider.notifier).state = 'updated_at_desc';
+          }
+        } else {
+          ref.read(sortByProvider.notifier).state = 'updated_at_desc';
+        }
+
+        // 4. Update Due Bucket (Local State)
+        setState(() {
+          final bucket = dueBucket as String?;
+          _dueBucketFilter = bucket != null ? {bucket} : {};
+        });
+      },
     );
   }
 }

@@ -7,12 +7,10 @@ class QuickAddTaskSheet extends ConsumerStatefulWidget {
   const QuickAddTaskSheet({super.key});
 
   @override
-  ConsumerState<QuickAddTaskSheet> createState() =>
-      _QuickAddTaskSheetState();
+  ConsumerState<QuickAddTaskSheet> createState() => _QuickAddTaskSheetState();
 }
 
-class _QuickAddTaskSheetState
-    extends ConsumerState<QuickAddTaskSheet> {
+class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
 
@@ -64,10 +62,7 @@ class _QuickAddTaskSheetState
               hintText: 'Add a task…',
               border: InputBorder.none,
             ),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
 
           const SizedBox(height: 12),
@@ -164,8 +159,7 @@ class _QuickAddTaskSheetState
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: color?.withOpacity(0.15) ??
-              AppColors.chipBackground,
+          color: color?.withOpacity(0.15) ?? AppColors.chipBackground,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -215,7 +209,7 @@ class _QuickAddTaskSheetState
   Future<void> _pickDueDate() async {
     final date = await showDatePicker(
       context: context,
-      firstDate: DateTime.now(),
+      firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       initialDate: _dueDate ?? DateTime.now(),
     );
@@ -228,12 +222,14 @@ class _QuickAddTaskSheetState
   Future<void> _saveTask() async {
     if (_titleCtrl.text.trim().isEmpty) return;
 
-    await ref.read(tasksProvider.notifier).addTask(
-      _titleCtrl.text.trim(),
-      _descCtrl.text.trim(),
-      priority: _priority,
-      dueDate: _dueDate,
-    );
+    await ref
+        .read(tasksProvider.notifier)
+        .addTask(
+          _titleCtrl.text.trim(),
+          _descCtrl.text.trim(),
+          priority: _priority,
+          dueDate: _dueDate,
+        );
 
     if (mounted) Navigator.pop(context);
   }

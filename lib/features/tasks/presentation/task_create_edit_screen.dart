@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
 import '../../../core/providers/task_providers.dart';
-import '../../../core/providers/collaboration_providers.dart'; 
+import '../../../core/providers/collaboration_providers.dart';
 import '../../../data/database/database.dart';
 import '../../../core/constants/app_colors.dart';
 import 'widgets/reminder_section.dart';
@@ -11,17 +11,18 @@ import 'widgets/reminder_section.dart';
 class TaskCreateEditScreen extends ConsumerStatefulWidget {
   final Task? task;
   final int? taskId; // ✅ ADDED: For deep linking and GoRouter navigation
-  final int? projectId; 
+  final int? projectId;
 
   const TaskCreateEditScreen({
-    super.key, 
-    this.task, 
+    super.key,
+    this.task,
     this.taskId, // ✅ ADDED
     this.projectId,
   });
 
   @override
-  ConsumerState<TaskCreateEditScreen> createState() => _TaskCreateEditScreenState();
+  ConsumerState<TaskCreateEditScreen> createState() =>
+      _TaskCreateEditScreenState();
 }
 
 class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
@@ -35,7 +36,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   int _priority = 1;
   DateTime? dueDate;
   int? _selectedAssigneeId;
-  
+
   // Track local task state if we fetch it via taskId
   Task? _fetchedTask;
 
@@ -44,7 +45,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     super.initState();
     // 1. Initialize with provided task object if available
     final initialTask = widget.task;
-    
+
     _titleCtrl = TextEditingController(text: initialTask?.title ?? '');
     _descCtrl = TextEditingController(text: initialTask?.description ?? '');
     reminderEnabled = initialTask?.reminderEnabled ?? false;
@@ -63,7 +64,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   Future<void> _loadTaskById() async {
     final repo = ref.read(taskRepositoryProvider);
     final task = await repo.getTaskById(widget.taskId!);
-    
+
     if (task != null && mounted) {
       setState(() {
         _fetchedTask = task;
@@ -90,7 +91,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     // Check both widget.task and our locally fetched task
     final currentTask = widget.task ?? _fetchedTask;
     final isEdit = currentTask != null;
-    
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -115,7 +116,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
                       _buildSectionLabel("TASK DETAILS"),
                       _buildInputGroup(),
                       const SizedBox(height: 24),
-                      
+
                       _buildSectionLabel("ASSIGN TO"),
                       _buildAssigneeSelector(currentTask),
                       const SizedBox(height: 24),
@@ -123,10 +124,10 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
                       _buildSectionLabel("PRIORITY"),
                       _buildPrioritySelector(),
                       const SizedBox(height: 24),
-                      
+
                       _buildSectionLabel("SETTINGS"),
                       _buildSettingsGroup(),
-                      const SizedBox(height: 100), 
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
@@ -144,8 +145,12 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         icon: const Icon(Icons.check, color: Colors.white),
         label: const Text(
-          "Save Task", 
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
+          "Save Task",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
       ),
     );
@@ -154,12 +159,18 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   Widget _buildAssigneeSelector(Task? currentTask) {
     // Priority: widget.projectId -> currentTask.projectId -> null
     final pid = widget.projectId ?? currentTask?.projectId;
-    
+
     if (pid == null) {
       return Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-        child: const Text("Linking to a project is required for assignment.", style: TextStyle(color: Colors.grey)),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text(
+          "Linking to a project is required for assignment.",
+          style: TextStyle(color: Colors.grey),
+        ),
       );
     }
 
@@ -171,25 +182,32 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10),
+          ],
         ),
         child: DropdownButtonHideUnderline(
-          child: DropdownButton<int?>( 
+          child: DropdownButton<int?>(
             isExpanded: true,
             value: _selectedAssigneeId,
             hint: const Text("Select Assignee"),
             items: [
-              const DropdownMenuItem<int?>(value: null, child: Text("Unassigned")),
-              ...members.map((m) => DropdownMenuItem<int?>(
-                value: m.user.id,
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_outline, size: 18),
-                    const SizedBox(width: 8),
-                    Text(m.user.name),
-                  ],
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text("Unassigned"),
+              ),
+              ...members.map(
+                (m) => DropdownMenuItem<int?>(
+                  value: m.user.id,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person_outline, size: 18),
+                      const SizedBox(width: 8),
+                      Text(m.user.name),
+                    ],
+                  ),
                 ),
-              )),
+              ),
             ],
             onChanged: (val) => setState(() => _selectedAssigneeId = val),
           ),
@@ -214,16 +232,23 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
             const Spacer(),
             Text(
               isEdit ? 'Edit Task' : 'New Task',
-              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const Spacer(),
             if (isEdit)
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.white,
+                ),
                 onPressed: () => _confirmDelete(context, currentTask!),
               )
             else
-              const SizedBox(width: 48), 
+              const SizedBox(width: 48),
           ],
         ),
       ),
@@ -251,19 +276,30 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
           TextFormField(
             controller: _titleCtrl,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-            decoration: InputDecoration(
-              hintText: 'Task Title', 
-              hintStyle: TextStyle(color: Colors.grey.shade400),
-              border: InputBorder.none
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF111827),
             ),
-            validator: (v) => (v == null || v.isEmpty) ? 'Title required' : null,
+            decoration: InputDecoration(
+              hintText: 'Task Title',
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              border: InputBorder.none,
+            ),
+            validator: (v) =>
+                (v == null || v.isEmpty) ? 'Title required' : null,
           ),
           const Divider(height: 24),
           TextFormField(
@@ -271,9 +307,9 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
             maxLines: 3,
             style: const TextStyle(fontSize: 16, color: Color(0xFF111827)),
             decoration: InputDecoration(
-              hintText: 'Add details...', 
+              hintText: 'Add details...',
               hintStyle: TextStyle(color: Colors.grey.shade400),
-              border: InputBorder.none
+              border: InputBorder.none,
             ),
           ),
         ],
@@ -304,12 +340,17 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
           decoration: BoxDecoration(
             color: isSelected ? color : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isSelected ? color : Colors.grey.shade200),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade200,
+            ),
           ),
           child: Center(
             child: Text(
               label,
-              style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -322,15 +363,37 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
           ListTile(
-            leading: const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
-            title: const Text("Due Date", style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF111827))),
-            subtitle: Text(dueDate == null ? "Not set" : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}"),
-            trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+            leading: const Icon(
+              Icons.calendar_today_rounded,
+              color: AppColors.primary,
+            ),
+            title: const Text(
+              "Due Date",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827),
+              ),
+            ),
+            subtitle: Text(
+              dueDate == null
+                  ? "Not set"
+                  : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
+            ),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.grey,
+            ),
             onTap: _pickDueDate,
           ),
           const Divider(height: 1, indent: 60),
@@ -353,7 +416,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   Future<void> _pickDueDate() async {
     final date = await showDatePicker(
       context: context,
-      firstDate: DateTime.now(),
+      firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       initialDate: dueDate ?? DateTime.now(),
     );
@@ -366,8 +429,14 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
       builder: (context) => AlertDialog(
         title: const Text("Delete Task?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
@@ -379,18 +448,18 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
 
   Future<void> _saveTask(Task? currentTask) async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final notifier = ref.read(tasksProvider.notifier);
     final title = _titleCtrl.text.trim();
     final description = _descCtrl.text.trim();
 
     if (currentTask == null) {
       await notifier.addTask(
-        title, 
-        description, 
-        priority: _priority, 
+        title,
+        description,
+        priority: _priority,
         dueDate: dueDate,
-        assigneeId: _selectedAssigneeId, 
+        assigneeId: _selectedAssigneeId,
         projectId: widget.projectId,
       );
     } else {
