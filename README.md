@@ -1,6 +1,15 @@
 # Database, Models & Offline CRUD
 
 ---
+## Demo Script Flow (current)
+
+- **Login**: Enter user ID and password.
+- **Dashboard**: View overview stats. In "Recent Tasks", tap the filter icon and apply a filter by **Status** and **Priority**.
+- **Add Task**: Use the quick action, fill in the details (Title, Priority, Due Date), and save.
+- **My Tasks**: Navigate to the "My Tasks" screen and use the search bar to find the newly created task.
+- **Notifications**: Tap the bell icon to view alerts for the new task.
+
+---
 
 ## Migration & Upgrade Safety
 
@@ -246,6 +255,82 @@ The repository pattern is used to abstract the data source (Drift Database).
 
 - **`SeedData`**: A utility class that generates a list of sample `Task` objects.
   - **Usage**: Used by the "Seed Data" button in the UI to populate the database with tasks having various statuses, priorities, and due dates for testing purposes.
+
+---
+
+## Helper Methods & Utilities Reference
+
+This section provides a comprehensive guide to the helper methods and utilities available in the project, categorized by their domain. These methods abstract complex logic, ensuring the UI remains clean and declarative.
+
+### 1. Repository Helpers (Data Aggregation)
+
+These methods perform complex database queries or aggregations to prepare data for the UI.
+
+#### `ProjectRepository.watchProjectStatistics`
+
+- **Location**: `lib/data/repositories/project_repository.dart`
+- **Usage**: `StreamBuilder(stream: projectRepo.watchProjectStatistics(), ...)`
+- **Purpose**: Real-time dashboard metrics.
+- **Logic**: Joins `Projects` and `Tasks`. Calculates:
+  - `progress`: (Completed Tasks / Total Tasks).
+  - `overdueTasks`: Tasks where `dueDate < now` AND `status != done`.
+  - `upcomingTasks`: Tasks where `dueDate > now`.
+
+#### `CollaborationRepository.listAvailableUsersNotInProject`
+
+- **Location**: `lib/data/repositories/collaboration_repository.dart`
+- **Usage**: Populating the "Add Member" dialog.
+- **Purpose**: Prevents duplicate memberships.
+- **Logic**: `SELECT * FROM users WHERE id NOT IN (SELECT userId FROM project_members WHERE projectId = ?)`.
+
+#### `TaskRepository.getRecentActivity`
+
+- **Location**: `lib/data/repositories/task_repository.dart`
+- **Usage**: Home screen "Recent Activity" feed.
+- **Purpose**: Audit trail visualization.
+- **Logic**: Returns the latest 20 `ActivityLogs` entries, sorted by time descending.
+
+#### `CollaborationRepository.searchUsers`
+
+- **Location**: `lib/data/repositories/collaboration_repository.dart`
+- **Usage**: User search autocomplete.
+- **Logic**: SQL `LIKE %query%` on the user name field.
+
+### 2. Domain Logic Helpers (Extensions & Filters)
+
+These helpers reside in the `models` folder and handle business rules.
+
+#### `TaskFilters.apply`
+
+- **Location**: `lib/data/models/task_filters.dart`
+- **Usage**: `final visibleTasks = TaskFilters.apply(allTasks, query: 'bug', status: ...);`
+- **Purpose**: Centralized filtering logic for search bars and sidebars.
+- **Logic**:
+  - Checks text match in `title` or `description`.
+  - Checks date ranges (e.g., `isToday`, `isOverdue`).
+  - Filters by `Priority` and `Tag`.
+
+#### `TaskStatus.next` (Extension)
+
+- **Location**: `lib/data/models/task_extensions.dart`
+- **Usage**: `task.status.next()` inside a button callback.
+- **Purpose**: Enforces the workflow state machine.
+- **Logic**: `todo` → `inProgress` → `review` → `done`.
+
+#### `TaskStatus.label` / `ProjectRole.label` (Extension)
+
+- **Location**: `lib/data/models/task_extensions.dart` / `project_role.dart`
+- **Usage**: `Text(task.status.label)`
+- **Purpose**: Converts internal enum names (camelCase) to user-friendly display strings (Title Case).
+
+### 3. Development Helpers
+
+#### `SeedData.seed`
+
+- **Location**: `lib/data/seed/seed_data.dart`
+- **Usage**: Triggered by "Seed Database" button in Settings/DevTools.
+- **Purpose**: Rapidly populates the app with realistic test data.
+- **Logic**: Idempotent insert (checks for existence before adding) to prevent duplicates.
 
 ---
 
