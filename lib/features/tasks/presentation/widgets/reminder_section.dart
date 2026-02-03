@@ -85,7 +85,7 @@ class _ReminderSectionState extends State<ReminderSection> {
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
       context: context,
-      firstDate: DateTime.now(),
+      firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       initialDate: reminderAt ?? DateTime.now(),
     );
