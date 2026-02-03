@@ -21,19 +21,20 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // ✅ FORCED WHITE THEME: Ignoring system isDark to prevent "dark leakage"
+    const bool isDarkTheme = false; 
     final isDone = task.status == TaskStatus.done.name;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        // ✅ PREMIUM WHITE THEME: Using solid white for light mode
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16), // Softer corners
+        // ✅ PREMIUM WHITE: Using pure white for the card
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16), 
         boxShadow: [
           BoxShadow(
-            // ✅ SUBTLE SHADOW: Avoids "dirty" look on white backgrounds
-            color: isDark ? Colors.black45 : Colors.black.withOpacity(0.03),
+            // ✅ SUBTLE SHADOW: Depth without the "dirty" look
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -45,10 +46,10 @@ class TaskCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                // 1. STATUS TOGGLE (Consistent Checkbox)
+                // 1. STATUS TOGGLE
                 GestureDetector(
                   onTap: onToggleDone,
                   child: AnimatedContainer(
@@ -59,9 +60,7 @@ class TaskCard extends StatelessWidget {
                       color: isDone ? Colors.green : Colors.transparent,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isDone 
-                            ? Colors.green 
-                            : (isDark ? Colors.white24 : Colors.grey.shade300),
+                        color: isDone ? Colors.green : Colors.grey.shade300,
                         width: 2,
                       ),
                     ),
@@ -72,7 +71,7 @@ class TaskCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
 
-                // 2. TASK INFO (High Contrast Text)
+                // 2. TASK INFO
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,11 +80,11 @@ class TaskCard extends StatelessWidget {
                         task.title,
                         style: TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          // ✅ FIX: High-contrast text for white theme visibility
+                          fontWeight: FontWeight.w700,
+                          // ✅ HIGH CONTRAST: Slate dark for maximum readability
                           color: isDone 
                               ? Colors.grey.shade400 
-                              : (isDark ? Colors.white : const Color(0xFF1F2937)),
+                              : const Color(0xFF111827), 
                           decoration: isDone ? TextDecoration.lineThrough : null,
                         ),
                       ),
@@ -96,9 +95,9 @@ class TaskCard extends StatelessWidget {
                             task.description!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
-                              color: isDark ? Colors.white54 : Colors.black45,
+                              color: Colors.black45,
                             ),
                           ),
                         ),
@@ -106,18 +105,18 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
 
-                // 3. ASSIGNEE AVATAR
+                // 3. ASSIGNEE AVATAR (Collaboration Indicator)
                 if (task.assigneeId != null)
-                  _buildAssigneeAvatar(isDark),
+                  _buildAssigneeAvatar(),
 
-                // 4. DELETE ACTION (Subtle delete icon)
+                // 4. DELETE ACTION
                 if (onDelete != null)
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     icon: Icon(
-                      Icons.delete_sweep_outlined, 
-                      color: Colors.red.withOpacity(isDark ? 0.4 : 0.6), 
+                      Icons.delete_outline_rounded, 
+                      color: Colors.red.withOpacity(0.5), 
                       size: 20
                     ),
                     onPressed: onDelete,
@@ -130,25 +129,22 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAssigneeAvatar(bool isDark) {
+  Widget _buildAssigneeAvatar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Tooltip(
-        message: "Assigned to ${assigneeName ?? 'Team Member'}",
-        child: CircleAvatar(
-          radius: 12,
-          backgroundColor: AppColors.primary.withOpacity(0.1),
-          child: assigneeName != null && assigneeName!.isNotEmpty
-              ? Text(
-                  assigneeName![0].toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 9, 
-                    fontWeight: FontWeight.bold, 
-                    color: AppColors.primary
-                  ),
-                )
-              : const Icon(Icons.person, size: 12, color: AppColors.primary),
-        ),
+      child: CircleAvatar(
+        radius: 12,
+        backgroundColor: AppColors.primary.withOpacity(0.1),
+        child: assigneeName != null && assigneeName!.isNotEmpty
+            ? Text(
+                assigneeName![0].toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 10, 
+                  fontWeight: FontWeight.w900, 
+                  color: AppColors.primary
+                ),
+              )
+            : const Icon(Icons.person, size: 12, color: AppColors.primary),
       ),
     );
   }

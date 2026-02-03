@@ -23,9 +23,11 @@ import 'widgets/dashboard_empty_state.dart';
 import 'widgets/filter_bottom_sheet.dart';
 import 'widgets/quick_add_task_sheet.dart';
 
-final allProjectsProvider = FutureProvider.autoDispose<List<Project>>((ref) async {
+// ✅ FIXED: Changed to .watch() for real-time UI updates when projects are deleted or added
+final allProjectsProvider = StreamProvider.autoDispose<List<Project>>((ref) {
   final db = ref.watch(databaseProvider); 
-  return await db.select(db.projects).get();
+  // We use watch() to ensure the stream closes and re-opens when data changes
+  return db.select(db.projects).watch();
 });
 
 class DashboardScreen extends ConsumerWidget {
@@ -40,7 +42,6 @@ class DashboardScreen extends ConsumerWidget {
     const backgroundColor = Color(0xFFF8F9FD); 
     const cardColor = Colors.white;
     const primaryTextColor = Color(0xFF1A1C1E);
-    const secondaryTextColor = Colors.black54;
 
     final completed = tasks.where((t) => t.status == TaskStatus.done.name).length;
     final pending = tasks.where((t) => t.status != TaskStatus.done.name).length;
@@ -62,7 +63,7 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 32),
                 _buildSectionHeader('Active Projects', () => _showQuickProjectDialog(context, ref), primaryTextColor),
                 const SizedBox(height: 16),
-                _buildHorizontalProjectList(projectsAsync, cardColor, secondaryTextColor),
+                _buildHorizontalProjectList(projectsAsync, cardColor, primaryTextColor),
 
                 const SizedBox(height: 32),
                 _buildSectionHeader('Quick Actions', null, primaryTextColor),
@@ -72,7 +73,7 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 32),
                 _buildSectionHeader('Recent Tasks', () => context.push(AppRoutes.tasks), primaryTextColor),
                 const SizedBox(height: 16),
-                _buildTaskList(context, tasks, cardColor, secondaryTextColor),
+                _buildTaskList(context, tasks, cardColor, primaryTextColor),
               ]),
             ),
           ),
@@ -145,15 +146,22 @@ class DashboardScreen extends ConsumerWidget {
     return SizedBox(
       height: 110,
       child: projects.when(
-        data: (list) => list.isEmpty 
-          ? _emptyContentCard("No projects found", Icons.folder_open)
-          : ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: list.length,
-              itemBuilder: (context, index) => _projectCard(context, list[index], cardColor, textColor),
-            ),
+        data: (list) {
+          // ✅ FIXED: Filter out any empty/broken projects that might show up as "General"
+          final validProjects = list.where((p) => p.name.isNotEmpty && p.name != "General").toList();
+          
+          if (validProjects.isEmpty) {
+            return _emptyContentCard("No projects found", Icons.folder_open);
+          }
+
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: validProjects.length,
+            itemBuilder: (context, index) => _projectCard(context, validProjects[index], cardColor, textColor),
+          );
+        },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Text("Error: $err"),
+        error: (err, _) => Center(child: Text("Error loading projects")),
       ),
     );
   }
@@ -167,16 +175,36 @@ class DashboardScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8)],
       ),
-      child: ListTile(
-        onTap: () => context.push('/projects/${project.id}'),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: const CircleAvatar(backgroundColor: Color(0xFFEEF2FF), child: Icon(Icons.work_outline, color: AppColors.primary, size: 18)),
-        title: Text(project.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), overflow: TextOverflow.ellipsis),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push('/projects/${project.id}'),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Color(0xFFEEF2FF), 
+                  child: Icon(Icons.work_outline, color: AppColors.primary, size: 18)
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    project.name, 
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor), 
+                    overflow: TextOverflow.ellipsis
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  // ✅ PREMIUM WHITE EMPTY STATE
   Widget _buildTaskList(BuildContext context, List<Task> tasks, Color cardColor, Color textColor) {
     if (tasks.isEmpty) {
       return Container(
@@ -197,20 +225,8 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 20),
             const Text("No tasks for today", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1A1C1E))),
             const SizedBox(height: 8),
-            const Text("Your schedule looks clear. Add a task to stay productive!", 
+            const Text("Your schedule looks clear.", 
               textAlign: TextAlign.center, style: TextStyle(color: Colors.black38, fontSize: 14)),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.push('/tasks/new'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("Create Task"),
-            ),
           ],
         ),
       );
@@ -224,12 +240,12 @@ class DashboardScreen extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: cardColor, // ✅ FIXED: White background
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: ListTile(
-        title: Text(task.title, style: const TextStyle(color: Color(0xFF1A1C1E), fontWeight: FontWeight.w600)),
+        title: Text(task.title, style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
         trailing: const Icon(Icons.chevron_right, color: Colors.black12),
         onTap: () => context.push('/tasks/${task.id}'),
       ),
@@ -238,7 +254,7 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _emptyContentCard(String message, IconData icon) {
     return Container(
-      width: double.infinity,
+      width: 180,
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
       child: Center(
         child: Column(
@@ -324,7 +340,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ✅ FIXED: New Project Dialog with visible input field
   void _showQuickProjectDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
     showDialog(
@@ -357,12 +372,13 @@ class DashboardScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (controller.text.isEmpty) return;
+              if (controller.text.trim().isEmpty) return;
               final db = ref.read(databaseProvider);
               await db.into(db.projects).insert(ProjectsCompanion.insert(
-                name: controller.text, 
+                name: controller.text.trim(), 
                 createdAt: drift.Value(DateTime.now())
               ));
+              // ✅ REFRESH THE UI
               ref.invalidate(allProjectsProvider);
               Navigator.pop(context);
             },
