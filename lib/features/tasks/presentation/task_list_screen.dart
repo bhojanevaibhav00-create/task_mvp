@@ -63,10 +63,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             error: (e, _) =>
                 SliverFillRemaining(child: Center(child: Text('Error: $e'))),
             data: (List<db.Task> tasks) {
-              // 1. Apply Due Date Bucket Filter
+              // 1. Apply Due Date Bucket Filter logic
               Iterable<db.Task> filteredTasks = tasks;
               if (_dueBucketFilter.isNotEmpty) {
-                final bucket = _dueBucketFilter.first;
+                final bucket = _dueBucketFilter.first.toLowerCase();
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
 
@@ -114,7 +114,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               }
 
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final task = visibleTasks[index];
@@ -162,14 +162,21 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       expandedHeight: 120,
       backgroundColor: AppColors.primary,
       elevation: 0,
+      leadingWidth: 72, 
       iconTheme: const IconThemeData(color: Colors.white),
+      leading: IconButton(
+        padding: const EdgeInsets.only(left: 12),
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+        onPressed: () => context.pop(),
+      ),
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+        centerTitle: false,
+        titlePadding: const EdgeInsets.only(left: 72, bottom: 16), 
         title: const Text(
           'My Tasks',
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
             color: Colors.white,
           ),
         ),
@@ -180,7 +187,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       actions: [
         _buildNotificationIcon(ref),
         IconButton(
-          icon: const Icon(Icons.filter_list, color: Colors.white),
+          icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
           onPressed: () => _showFilters(),
         ),
         const SizedBox(width: 8),
@@ -207,10 +214,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           child: TextField(
             controller: _searchController,
             onChanged: (v) => setState(() => _searchQuery = v),
-            style: const TextStyle(color: Color(0xFF111827), fontSize: 15),
+            style: const TextStyle(color: Color(0xFF111827), fontSize: 15, fontWeight: FontWeight.w600),
             decoration: const InputDecoration(
               hintText: 'Search your tasks...',
-              hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
+              hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontWeight: FontWeight.normal),
               prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF6B7280)),
               border: InputBorder.none,
               contentPadding: EdgeInsets.symmetric(vertical: 15),
@@ -223,7 +230,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     );
   }
 
-  // ✅ NEW: Premium Empty State replacing the dark container
   Widget _buildPremiumEmptyState() {
     return Container(
       width: double.infinity,
@@ -252,7 +258,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           const Text(
             "No tasks found",
             style: TextStyle(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
               fontSize: 20,
               color: Color(0xFF1A1C1E),
             ),
@@ -275,7 +281,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text("Create Task"),
+            child: const Text("Create Task", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -329,21 +335,20 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       dueBucket: _dueBucketFilter.isNotEmpty ? _dueBucketFilter.first : null,
       sort: null,
       onApply: (statuses, priorities, tags, dueBucket, sort) {
-        // 1. Update Status
         if (statuses.isEmpty) {
           ref.read(statusFilterProvider.notifier).state = 'all';
         } else {
-          ref.read(statusFilterProvider.notifier).state = statuses.first;
+          // ✅ FIXED: Uses TaskStatus.fromUItoDB to map "In Progress" -> "in_progress"
+          final dbStatus = TaskStatus.fromUItoDB(statuses.first);
+          ref.read(statusFilterProvider.notifier).state = dbStatus;
         }
 
-        // 2. Update Priority
         if (priorities.isEmpty) {
           ref.read(priorityFilterProvider.notifier).state = null;
         } else {
           ref.read(priorityFilterProvider.notifier).state = priorities.first;
         }
 
-        // 3. Update Sort
         if (sort != null) {
           final s = sort.toString().toLowerCase();
           if (s.contains('priority')) {
@@ -353,14 +358,17 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           } else {
             ref.read(sortByProvider.notifier).state = 'updated_at_desc';
           }
-        } else {
-          ref.read(sortByProvider.notifier).state = 'updated_at_desc';
         }
 
-        // 4. Update Due Bucket (Local State)
         setState(() {
           final bucket = dueBucket as String?;
           _dueBucketFilter = bucket != null ? {bucket} : {};
+          
+          if (bucket != null) {
+            ref.read(dueBucketFilterProvider.notifier).state = bucket;
+          } else {
+            ref.read(dueBucketFilterProvider.notifier).state = null;
+          }
         });
       },
     );

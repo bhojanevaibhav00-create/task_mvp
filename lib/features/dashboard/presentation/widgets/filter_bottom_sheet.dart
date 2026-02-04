@@ -51,6 +51,7 @@ class _FilterSheet extends StatefulWidget {
   ) onApply;
 
   const _FilterSheet({
+    super.key,
     required this.allTags,
     required this.initialStatus,
     required this.initialPriority,
@@ -83,12 +84,11 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FORCE PREMIUM WHITE THEME CONSTANTS
-    const backgroundColor = Colors.white;
+    // ✅ FORCED PREMIUM WHITE THEME CONSTANTS
     const scaffoldBg = Color(0xFFF8F9FD); 
     const sectionBg = Colors.white;
-    const primaryTextColor = Color(0xFF1A1C1E);
-    const chipDefaultBg = Color(0xFFF1F5F9);
+    const primaryTextColor = Color(0xFF1A1C1E); // Slate 900
+    const chipDefaultBg = Color(0xFFF1F5F9); // Light Slate 100
 
     return Container(
       decoration: const BoxDecoration(
@@ -155,14 +155,16 @@ class _FilterSheetState extends State<_FilterSheet> {
           style: TextStyle(
             fontSize: 22, 
             fontWeight: FontWeight.w900, 
-            color: textColor
+            color: textColor,
+            letterSpacing: -0.5,
           ),
         ),
         TextButton(
           onPressed: () => setState(() {
             status.clear(); priority.clear(); tags.clear(); dueBucket = null;
           }),
-          child: const Text("Reset All", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          child: const Text("Reset All", 
+            style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -172,12 +174,16 @@ class _FilterSheetState extends State<_FilterSheet> {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4)
+          )
         ],
       ),
       child: Column(
@@ -185,15 +191,15 @@ class _FilterSheetState extends State<_FilterSheet> {
         children: [
           Text(
             title, 
-            style: TextStyle(
-              fontWeight: FontWeight.w800, 
-              fontSize: 11, 
-              letterSpacing: 1.2,
-              color: Colors.blueGrey.shade300
+            style: const TextStyle(
+              fontWeight: FontWeight.w900, 
+              fontSize: 10, 
+              letterSpacing: 1.5,
+              color: Color(0xFF94A3B8), // Slate 400
             )
           ),
           const SizedBox(height: 16),
-          Wrap(spacing: 10, runSpacing: 10, children: chips),
+          Wrap(spacing: 8, runSpacing: 8, children: chips),
         ],
       ),
     );
@@ -211,18 +217,20 @@ class _FilterSheetState extends State<_FilterSheet> {
       selected: selected,
       onSelected: onSelected,
       pressElevation: 0,
+      elevation: 0,
       backgroundColor: defaultBg,
-      selectedColor: activeColor.withOpacity(0.15),
+      selectedColor: activeColor.withOpacity(0.08), // ✅ Soft tinted background
       side: BorderSide(
-        color: selected ? activeColor : Colors.transparent,
+        color: selected ? activeColor : Colors.transparent, // ✅ Colored border when selected
         width: 1.5,
       ),
       labelStyle: TextStyle(
-        color: selected ? activeColor : const Color(0xFF475569),
-        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-        fontSize: 12,
+        color: selected ? activeColor : const Color(0xFF64748B), // Slate 500
+        fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+        fontSize: 13,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      showCheckmark: false, // ✅ Cleaner premium look without the checkmark
     );
   }
 
@@ -238,7 +246,7 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   Widget _priorityChip(int p, Color defaultBg) {
     final labels = {1: "LOW", 2: "MEDIUM", 3: "HIGH"};
-    final colors = {1: Colors.green, 2: Colors.orange, 3: Colors.red};
+    final colors = {1: Colors.green, 2: const Color(0xFFF59E0B), 3: const Color(0xFFEF4444)};
     return _themedChoiceChip(
       label: labels[p]!,
       selected: priority.contains(p),
@@ -253,7 +261,7 @@ class _FilterSheetState extends State<_FilterSheet> {
       label: d,
       selected: dueBucket == d,
       defaultBg: defaultBg,
-      activeColor: Colors.blue,
+      activeColor: const Color(0xFF3B82F6),
       onSelected: (_) => setState(() => dueBucket = (dueBucket == d) ? null : d),
     );
   }
@@ -272,14 +280,14 @@ class _FilterSheetState extends State<_FilterSheet> {
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton(
+          child: TextButton(
             onPressed: () => Navigator.pop(context),
-            style: OutlinedButton.styleFrom(
+            style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 18),
-              side: BorderSide(color: Colors.black.withOpacity(0.05)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: const Text("Cancel", 
+              style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(width: 16),
@@ -289,14 +297,15 @@ class _FilterSheetState extends State<_FilterSheet> {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
             onPressed: () {
               widget.onApply(status, priority, tags, dueBucket, sort);
               Navigator.pop(context);
             },
-            child: const Text("Apply Filters", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+            child: const Text("Apply Filters", 
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
           ),
         ),
       ],

@@ -5,9 +5,13 @@ class SeedData {
   final AppDatabase db;
 
   SeedData(this.db);
-  //updated seeds.
+
   /// Populates the database with mock users, projects, members, and assigned tasks.
   Future<void> seed() async {
+    // 0. OPTIONAL: Clear existing data to ensure a clean demo environment
+    // await db.delete(db.tasks).go();
+    // await db.delete(db.projects).go();
+
     // 1. Create Users
     final users = [
       'Alice Johnson',
@@ -20,25 +24,20 @@ class SeedData {
     final userIds = <String, int>{};
 
     for (final name in users) {
-      // Check if user exists to avoid duplicates
-      final existing = await (db.select(
-        db.users,
-      )..where((u) => u.name.equals(name))).getSingleOrNull();
+      final existing = await (db.select(db.users)..where((u) => u.name.equals(name))).getSingleOrNull();
 
       if (existing != null) {
         userIds[name] = existing.id;
       } else {
-        final id = await db
-            .into(db.users)
-            .insert(UsersCompanion(name: Value(name)));
+        final id = await db.into(db.users).insert(UsersCompanion(name: Value(name)));
         userIds[name] = id;
       }
     }
 
     // 2. Create Projects
     final projects = [
-      {'name': 'Mobile App Redesign', 'color': 0xFF1E88E5}, // Blue
-      {'name': 'Backend Migration', 'color': 0xFF43A047}, // Green
+      {'name': 'Mobile App Redesign', 'color': 0xFF6366F1}, // Premium Indigo
+      {'name': 'Backend Migration', 'color': 0xFF10B981}, // Premium Green
     ];
 
     final projectIds = <String, int>{};
@@ -47,16 +46,12 @@ class SeedData {
       final name = p['name'] as String;
       final color = p['color'] as int;
 
-      final existing = await (db.select(
-        db.projects,
-      )..where((p) => p.name.equals(name))).getSingleOrNull();
+      final existing = await (db.select(db.projects)..where((p) => p.name.equals(name))).getSingleOrNull();
 
       if (existing != null) {
         projectIds[name] = existing.id;
       } else {
-        final id = await db
-            .into(db.projects)
-            .insert(
+        final id = await db.into(db.projects).insert(
               ProjectsCompanion(
                 name: Value(name),
                 description: Value('Collaboration project for $name'),
@@ -91,19 +86,14 @@ class SeedData {
       if (pid == null) continue;
 
       for (final m in members) {
-        final userName = m['user']!;
-        final role = m['role']!;
-        final uid = userIds[userName];
-
+        final uid = userIds[m['user']!];
         if (uid == null) continue;
 
-        await db
-            .into(db.projectMembers)
-            .insert(
+        await db.into(db.projectMembers).insert(
               ProjectMembersCompanion(
                 projectId: Value(pid),
                 userId: Value(uid),
-                role: Value(role),
+                role: Value(m['role']!),
                 joinedAt: Value(DateTime.now()),
               ),
               mode: InsertMode.insertOrReplace,
@@ -111,62 +101,38 @@ class SeedData {
       }
     }
 
-    // 4. Create Tasks with Assignments
+    // 4. Create Tasks (FIXED STATUS STRINGS FOR FILTERS)
     final now = DateTime.now();
     final tasks = [
       {
         'title': 'Design System Setup',
         'project': 'Mobile App Redesign',
         'assignee': 'Alice Johnson',
-        'status': 'done',
+        'status': 'DONE', // ✅ Standardized
         'priority': 3,
-        'dueDate': now.subtract(const Duration(days: 5)), // Past
+        'dueDate': now.subtract(const Duration(days: 5)),
       },
       {
         'title': 'Login Screen UI',
         'project': 'Mobile App Redesign',
         'assignee': 'Bob Smith',
-        'status': 'in_progress',
+        'status': 'INPROGRESS', // ✅ Standardized
         'priority': 2,
-        'dueDate': now.add(const Duration(days: 2)), // Future
+        'dueDate': now.add(const Duration(days: 2)),
       },
       {
         'title': 'API Integration',
         'project': 'Mobile App Redesign',
         'assignee': 'Bob Smith',
-        'status': 'todo',
+        'status': 'TODO', // ✅ Standardized
         'priority': 2,
         'dueDate': now, // Today
-      },
-      {
-        'title': 'User Acceptance Testing',
-        'project': 'Mobile App Redesign',
-        'assignee': 'Charlie Davis',
-        'status': 'todo',
-        'priority': 1,
-        'dueDate': null, // Anytime
-      },
-      {
-        'title': 'Database Schema',
-        'project': 'Backend Migration',
-        'assignee': 'Diana Prince',
-        'status': 'done',
-        'priority': 3,
-        'dueDate': now.subtract(const Duration(days: 10)), // Past
-      },
-      {
-        'title': 'Auth Middleware',
-        'project': 'Backend Migration',
-        'assignee': 'Evan Wright',
-        'status': 'in_progress',
-        'priority': 3,
-        'dueDate': now.add(const Duration(days: 5)), // Future
       },
       {
         'title': 'Legacy Code Cleanup',
         'project': 'Backend Migration',
         'assignee': 'Alice Johnson',
-        'status': 'todo',
+        'status': 'TODO',
         'priority': 1,
         'dueDate': now.subtract(const Duration(days: 2)), // Overdue
       },
@@ -176,28 +142,22 @@ class SeedData {
       final pid = projectIds[t['project'] as String];
       final uid = userIds[t['assignee'] as String];
       final title = t['title'] as String;
-      final dueDate = t['dueDate'] as DateTime?;
 
       if (pid != null && uid != null) {
-        // Check if task already exists to prevent duplicates
-        final existing =
-            await (db.select(db.tasks)..where(
-                  (tbl) => tbl.title.equals(title) & tbl.projectId.equals(pid),
-                ))
-                .getSingleOrNull();
+        final existing = await (db.select(db.tasks)
+              ..where((tbl) => tbl.title.equals(title) & tbl.projectId.equals(pid)))
+            .getSingleOrNull();
 
         if (existing == null) {
-          await db
-              .into(db.tasks)
-              .insert(
+          await db.into(db.tasks).insert(
                 TasksCompanion(
                   title: Value(title),
-                  description: Value('Task for $title'),
+                  description: Value('Detailed requirements for $title'),
                   projectId: Value(pid),
                   assigneeId: Value(uid),
                   status: Value(t['status'] as String),
                   priority: Value(t['priority'] as int),
-                  dueDate: Value(dueDate),
+                  dueDate: Value(t['dueDate'] as DateTime?),
                   createdAt: Value(DateTime.now()),
                   updatedAt: Value(DateTime.now()),
                 ),

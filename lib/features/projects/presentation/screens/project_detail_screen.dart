@@ -12,6 +12,9 @@ import 'package:task_mvp/features/tasks/presentation/widgets/task_card.dart';
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/models/enums.dart';
 
+// ✅ NEW PROVIDER: Local state for project task sorting
+final projectSortProvider = StateProvider.autoDispose<String>((ref) => 'date');
+
 class ProjectDetailScreen extends ConsumerWidget {
   final int projectId;
 
@@ -21,6 +24,7 @@ class ProjectDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(allProjectsProvider);
     final db = ref.watch(databaseProvider);
+    final currentSort = ref.watch(projectSortProvider); // ✅ Listen to sort state
 
     return projectsAsync.when(
       data: (projects) {
@@ -43,7 +47,7 @@ class ProjectDetailScreen extends ConsumerWidget {
           body: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // 1. PREMIUM MODERN APP BAR
+              // 1. PREMIUM MODERN APP BAR (Fixed Overlap)
               _buildModernAppBar(context, ref, project),
 
               SliverPadding(
@@ -58,13 +62,23 @@ class ProjectDetailScreen extends ConsumerWidget {
                     _buildModernProgressHeader(db),
                     const SizedBox(height: 32),
                     
-                    const Row(
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.list_alt_rounded, color: Color(0xFF1A1C1E), size: 22),
-                        SizedBox(width: 12),
+                        const Row(
+                          children: [
+                            Icon(Icons.list_alt_rounded, color: Color(0xFF1A1C1E), size: 22),
+                            SizedBox(width: 12),
+                            Text(
+                              "Project Tasks",
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1A1C1E)),
+                            ),
+                          ],
+                        ),
+                        // ✅ SORT INDICATOR LABEL
                         Text(
-                          "Project Tasks",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1A1C1E)),
+                          "Sorted by ${currentSort == 'priority' ? 'Priority' : 'Date'}",
+                          style: const TextStyle(fontSize: 10, color: Colors.black26, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -73,9 +87,17 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ),
               ),
               
-              // 4. DYNAMIC TASK LIST
+              // 4. DYNAMIC TASK LIST (With Advanced Sorting Logic)
               StreamBuilder<List<Task>>(
-                stream: (db.select(db.tasks)..where((t) => t.projectId.equals(projectId))).watch(),
+                stream: (db.select(db.tasks)
+                  ..where((t) => t.projectId.equals(projectId))
+                  ..orderBy([
+                    (t) => drift.OrderingTerm(
+                      // ✅ DYNAMIC SORTING LOGIC
+                      expression: currentSort == 'priority' ? t.priority : t.dueDate,
+                      mode: drift.OrderingMode.asc,
+                    ),
+                  ])).watch(),
                 builder: (context, snapshot) {
                   final tasks = snapshot.data ?? [];
 
@@ -84,11 +106,11 @@ class ProjectDetailScreen extends ConsumerWidget {
                       hasScrollBody: false,
                       child: Center(
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center, // ✅ FIXED: MainType error solved
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.assignment_late_outlined, color: Colors.grey.shade300, size: 60),
                             const SizedBox(height: 16),
-                            const Text("No tasks in this project yet", style: TextStyle(color: Colors.black38)),
+                            const Text("No tasks found", style: TextStyle(color: Colors.black38)),
                           ],
                         ),
                       ),
@@ -125,7 +147,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  // --- PREMIUM UI COMPONENTS ---
+  // --- UI COMPONENTS ---
 
   Widget _buildModernAppBar(BuildContext context, WidgetRef ref, Project project) {
     return SliverAppBar(
@@ -134,9 +156,11 @@ class ProjectDetailScreen extends ConsumerWidget {
       elevation: 0,
       stretch: true,
       backgroundColor: AppColors.primary,
+      // ✅ FIX: Increase leadingWidth to prevent back arrow overlap
+      leadingWidth: 70, 
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
-        titlePadding: const EdgeInsets.only(left: 56, bottom: 16),
+        titlePadding: const EdgeInsets.only(left: 60, bottom: 16),
         title: Text(project.name, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 18)),
         background: Container(
           decoration: const BoxDecoration(
@@ -149,10 +173,20 @@ class ProjectDetailScreen extends ConsumerWidget {
         ),
       ),
       leading: IconButton(
+        padding: const EdgeInsets.only(left: 16),
         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
         onPressed: () => context.pop(),
       ),
       actions: [
+        // ✅ ADVANCED SORTING MENU
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.sort_rounded, color: Colors.white),
+          onSelected: (value) => ref.read(projectSortProvider.notifier).state = value,
+          itemBuilder: (context) => [
+            const PopupMenuItem(value: 'date', child: Text("Sort by Date")),
+            const PopupMenuItem(value: 'priority', child: Text("Sort by Priority")),
+          ],
+        ),
         IconButton(
           icon: const Icon(Icons.group_add_rounded, color: Colors.white),
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectMembersScreen(projectId: projectId))),
@@ -275,7 +309,7 @@ class ProjectDetailScreen extends ConsumerWidget {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text("Edit Description", style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text("Edit Description", style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A1C1E))),
         content: TextField(
           controller: controller,
           maxLines: 5,

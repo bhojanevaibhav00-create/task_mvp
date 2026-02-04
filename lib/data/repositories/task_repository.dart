@@ -58,18 +58,27 @@ class TaskRepository implements ITaskRepository {
   }) {
     final query = _db.select(_db.tasks);
 
+    // 1. FIXED STATUS FILTER: Added null check and empty check
     if (statuses != null && statuses.isNotEmpty) {
       query.where((t) => t.status.isIn(statuses));
     }
+    
     if (priority != null) {
       query.where((t) => t.priority.equals(priority));
     }
+    
     if (hasDueDate != null) {
       query.where((t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull());
     }
-    if (fromDate != null && toDate != null) {
-      query.where((t) => t.dueDate.isBetweenValues(fromDate, toDate));
+
+    // 2. FIXED DUE DATE FILTER: Allows filtering even if only one date is provided (e.g., just Overdue)
+    if (fromDate != null) {
+      query.where((t) => t.dueDate.isBiggerOrEqualValue(fromDate));
     }
+    if (toDate != null) {
+      query.where((t) => t.dueDate.isSmallerOrEqualValue(toDate));
+    }
+    
     if (tagId != null) query.where((t) => t.tagId.equals(tagId));
     if (projectId != null) query.where((t) => t.projectId.equals(projectId));
 
@@ -103,17 +112,21 @@ class TaskRepository implements ITaskRepository {
     final old = await getTaskById(task.id);
     if (old == null) return false;
 
-    if (task.status == 'done') {
+    // Standardizing status check to lowercase to prevent mismatch
+    final isDone = task.status?.toLowerCase() == 'done';
+
+    if (isDone) {
       await _reminderService.cancel(task.id);
     }
-    if (task.reminderEnabled == true) {
+    
+    if (task.reminderEnabled == true && !isDone) {
       await _reminderService.schedule(task);
     }
 
     final now = DateTime.now();
     final updated = task.copyWith(
       updatedAt: Value(now),
-      completedAt: Value(task.status == 'done' ? now : null),
+      completedAt: Value(isDone ? now : null),
     );
 
     final ok = await _db.update(_db.tasks).replace(updated);
@@ -147,7 +160,6 @@ class TaskRepository implements ITaskRepository {
   @override
   Future<void> seedDatabase() => SeedData(_db).seed();
 
-  // 🚀 FIXED METHOD
   @override
   Future<int> getDatabaseVersion() => _db.getDatabaseVersion();
 

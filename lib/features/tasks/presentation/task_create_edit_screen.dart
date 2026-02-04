@@ -10,13 +10,13 @@ import 'widgets/reminder_section.dart';
 
 class TaskCreateEditScreen extends ConsumerStatefulWidget {
   final Task? task;
-  final int? taskId; // ✅ ADDED: For deep linking and GoRouter navigation
+  final int? taskId; 
   final int? projectId;
 
   const TaskCreateEditScreen({
     super.key,
     this.task,
-    this.taskId, // ✅ ADDED
+    this.taskId,
     this.projectId,
   });
 
@@ -34,16 +34,14 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   bool reminderEnabled = false;
   DateTime? reminderAt;
   int _priority = 1;
-  DateTime? dueDate;
+  DateTime? _dueDate; // ✅ Rationale: Keeping this private for state management
   int? _selectedAssigneeId;
 
-  // Track local task state if we fetch it via taskId
   Task? _fetchedTask;
 
   @override
   void initState() {
     super.initState();
-    // 1. Initialize with provided task object if available
     final initialTask = widget.task;
 
     _titleCtrl = TextEditingController(text: initialTask?.title ?? '');
@@ -51,16 +49,14 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     reminderEnabled = initialTask?.reminderEnabled ?? false;
     reminderAt = initialTask?.reminderAt;
     _priority = initialTask?.priority ?? 1;
-    dueDate = initialTask?.dueDate;
+    _dueDate = initialTask?.dueDate;
     _selectedAssigneeId = initialTask?.assigneeId;
 
-    // 2. ✅ FIX: Fetch task data if only taskId is provided (GoRouter/Deep Link)
     if (widget.taskId != null && widget.task == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadTaskById());
     }
   }
 
-  /// Fetches task from database when opened via ID
   Future<void> _loadTaskById() async {
     final repo = ref.read(taskRepositoryProvider);
     final task = await repo.getTaskById(widget.taskId!);
@@ -73,7 +69,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
         reminderEnabled = task.reminderEnabled;
         reminderAt = task.reminderAt;
         _priority = task.priority ?? 1;
-        dueDate = task.dueDate;
+        _dueDate = task.dueDate;
         _selectedAssigneeId = task.assigneeId;
       });
     }
@@ -88,7 +84,6 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Check both widget.task and our locally fetched task
     final currentTask = widget.task ?? _fetchedTask;
     final isEdit = currentTask != null;
 
@@ -157,7 +152,6 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   }
 
   Widget _buildAssigneeSelector(Task? currentTask) {
-    // Priority: widget.projectId -> currentTask.projectId -> null
     final pid = widget.projectId ?? currentTask?.projectId;
 
     if (pid == null) {
@@ -386,9 +380,9 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
               ),
             ),
             subtitle: Text(
-              dueDate == null
+              _dueDate == null
                   ? "Not set"
-                  : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
+                  : "${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}",
             ),
             trailing: const Icon(
               Icons.chevron_right_rounded,
@@ -416,11 +410,16 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   Future<void> _pickDueDate() async {
     final date = await showDatePicker(
       context: context,
-      firstDate: DateTime(2000),
+      firstDate: DateTime.now(), // ✅ Fixed: Prevents selecting past dates
       lastDate: DateTime(2100),
-      initialDate: dueDate ?? DateTime.now(),
+      initialDate: _dueDate ?? DateTime.now(),
     );
-    if (date != null) setState(() => dueDate = date);
+    // ✅ FIXED: UI Refresh logic
+    if (date != null) {
+      setState(() {
+        _dueDate = date;
+      });
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, Task task) async {
@@ -453,27 +452,42 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     final title = _titleCtrl.text.trim();
     final description = _descCtrl.text.trim();
 
-    if (currentTask == null) {
-      await notifier.addTask(
-        title,
-        description,
-        priority: _priority,
-        dueDate: dueDate,
-        assigneeId: _selectedAssigneeId,
-        projectId: widget.projectId,
-      );
-    } else {
-      final updated = currentTask.copyWith(
-        title: title,
-        description: drift.Value(description.isEmpty ? null : description),
-        priority: drift.Value(_priority),
-        dueDate: drift.Value(dueDate),
-        reminderEnabled: reminderEnabled,
-        reminderAt: drift.Value(reminderAt),
-        assigneeId: drift.Value(_selectedAssigneeId),
-      );
-      await notifier.updateTask(updated);
+    try {
+      if (currentTask == null) {
+        // 1. ADD NEW TASK
+        await notifier.addTask(
+          title,
+          description,
+          priority: _priority,
+          dueDate: _dueDate,
+          assigneeId: _selectedAssigneeId,
+          projectId: widget.projectId,
+        );
+      } else {
+        // 2. UPDATE EXISTING TASK
+        // ✅ FIXED: Ensure copyWith uses drift.Value for nullable fields
+        final updated = currentTask.copyWith(
+          title: title,
+          description: drift.Value(description.isEmpty ? null : description),
+          priority: drift.Value(_priority),
+          dueDate: drift.Value(_dueDate),
+          reminderEnabled: reminderEnabled,
+          reminderAt: drift.Value(reminderAt),
+          assigneeId: drift.Value(_selectedAssigneeId),
+        );
+        await notifier.updateTask(updated);
+      }
+
+      // 3. ✅ UI REFRESH: Signal back to list screen to refresh
+      if (mounted) Navigator.pop(context, true);
+      
+    } catch (e) {
+      // ✅ Error handling: Optional SnackBar for user feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to save task: $e")),
+        );
+      }
     }
-    if (mounted) Navigator.pop(context, true);
   }
 }
