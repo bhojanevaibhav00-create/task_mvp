@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:task_mvp/core/constants/app_colors.dart';
-import 'package:task_mvp/core/providers/task_providers.dart';
+
+import '../../../../core/constants/app_colors.dart';
+import '../../../../data/models/enums.dart';
 
 class QuickAddTaskSheet extends ConsumerStatefulWidget {
   const QuickAddTaskSheet({super.key});
@@ -11,42 +12,43 @@ class QuickAddTaskSheet extends ConsumerStatefulWidget {
       _QuickAddTaskSheetState();
 }
 
-class _QuickAddTaskSheetState
-    extends ConsumerState<QuickAddTaskSheet> {
-  final _titleCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
+class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
 
-  int _priority = 1;
-  DateTime? _dueDate;
-  bool _showMore = false;
+  Priority? priority;
+  DateTime? dueDate;
+  DateTime? reminderDate;
 
-  @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _descCtrl.dispose();
-    super.dispose();
-  }
+  bool showMore = false;
+  bool tagsOpen = false;
+  bool descOpen = false;
+  bool reminderOpen = false;
+
+  final tags = ['Work', 'Personal', 'Urgent', 'Bug'];
+  final selectedTags = <String>{};
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 16,
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ================= DRAG HANDLE =================
+          /// DRAG HANDLE
           Center(
             child: Container(
               width: 40,
-              height: 5,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 color: Colors.grey.shade400,
                 borderRadius: BorderRadius.circular(8),
@@ -54,14 +56,16 @@ class _QuickAddTaskSheetState
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // ================= TITLE =================
+          /// TITLE INPUT
           TextField(
-            controller: _titleCtrl,
+            controller: _titleController,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Add a task…',
+            decoration: InputDecoration(
+              hintText: 'Task title',
+              hintStyle: TextStyle(
+                fontSize: 18,
+                color: isDark ? Colors.white54 : Colors.black45,
+              ),
               border: InputBorder.none,
             ),
             style: const TextStyle(
@@ -70,77 +74,167 @@ class _QuickAddTaskSheetState
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // ================= QUICK CONTROLS =================
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          /// QUICK CONTROLS
+          Row(
             children: [
-              _chip(
+              _quickChip(
                 icon: Icons.flag,
-                label: _priorityLabel(),
-                color: _priorityColor(),
-                onTap: _cyclePriority,
+                label: priority?.name ?? 'Priority',
+                active: priority != null,
+                onTap: _pickPriority,
               ),
-              _chip(
+              const SizedBox(width: 12),
+              _quickChip(
                 icon: Icons.calendar_today,
-                label: _dueDate == null
+                label: dueDate == null
                     ? 'Due date'
-                    : '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}',
-                onTap: _pickDueDate,
+                    : '${dueDate!.day}/${dueDate!.month}',
+                active: dueDate != null,
+                onTap: _pickDate,
               ),
-              _chip(
-                icon: Icons.more_horiz,
-                label: _showMore ? 'Less options' : 'More options',
-                onTap: () => setState(() => _showMore = !_showMore),
+              const Spacer(),
+              IconButton(
+                icon: Icon(
+                  showMore ? Icons.expand_less : Icons.expand_more,
+                ),
+                onPressed: () =>
+                    setState(() => showMore = !showMore),
               ),
             ],
           ),
 
-          // ================= MORE OPTIONS =================
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: TextField(
-                controller: _descCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Description (optional)',
-                  filled: true,
-                  fillColor: isDark
-                      ? AppColors.inputBackgroundDark
-                      : AppColors.inputBackgroundLight,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+          /// MORE OPTIONS
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: showMore
+                ? Column(
+              children: [
+                const Divider(),
+
+                /// TAGS
+                _expandTile(
+                  icon: Icons.label_outline,
+                  label: 'Tags',
+                  expanded: tagsOpen,
+                  onTap: () =>
+                      setState(() => tagsOpen = !tagsOpen),
+                  child: Wrap(
+                    spacing: 8,
+                    children: tags.map((tag) {
+                      final selected =
+                      selectedTags.contains(tag);
+                      return FilterChip(
+                        label: Text(tag),
+                        selected: selected,
+                        selectedColor:
+                        AppColors.primary.withOpacity(0.15),
+                        onSelected: (_) {
+                          setState(() {
+                            selected
+                                ? selectedTags.remove(tag)
+                                : selectedTags.add(tag);
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
                 ),
-              ),
-            ),
-            crossFadeState: _showMore
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
+
+                /// DESCRIPTION
+                _expandTile(
+                  icon: Icons.notes_outlined,
+                  label: 'Description',
+                  expanded: descOpen,
+                  onTap: () =>
+                      setState(() => descOpen = !descOpen),
+                  child: TextField(
+                    controller: _descController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Add description',
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+
+                /// REMINDER
+                _expandTile(
+                  icon: Icons.notifications_none,
+                  label: 'Reminder',
+                  expanded: reminderOpen,
+                  onTap: () => setState(
+                          () => reminderOpen = !reminderOpen),
+                  child: Row(
+                    mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        reminderDate == null
+                            ? 'Not set'
+                            : '${reminderDate!.day}/${reminderDate!.month}',
+                      ),
+                      Switch(
+                        value: reminderDate != null,
+                        activeColor: AppColors.primary,
+                        onChanged: (v) async {
+                          if (!v) {
+                            setState(
+                                    () => reminderDate = null);
+                            return;
+                          }
+                          final picked =
+                          await showDatePicker(
+                            context: context,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now()
+                                .add(const Duration(days: 365)),
+                            initialDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setState(
+                                    () => reminderDate = picked);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+                : const SizedBox.shrink(),
           ),
 
           const SizedBox(height: 20),
 
-          // ================= ACTIONS =================
+          /// ACTIONS
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _saveTask,
-                  child: const Text('Add Task'),
+              const Spacer(),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () {
+                  if (_titleController.text.trim().isEmpty) return;
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  'Add Task',
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
             ],
@@ -150,91 +244,109 @@ class _QuickAddTaskSheetState
     );
   }
 
-  // ================= HELPERS =================
+  /// ================= HELPERS =================
 
-  Widget _chip({
+  Widget _quickChip({
     required IconData icon,
     required String label,
-    Color? color,
     required VoidCallback onTap,
+    bool active = false,
   }) {
     return InkWell(
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: color?.withOpacity(0.15) ??
-              AppColors.chipBackground,
-          borderRadius: BorderRadius.circular(20),
+          color: active
+              ? AppColors.primary.withOpacity(0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: active
+                ? AppColors.primary
+                : Colors.grey.shade400,
+          ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: color),
+            Icon(icon,
+                size: 16,
+                color:
+                active ? AppColors.primary : Colors.grey),
             const SizedBox(width: 6),
-            Text(label),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: active
+                    ? AppColors.primary
+                    : Colors.grey,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _cyclePriority() {
-    setState(() {
-      _priority = _priority == 3 ? 1 : _priority + 1;
-    });
+  Widget _expandTile({
+    required IconData icon,
+    required String label,
+    required bool expanded,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(icon),
+          title: Text(label),
+          trailing: Icon(
+              expanded ? Icons.expand_less : Icons.expand_more),
+          onTap: onTap,
+        ),
+        if (expanded)
+          Padding(
+            padding: const EdgeInsets.only(left: 40, bottom: 12),
+            child: child,
+          ),
+        const Divider(),
+      ],
+    );
   }
 
-  String _priorityLabel() {
-    switch (_priority) {
-      case 1:
-        return 'Low';
-      case 2:
-        return 'Medium';
-      case 3:
-        return 'High';
-      default:
-        return 'Low';
+  void _pickPriority() async {
+    final result = await showModalBottomSheet<Priority>(
+      context: context,
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: Priority.values
+            .map(
+              (p) => ListTile(
+            title: Text(p.name),
+            onTap: () => Navigator.pop(context, p),
+          ),
+        )
+            .toList(),
+      ),
+    );
+    if (result != null) {
+      setState(() => priority = result);
     }
   }
 
-  Color _priorityColor() {
-    switch (_priority) {
-      case 1:
-        return Colors.green;
-      case 2:
-        return Colors.orange;
-      case 3:
-        return Colors.red;
-      default:
-        return Colors.green;
-    }
-  }
-
-  Future<void> _pickDueDate() async {
-    final date = await showDatePicker(
+  void _pickDate() async {
+    final result = await showDatePicker(
       context: context,
       firstDate: DateTime.now(),
-      lastDate: DateTime(2100),
-      initialDate: _dueDate ?? DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: DateTime.now(),
     );
-
-    if (date != null) {
-      setState(() => _dueDate = date);
+    if (result != null) {
+      setState(() => dueDate = result);
     }
-  }
-
-  Future<void> _saveTask() async {
-    if (_titleCtrl.text.trim().isEmpty) return;
-
-    await ref.read(tasksProvider.notifier).addTask(
-      _titleCtrl.text.trim(),
-      _descCtrl.text.trim(),
-      priority: _priority,
-      dueDate: _dueDate,
-    );
-
-    if (mounted) Navigator.pop(context);
   }
 }
