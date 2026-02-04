@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/database/database.dart' as db;
-import '../../../core/providers/collaboration_providers.dart';
+import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' as drift;
+
+// Core Constants & Providers
 import '../../../core/constants/app_colors.dart';
-import '../widgets/add_member_dialog.dart'; // 🚀 खात्री करा की ही फाईल तुम्ही तयार केली आहे
+import '../../../core/providers/task_providers.dart';
+import '../../../core/providers/collaboration_providers.dart';
+
+// Data Layer
+import '../../../data/database/database.dart';
+import '../widgets/add_member_dialog.dart';
 
 class ProjectMembersScreen extends ConsumerWidget {
   final int projectId;
@@ -11,22 +18,23 @@ class ProjectMembersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 🚀 Watching the provider for real-time member updates
     final membersAsync = ref.watch(projectMembersProvider(projectId));
-    const darkText = Color(0xFF111827);
+    const darkText = Color(0xFF111827); // High contrast slate dark
 
     return Scaffold(
+      // ✅ FORCED PREMIUM WHITE THEME
       backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
         title: const Text(
           "Project Members",
-          style: TextStyle(fontWeight: FontWeight.bold, color: darkText),
+          style: TextStyle(fontWeight: FontWeight.w900, color: darkText),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
         iconTheme: const IconThemeData(color: darkText),
       ),
-      // 🚀 पायरी १: Add Member Flow साठी Floating Action Button ॲड केले
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         onPressed: () => _showAddMemberDialog(context),
@@ -34,13 +42,11 @@ class ProjectMembersScreen extends ConsumerWidget {
       ),
       body: membersAsync.when(
         data: (List<MemberWithUser> membersList) {
-          debugPrint("Project ID $projectId: Found ${membersList.length} members");
-
           if (membersList.isEmpty) {
             return _buildEmptyState();
           }
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             itemCount: membersList.length,
             itemBuilder: (context, index) {
               final item = membersList[index];
@@ -52,7 +58,7 @@ class ProjectMembersScreen extends ConsumerWidget {
         error: (e, stack) => Center(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Text("Database Error: $e", textAlign: TextAlign.center),
+            child: Text("Connection Error: $e", textAlign: TextAlign.center),
           ),
         ),
       ),
@@ -93,7 +99,7 @@ class ProjectMembersScreen extends ConsumerWidget {
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
           radius: 24,
           backgroundColor: AppColors.primary.withOpacity(0.1),
@@ -102,33 +108,30 @@ class ProjectMembersScreen extends ConsumerWidget {
             style: const TextStyle(
               color: AppColors.primary, 
               fontWeight: FontWeight.bold,
+              fontSize: 18,
             ),
           ),
         ),
         title: Text(
           user.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF111827)),
         ),
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: 6),
           child: Row(
-            children: [
-              _buildRoleChip(member.role, isOwner),
-            ],
+            children: [_buildRoleChip(member.role, isOwner)],
           ),
         ),
         trailing: IconButton(
           icon: Icon(
             Icons.person_remove_rounded,
-            // 🚀 पायरी २: Last-owner protection व्हिज्युअली दाखवण्यासाठी रंग बदलला
-            color: isLastOwner ? Colors.grey.shade300 : Colors.redAccent,
+            color: isLastOwner ? Colors.grey.shade200 : Colors.redAccent.withOpacity(0.7),
           ),
           onPressed: () {
             if (isLastOwner) {
-              // 🚀 पायरी ३: प्रोटेक्शन मेसेज दाखवणे
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text("At least 1 Owner required"),
+                  content: Text("At least 1 Owner required for safety"),
                   backgroundColor: Colors.orange,
                 ),
               );
@@ -152,7 +155,7 @@ class ProjectMembersScreen extends ConsumerWidget {
         role.toUpperCase(),
         style: TextStyle(
           fontSize: 10,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w900,
           color: isOwner ? Colors.orange.shade800 : Colors.blue.shade800,
         ),
       ),
@@ -164,17 +167,14 @@ class ProjectMembersScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.person_search_rounded, size: 80, color: Colors.grey.shade300),
+          Icon(Icons.group_outlined, size: 80, color: Colors.grey.shade200),
           const SizedBox(height: 16),
           const Text(
-            "No Members Found", 
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+            "Team is Empty", 
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.grey),
           ),
           const SizedBox(height: 8),
-          Text(
-            "Project ID: $projectId has no assigned users.", 
-            style: const TextStyle(color: Colors.grey),
-          ),
+          const Text("Invite members to collaborate.", style: TextStyle(color: Colors.black26)),
         ],
       ),
     );
@@ -184,15 +184,13 @@ class ProjectMembersScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text("Remove Member?"),
+        title: const Text("Remove Member?", style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text("Are you sure you want to remove ${item.user.name} from this project?"),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
             onPressed: () async {
               await ref.read(collaborationActionProvider.notifier).removeMember(
                 projectId, 
@@ -202,8 +200,8 @@ class ProjectMembersScreen extends ConsumerWidget {
               ref.invalidate(projectMembersProvider(projectId));
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text("Remove", 
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text("Remove"),
           ),
         ],
       ),

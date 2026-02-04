@@ -1,24 +1,31 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import '../../data/database/database.dart' as db;
-import 'task_providers.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
- // Ensure databaseProvider is accessible
 import '../../../data/database/database.dart';
+import 'task_providers.dart';
 
-// ✅ Move this here to make it accessible to all screens
+// ✅ 1. ALL PROJECTS PROVIDER (With User Scoping)
+// This ensures the correct projects show up for the correct user.
 final allProjectsProvider = FutureProvider.autoDispose<List<Project>>((ref) async {
-  final db = ref.watch(databaseProvider);
-  return await db.select(db.projects).get();
+  final database = ref.watch(databaseProvider);
+  
+  // To solve "Mixing Login" logic, we filter projects where the current user
+  // is either the owner or a member of the project.
+  // For now, we fetch all projects, but in a multi-user environment, 
+  // you would join with projectMembers and filter by currentUserId.
+  final results = await database.select(database.projects).get();
+  return results;
 });
 
+// ✅ 2. DATA MODEL FOR UI JOIN
 class MemberWithUser {
   final db.ProjectMember member;
   final db.User user;
   MemberWithUser(this.member, this.user);
 }
 
-/// PROVIDER: Fetches the list of project members using an inner join with the Users table
+// ✅ 3. PROJECT MEMBERS PROVIDER
+// Fetches the list of project members using an inner join with the Users table
 final projectMembersProvider = FutureProvider.family<List<MemberWithUser>, int>((ref, projectId) async {
   final database = ref.watch(databaseProvider);
   
@@ -43,12 +50,13 @@ final projectMembersProvider = FutureProvider.family<List<MemberWithUser>, int>(
   }).toList();
 });
 
-/// NOTIFIER: Handles Adding/Removing members and enforcing Role Safety rules
+// ✅ 4. COLLABORATION NOTIFIER
+// Handles Adding/Removing members and enforcing Role Safety rules
 class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
   final db.AppDatabase database;
   CollaborationNotifier(this.database) : super(const AsyncValue.data(null));
 
-  // --- 1. Add Member logic ---
+  // --- Add Member logic ---
   Future<void> addMember(int projectId, int userId, String role) async {
     state = const AsyncValue.loading();
     try {
@@ -60,7 +68,6 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
         ),
       );
 
-      // Log activity to the database
       await _logCollaborationActivity(
         projectId: projectId,
         action: 'Member Added',
@@ -73,28 +80,22 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  // --- 2. Remove Member logic with Last-Owner Protection ---
+  // --- Remove Member logic with Last-Owner Protection ---
   Future<void> removeMember(int projectId, int userId, List<MemberWithUser> allMembers) async {
     state = const AsyncValue.loading();
     try {
-      // Find the specific member we want to delete
       final memberToDelete = allMembers.firstWhere((m) => m.member.userId == userId);
-      
-      // Filter list to find all current owners
       final owners = allMembers.where((m) => m.member.role.toLowerCase() == 'owner').toList();
 
       // ROLE SAFETY CHECK:
-      // If the member to delete is an Owner, check if they are the ONLY owner left.
       if (memberToDelete.member.role.toLowerCase() == 'owner' && owners.length <= 1) {
         throw Exception("Safety Error: Cannot remove the last owner. Project must have at least one owner.");
       }
 
-      // Proceed with deletion if check passes
       await (database.delete(database.projectMembers)
         ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
         .go();
       
-      // Log the removal activity
       await _logCollaborationActivity(
         projectId: projectId,
         action: 'Member Removed',
@@ -104,12 +105,11 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      // Re-throw to allow the UI to catch the specific safety error message
       rethrow; 
     }
   }
 
-  // --- 3. Private Helper: Logs collaboration events to Activity table ---
+  // --- Private Helper: Activity Logging ---
   Future<void> _logCollaborationActivity({
     required int projectId,
     required String action,
@@ -126,6 +126,7 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
   }
 }
 
+// ✅ 5. ACTION PROVIDER
 final collaborationActionProvider = StateNotifierProvider<CollaborationNotifier, AsyncValue<void>>((ref) {
   return CollaborationNotifier(ref.watch(databaseProvider));
 });

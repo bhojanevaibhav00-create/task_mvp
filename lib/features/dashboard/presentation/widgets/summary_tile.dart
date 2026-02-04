@@ -63,7 +63,7 @@ class SummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -72,9 +72,13 @@ class SummaryTile extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             // VAISHNAVI: Adaptive shadow for Dark Mode compatibility
-            color: isDark 
-                ? Colors.black45 
-                : (gradient as LinearGradient).colors.first.withOpacity(0.3),
+            color: isDark
+                ? Colors.black45
+                : (gradient is LinearGradient
+                      ? (gradient as LinearGradient).colors.first.withOpacity(
+                          0.3,
+                        )
+                      : Colors.black12),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -92,7 +96,7 @@ class SummaryTile extends StatelessWidget {
                 color: Colors.white.withOpacity(0.15),
               ),
             ),
-          
+
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -8,7 +8,6 @@ class TaskCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onToggleDone;
   final VoidCallback? onDelete;
-  // Added optional assignee name to show initials
   final String? assigneeName; 
 
   const TaskCard({
@@ -22,18 +21,21 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ FORCED WHITE THEME: Ignoring system isDark to prevent "dark leakage"
+    const bool isDarkTheme = false; 
     final isDone = task.status == TaskStatus.done.name;
-    const primaryText = Color(0xFF111827);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
+        // ✅ PREMIUM WHITE: Using pure white for the card
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16), 
         boxShadow: [
           BoxShadow(
+            // ✅ SUBTLE SHADOW: Depth without the "dirty" look
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -42,9 +44,9 @@ class TaskCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
                 // 1. STATUS TOGGLE
@@ -52,8 +54,8 @@ class TaskCard extends StatelessWidget {
                   onTap: onToggleDone,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 26,
-                    height: 26,
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
                       color: isDone ? Colors.green : Colors.transparent,
                       shape: BoxShape.circle,
@@ -63,7 +65,7 @@ class TaskCard extends StatelessWidget {
                       ),
                     ),
                     child: isDone
-                        ? const Icon(Icons.check, size: 16, color: Colors.white)
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
                         : null,
                   ),
                 ),
@@ -77,22 +79,25 @@ class TaskCard extends StatelessWidget {
                       Text(
                         task.title,
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: isDone ? Colors.grey : primaryText,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          // ✅ HIGH CONTRAST: Slate dark for maximum readability
+                          color: isDone 
+                              ? Colors.grey.shade400 
+                              : const Color(0xFF111827), 
                           decoration: isDone ? TextDecoration.lineThrough : null,
                         ),
                       ),
                       if (task.description != null && task.description!.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.only(top: 2),
                           child: Text(
                             task.description!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade500,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black45,
                             ),
                           ),
                         ),
@@ -100,41 +105,19 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
 
-                // 3. ASSIGNEE AVATAR (SPRINT 7 UPDATE)
-                // Shows initials if name is provided, otherwise a generic person icon
+                // 3. ASSIGNEE AVATAR (Collaboration Indicator)
                 if (task.assigneeId != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Tooltip(
-                      message: "Assigned to ${assigneeName ?? 'Team Member'}",
-                      child: CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
-                        child: assigneeName != null && assigneeName!.isNotEmpty
-                            ? Text(
-                                assigneeName![0].toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 10, 
-                                  fontWeight: FontWeight.bold, 
-                                  color: AppColors.primary
-                                ),
-                              )
-                            : const Icon(
-                                Icons.person_rounded, 
-                                size: 14, 
-                                color: AppColors.primary
-                              ),
-                      ),
-                    ),
-                  ),
+                  _buildAssigneeAvatar(),
 
                 // 4. DELETE ACTION
                 if (onDelete != null)
                   IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     icon: Icon(
                       Icons.delete_outline_rounded, 
-                      color: Colors.red.withOpacity(0.7), 
-                      size: 22
+                      color: Colors.red.withOpacity(0.5), 
+                      size: 20
                     ),
                     onPressed: onDelete,
                   ),
@@ -142,6 +125,26 @@ class TaskCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAssigneeAvatar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: CircleAvatar(
+        radius: 12,
+        backgroundColor: AppColors.primary.withOpacity(0.1),
+        child: assigneeName != null && assigneeName!.isNotEmpty
+            ? Text(
+                assigneeName![0].toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 10, 
+                  fontWeight: FontWeight.w900, 
+                  color: AppColors.primary
+                ),
+              )
+            : const Icon(Icons.person, size: 12, color: AppColors.primary),
       ),
     );
   }
