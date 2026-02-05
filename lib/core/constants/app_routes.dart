@@ -10,5 +10,6 @@ class AppRoutes {
   static const notifications = '/notifications';
 
   // ✅ Add this for Sprint 7
-  static const projectDetails = '/projects/:projectId'; 
+  static const projectDetails = '/projects/:projectId';
+  static const projects = '/projects';
 }

@@ -6,63 +6,93 @@ class ActiveFilterChips extends StatelessWidget {
   final Set<TaskStatus> statuses;
   final Set<Priority> priorities;
   final String? due;
-  final VoidCallback onClear;
+  final VoidCallback onClearAll;
 
   const ActiveFilterChips({
     super.key,
     required this.statuses,
     required this.priorities,
     required this.due,
-    required this.onClear,
+    required this.onClearAll,
   });
+
+  bool get hasFilters =>
+      statuses.isNotEmpty || priorities.isNotEmpty || due != null;
 
   @override
   Widget build(BuildContext context) {
-    final chips = <Widget>[];
+    if (!hasFilters) return const SizedBox.shrink();
 
-    for (final s in statuses) {
-      chips.add(_chip('Status: ${s.name}'));
-    }
-
-    for (final p in priorities) {
-      chips.add(_chip('Priority: ${p.label}'));
-    }
-
-    if (due != null) {
-      chips.add(_chip('Due: $due'));
-    }
-
-    if (chips.isEmpty) return const SizedBox();
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
-          ...chips,
-          ActionChip(
-            label: const Text('Clear all'),
-            onPressed: onClear,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
+          ...statuses.map(
+                (s) => _chip(
+              label: _statusLabel(s),
               color: AppColors.primary,
             ),
+          ),
+          ...priorities.map(
+                (p) => _chip(
+              label: _priorityLabel(p),
+              color: Colors.orange,
+            ),
+          ),
+          if (due != null)
+            _chip(
+              label: due!,
+              color: Colors.green,
+            ),
+          ActionChip(
+            label: const Text('Clear'),
+            onPressed: onClearAll,
+            backgroundColor: Colors.grey.shade200,
           ),
         ],
       ),
     );
   }
 
-  Widget _chip(String label) {
+  Widget _chip({required String label, required Color color}) {
     return Chip(
       label: Text(
         label,
-        style: const TextStyle(fontSize: 12),
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
       ),
-      backgroundColor: Colors.grey.shade200,
+      backgroundColor: color,
     );
   }
-}
 
+  /// ❌ DO NOT USE TaskStatus.label (causes error)
+  String _statusLabel(TaskStatus s) {
+    switch (s) {
+      case TaskStatus.todo:
+        return 'To Do';
+      case TaskStatus.inProgress:
+        return 'In Progress';
+      case TaskStatus.review:
+        return 'Review';
+      case TaskStatus.done:
+        return 'Done';
+    }
+  }
+
+  String _priorityLabel(Priority p) {
+    switch (p) {
+      case Priority.low:
+        return 'Low';
+      case Priority.medium:
+        return 'Medium';
+      case Priority.high:
+        return 'High';
+
+    }
+  }
+}

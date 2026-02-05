@@ -1,99 +1,89 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:task_mvp/core/constants/app_colors.dart';
-import 'package:task_mvp/core/providers/collaboration_providers.dart'; 
 
-// ✅ Ensure this import points to the file where your ProjectMembersScreen is
-// If you named the file project_members_screen.dart, use that path here:
-import 'package:task_mvp/features/projects/widgets/add_member_dialog.dart'; 
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/task_providers.dart';
+import '../../../../data/database/database.dart';
+import 'package:task_mvp/features/dashboard/presentation/widgets/assignee_chip.dart';
+import '../../../tasks/presentation/task_detail_screen.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
   final int projectId;
 
-  const ProjectDetailScreen({super.key, required this.projectId});
+  const ProjectDetailScreen({
+    super.key,
+    required this.projectId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. Watching the global provider we moved to collaboration_providers
-    final projectsAsync = ref.watch(allProjectsProvider);
-    
-    return projectsAsync.when(
-      data: (projects) {
-        // Find the specific project from the list
-        final project = projects.firstWhere((p) => p.id == projectId);
-        
-        return Scaffold(
-          backgroundColor: const Color(0xFFF8F9FD),
-          appBar: AppBar(
-            title: Text(project.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.group_add_rounded),
-                tooltip: "Manage Team",
-                onPressed: () {
-                  // ✅ FIXED: Changed AddMemberScreen to ProjectMembersScreen 
-                  // to match the class name in your other file.
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProjectMembersScreen(projectId: projectId),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildInfoCard(project.description ?? "No description provided"),
-                const SizedBox(height: 24),
-                const Text(
-                  "Project Tasks",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                const Expanded(
-                  child: Center(
-                    child: Text("Tasks for this project will appear here"),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              context.push('/tasks/create?projectId=$projectId');
-            },
-            label: const Text("Add Project Task"),
-            icon: const Icon(Icons.add),
-          ),
-        );
-      },
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text("Error: $e"))),
-    );
-  }
+    final allTasks = ref.watch(tasksProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-  Widget _buildInfoCard(String desc) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+    /// ✅ FILTER PROJECT TASKS (SAFE)
+    final projectTasks =
+    allTasks.where((t) => t.projectId == projectId).toList();
+
+    return Scaffold(
+      backgroundColor:
+      isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
+      appBar: AppBar(
+        title: const Text('Project Details'),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Description", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(desc, style: const TextStyle(fontSize: 15, height: 1.4)),
-        ],
+      body: projectTasks.isEmpty
+          ? const Center(child: Text('No tasks in this project'))
+          : ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: projectTasks.length,
+        itemBuilder: (context, index) {
+          final Task task = projectTasks[index];
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color:
+              isDark ? AppColors.cardDark : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        TaskDetailScreen(task: task),
+                  ),
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// 🔹 TITLE
+                  Text(
+                    task.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  /// 🔹 ASSIGNEE BADGE
+                  AssigneeChip(
+                    name: task.assigneeId != null
+                        ? 'Assigned'
+                        : null,
+                    showClear: false,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

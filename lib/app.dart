@@ -10,8 +10,13 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Task MVP',
       debugShowCheckedModeBanner: false,
+
+      // 🌗 Theme support
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+
+      // 🚀 App navigation handled ONLY by GoRouter
       routerConfig: appRouter,
     );
   }

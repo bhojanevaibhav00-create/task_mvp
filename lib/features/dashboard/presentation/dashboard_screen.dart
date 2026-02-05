@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:drift/drift.dart' as drift;
 
 // Core
 import '../../../core/constants/app_colors.dart';
@@ -11,7 +10,6 @@ import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 
 // Data
-import '../../../data/models/enums.dart';
 import '../../../data/database/database.dart';
 
 // UI
@@ -19,7 +17,6 @@ import '../../notifications/presentation/notification_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/dashboard_empty_state.dart';
 import 'widgets/quick_add_task_sheet.dart';
-import 'package:task_mvp/features/dashboard/presentation/widgets/active_filter_chips.dart';
 
 /// ================= DATABASE =================
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -47,9 +44,9 @@ class DashboardScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final completed =
-        tasks.where((t) => t.status == TaskStatus.done.name).length;
+        tasks.where((t) => t.status == 'done').length;
     final pending =
-        tasks.where((t) => t.status != TaskStatus.done.name).length;
+        tasks.where((t) => t.status != 'done').length;
 
     return Scaffold(
       backgroundColor:
@@ -62,26 +59,28 @@ class DashboardScreen extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
             sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _section('Overview', isDark),
-                const SizedBox(height: 16),
-                _stats(tasks.length, pending, completed),
+              delegate: SliverChildListDelegate(
+                [
+                  _sectionTitle('Overview', isDark),
+                  const SizedBox(height: 16),
+                  _stats(tasks.length, pending, completed),
 
-                const SizedBox(height: 32),
-                _section('Active Projects', isDark),
-                const SizedBox(height: 16),
-                _projects(projectsAsync, isDark),
+                  const SizedBox(height: 32),
+                  _sectionTitle('Active Projects', isDark),
+                  const SizedBox(height: 16),
+                  _projects(projectsAsync, isDark, context),
 
-                const SizedBox(height: 32),
-                _section('Quick Actions', isDark),
-                const SizedBox(height: 16),
-                _quickActions(context),
+                  const SizedBox(height: 32),
+                  _sectionTitle('Quick Actions', isDark),
+                  const SizedBox(height: 16),
+                  _quickActions(context),
 
-                const SizedBox(height: 32),
-                _section('Recent Tasks', isDark),
-                const SizedBox(height: 16),
-                _recentTasks(tasks, isDark),
-              ]),
+                  const SizedBox(height: 32),
+                  _sectionTitle('Recent Tasks', isDark),
+                  const SizedBox(height: 16),
+                  _recentTasks(tasks, isDark),
+                ],
+              ),
             ),
           ),
         ],
@@ -91,7 +90,8 @@ class DashboardScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Quick Add', style: TextStyle(color: Colors.white)),
+        label:
+        const Text('Quick Add', style: TextStyle(color: Colors.white)),
         onPressed: () => _openQuickAdd(context),
       ),
     );
@@ -114,16 +114,16 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
         background: Container(
-          decoration: const BoxDecoration(
-            gradient: AppColors.primaryGradient,
-          ),
+          decoration:
+          const BoxDecoration(gradient: AppColors.primaryGradient),
         ),
       ),
       actions: [
         Stack(
           children: [
             IconButton(
-              icon: const Icon(Icons.notifications_none, color: Colors.white),
+              icon:
+              const Icon(Icons.notifications_none, color: Colors.white),
               onPressed: () => context.push(AppRoutes.notifications),
             ),
             if (unread > 0)
@@ -135,8 +135,8 @@ class DashboardScreen extends ConsumerWidget {
                   backgroundColor: Colors.red,
                   child: Text(
                     unread.toString(),
-                    style:
-                    const TextStyle(fontSize: 10, color: Colors.white),
+                    style: const TextStyle(
+                        fontSize: 10, color: Colors.white),
                   ),
                 ),
               ),
@@ -157,7 +157,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   /// ================= SECTION TITLE =================
-  Widget _section(String title, bool isDark) {
+  Widget _sectionTitle(String title, bool isDark) {
     return Text(
       title,
       style: TextStyle(
@@ -174,14 +174,17 @@ class DashboardScreen extends ConsumerWidget {
       children: [
         _stat('Total', total, Icons.grid_view, AppColors.primaryGradient),
         const SizedBox(width: 12),
-        _stat('Pending', pending, Icons.bolt, AppColors.upcomingGradient),
+        _stat('Pending', pending, Icons.bolt,
+            AppColors.upcomingGradient),
         const SizedBox(width: 12),
-        _stat('Done', done, Icons.done_all, AppColors.completedGradient),
+        _stat('Done', done, Icons.done_all,
+            AppColors.completedGradient),
       ],
     );
   }
 
-  Widget _stat(String label, int value, IconData icon, LinearGradient gradient) {
+  Widget _stat(
+      String label, int value, IconData icon, LinearGradient gradient) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(18),
@@ -202,11 +205,9 @@ class DashboardScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            Text(
-              label,
-              style:
-              const TextStyle(color: Colors.white70, fontSize: 12),
-            ),
+            Text(label,
+                style: const TextStyle(
+                    color: Colors.white70, fontSize: 12)),
           ],
         ),
       ),
@@ -214,52 +215,69 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   /// ================= PROJECTS =================
-  Widget _projects(AsyncValue<List<Project>> projects, bool isDark) {
+  Widget _projects(
+      AsyncValue<List<Project>> projects,
+      bool isDark,
+      BuildContext context,
+      ) {
     return SizedBox(
       height: 130,
       child: projects.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Text(e.toString()),
-        data: (list) => list.isEmpty
-            ? const Center(child: Text('No projects found'))
-            : ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: list.length,
-          itemBuilder: (_, i) => Container(
-            width: 160,
-            margin: const EdgeInsets.only(right: 14),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : Colors.white,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.folder, color: AppColors.primary),
-                const Spacer(),
-                Text(
-                  list[i].name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700),
+        data: (list) {
+          if (list.isEmpty) {
+            return const Center(child: Text('No projects found'));
+          }
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: list.length,
+            itemBuilder: (_, i) {
+              final project = list[i];
+              return InkWell(
+                onTap: () =>
+                    context.push('${AppRoutes.projects}/${project.id}'),
+                borderRadius: BorderRadius.circular(22),
+                child: Container(
+                  width: 160,
+                  margin: const EdgeInsets.only(right: 14),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.cardDark
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.folder,
+                          color: AppColors.primary),
+                      const Spacer(),
+                      Text(
+                        project.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ),
-        ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  /// ================= QUICK ACTIONS (FIXED) =================
+  /// ================= QUICK ACTIONS =================
   Widget _quickActions(BuildContext context) {
     return Row(
       children: [
         Expanded(
           child: _primaryAction(
-            context,
             'View Tasks',
             Icons.view_list,
                 () => context.push(AppRoutes.tasks),
@@ -268,7 +286,6 @@ class DashboardScreen extends ConsumerWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _secondaryAction(
-            context,
             'Calendar',
             Icons.calendar_month,
                 () {},
@@ -279,11 +296,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _primaryAction(
-      BuildContext context,
-      String label,
-      IconData icon,
-      VoidCallback onTap,
-      ) {
+      String label, IconData icon, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -301,9 +314,7 @@ class DashboardScreen extends ConsumerWidget {
             Text(
               label,
               style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
+                  color: Colors.white, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -312,11 +323,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _secondaryAction(
-      BuildContext context,
-      String label,
-      IconData icon,
-      VoidCallback onTap,
-      ) {
+      String label, IconData icon, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -334,9 +341,8 @@ class DashboardScreen extends ConsumerWidget {
             Text(
               label,
               style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700),
             ),
           ],
         ),
