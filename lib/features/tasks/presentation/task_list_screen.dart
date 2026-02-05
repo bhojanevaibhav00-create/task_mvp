@@ -9,6 +9,7 @@ import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 import '../../../data/database/database.dart' as db;
 import '../../../data/models/enums.dart';
+import '../../../data/repositories/task_repository.dart'; // ✅ Required for TaskWithAssignee
 
 import '../../notifications/presentation/notification_screen.dart';
 import 'task_create_edit_screen.dart';
@@ -49,6 +50,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🚀 Watching the provider which now returns TaskWithAssignee wrappers
     final filteredTasksAsync = ref.watch(filteredTasksProvider);
 
     return Scaffold(
@@ -62,32 +64,29 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             loading: () => const SliverFillRemaining(child: TaskListSkeleton()),
             error: (e, _) =>
                 SliverFillRemaining(child: Center(child: Text('Error: $e'))),
-            data: (List<db.Task> tasks) {
-              // 1. Apply Due Date Bucket Filter logic
-              Iterable<db.Task> filteredTasks = tasks;
+            data: (List<TaskWithAssignee> wrappers) {
+              // ✅ Step 1: Filter and unwrap the wrappers
+              Iterable<TaskWithAssignee> filteredWrappers = wrappers;
+
+              // Filter by bucket if local filter is active
               if (_dueBucketFilter.isNotEmpty) {
                 final bucket = _dueBucketFilter.first.toLowerCase();
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
 
-                filteredTasks = filteredTasks.where((t) {
+                filteredWrappers = filteredWrappers.where((w) {
+                  final t = w.task;
                   if (bucket == 'no_date') return t.dueDate == null;
                   if (t.dueDate == null) return false;
 
-                  final d = DateTime(
-                    t.dueDate!.year,
-                    t.dueDate!.month,
-                    t.dueDate!.day,
-                  );
+                  final d = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
                   switch (bucket) {
                     case 'overdue':
                       return d.isBefore(today) && t.status != 'done';
                     case 'today':
                       return d.isAtSameMomentAs(today);
                     case 'tomorrow':
-                      return d.isAtSameMomentAs(
-                        today.add(const Duration(days: 1)),
-                      );
+                      return d.isAtSameMomentAs(today.add(const Duration(days: 1)));
                     case 'this_week':
                       final nextWeek = today.add(const Duration(days: 7));
                       return !d.isBefore(today) && d.isBefore(nextWeek);
@@ -97,16 +96,15 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 });
               }
 
-              final visibleTasks = filteredTasks.where((task) {
-                return task.title.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ||
-                    (task.description ?? '').toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    );
+              // Filter by search query
+              final visibleWrappers = filteredWrappers.where((w) {
+                final task = w.task;
+                final query = _searchQuery.toLowerCase();
+                return task.title.toLowerCase().contains(query) ||
+                    (task.description ?? '').toLowerCase().contains(query);
               }).toList();
 
-              if (visibleTasks.isEmpty) {
+              if (visibleWrappers.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
                   child: _buildPremiumEmptyState(),
@@ -117,11 +115,15 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
-                    final task = visibleTasks[index];
+                    final item = visibleWrappers[index];
+                    final task = item.task;
+                    
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: TaskCard(
                         task: task,
+                        // ✅ FIXED: Pass the member name from the joined result
+                        assigneeName: item.assignee?.name,
                         onTap: () => _openEditTask(task),
                         onToggleDone: () {
                           final isDone = task.status == TaskStatus.done.name;
@@ -136,7 +138,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                         },
                       ),
                     );
-                  }, childCount: visibleTasks.length),
+                  }, childCount: visibleWrappers.length),
                 ),
               );
             },
@@ -338,7 +340,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         if (statuses.isEmpty) {
           ref.read(statusFilterProvider.notifier).state = 'all';
         } else {
-          // ✅ FIXED: Uses TaskStatus.fromUItoDB to map "In Progress" -> "in_progress"
           final dbStatus = TaskStatus.fromUItoDB(statuses.first);
           ref.read(statusFilterProvider.notifier).state = dbStatus;
         }

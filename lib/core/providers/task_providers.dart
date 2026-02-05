@@ -98,6 +98,28 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     await loadTasks();
   }
 
+  /// ✅ SPRINT 8: Updated to reload joined data
+  Future<void> assignTask(int taskId, int? userId) async {
+    final task = state.firstWhere((t) => t.id == taskId);
+    
+    final updatedTask = task.copyWith(
+      assigneeId: drift.Value(userId),
+    );
+
+    await _repository.updateTask(updatedTask);
+
+    if (userId != null) {
+      await _triggerCollabEvents(taskId, "Task Assigned: ${task.title}", task.projectId);
+    } else {
+      await _triggerCollabEvents(taskId, "Task Unassigned: ${task.title}", task.projectId);
+    }
+
+    // ✅ Refresh all views to show the new member name
+    _ref.invalidate(filteredTasksProvider);
+    _ref.invalidate(projectTasksProvider);
+    await loadTasks();
+  }
+
   Future<void> deleteTask(int id) async {
     await _repository.deleteTask(id);
     state = state.where((t) => t.id != id).toList();
@@ -135,24 +157,21 @@ final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
   return TasksNotifier(repository, ref); 
 });
 
-/// ✅ FIXED GLOBAL TASK LIST (Dashboard)
-final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
+/// ✅ UPDATED: Returns TaskWithAssignee to include User Names
+final filteredTasksProvider = StreamProvider.autoDispose<List<TaskWithAssignee>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
   
-  // 1. Watch UI Filter States
   final status = ref.watch(statusFilterProvider);
   final sortBy = ref.watch(sortByProvider);
   final dueBucket = ref.watch(dueBucketFilterProvider); 
   final priority = ref.watch(priorityFilterProvider);
   final projectId = ref.watch(projectFilterProvider);
 
-  // 2. FIXED: Status Mapping (Wraps single string selection in a List for Repository)
   List<String>? statusList;
   if (status != 'all') {
     statusList = [status];
   }
 
-  // 3. FIXED: Due Date Logic (Calculating correct Date Windows)
   DateTime? fromDate;
   DateTime? toDate;
 
@@ -164,15 +183,14 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
     fromDate = todayStart;
     toDate = todayEnd;
   } else if (dueBucket == "Overdue") {
-    fromDate = DateTime(1970); // Past
+    fromDate = DateTime(1970); 
     toDate = todayStart.subtract(const Duration(seconds: 1));
   } else if (dueBucket == "Upcoming") {
     fromDate = todayEnd.add(const Duration(seconds: 1));
-    toDate = DateTime(2100); // Future
+    toDate = DateTime(2100); 
   }
 
-  // 4. Execute the Watch with correct parameters
-  return repository.watchTasks(
+  return repository.watchTasksWithAssignee(
     statuses: statusList,
     sortBy: sortBy == 'priority' ? 'priority_desc' : 'due_date_asc',
     priority: priority,
@@ -182,20 +200,14 @@ final filteredTasksProvider = StreamProvider.autoDispose<List<Task>>((ref) {
   );
 });
 
-final projectTasksProvider = StreamProvider.family.autoDispose<List<Task>, int>((ref, projectId) {
-  final db = ref.watch(databaseProvider);
+final projectTasksProvider = StreamProvider.family.autoDispose<List<TaskWithAssignee>, int>((ref, projectId) {
+  final repository = ref.watch(taskRepositoryProvider);
   final sortType = ref.watch(projectSortProvider);
 
-  final query = db.select(db.tasks)..where((t) => t.projectId.equals(projectId));
-  
-  query.orderBy([
-    (t) => drift.OrderingTerm(
-      expression: sortType == 'priority' ? t.priority : t.dueDate,
-      mode: drift.OrderingMode.asc,
-    ),
-  ]);
-
-  return query.watch();
+  return repository.watchTasksWithAssignee(
+    projectId: projectId,
+    sortBy: sortType == 'priority' ? 'priority_desc' : 'due_date_asc',
+  );
 });
 
 final allUsersProvider = FutureProvider.autoDispose<List<User>>((ref) async {

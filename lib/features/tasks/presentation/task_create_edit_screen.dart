@@ -152,39 +152,55 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   }
 
   Widget _buildAssigneeSelector(Task? currentTask) {
-    final pid = widget.projectId ?? currentTask?.projectId;
+  // Use the provided projectId or the one from the existing task
+  final pid = widget.projectId ?? currentTask?.projectId;
 
-    if (pid == null) {
+  if (pid == null) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text(
+        "Linking to a project is required for assignment.",
+        style: TextStyle(color: Colors.grey),
+      ),
+    );
+  }
+
+  // Watch the members of the specific project
+  final membersAsync = ref.watch(projectMembersProvider(pid));
+
+  return membersAsync.when(
+    data: (members) {
+      // ✅ SAFETY CHECK: Ensure the selected ID actually exists in the fetched members list.
+      // If it doesn't exist (and isn't null), we reset it to null to prevent the "empty box" error.
+      final bool idExists = _selectedAssigneeId == null || 
+                           members.any((m) => m.user.id == _selectedAssigneeId);
+      
+      final currentId = idExists ? _selectedAssigneeId : null;
+
       return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Text(
-          "Linking to a project is required for assignment.",
-          style: TextStyle(color: Colors.grey),
-        ),
-      );
-    }
-
-    final membersAsync = ref.watch(projectMembersProvider(pid));
-
-    return membersAsync.when(
-      data: (members) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04), 
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<int?>(
             isExpanded: true,
-            value: _selectedAssigneeId,
+            value: currentId, // ✅ Use the validated ID
             hint: const Text("Select Assignee"),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
+            // ✅ Map the list of members to DropdownMenuItems
             items: [
               const DropdownMenuItem<int?>(
                 value: null,
@@ -195,22 +211,37 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
                   value: m.user.id,
                   child: Row(
                     children: [
-                      const Icon(Icons.person_outline, size: 18),
+                      const Icon(Icons.person_outline, size: 18, color: Colors.blueGrey),
                       const SizedBox(width: 8),
-                      Text(m.user.name),
+                      // ✅ This is what displays the name in the box
+                      Text(
+                        m.user.name,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
                     ],
                   ),
                 ),
               ),
             ],
-            onChanged: (val) => setState(() => _selectedAssigneeId = val),
+            onChanged: (val) {
+              setState(() {
+                _selectedAssigneeId = val;
+              });
+            },
           ),
         ),
-      ),
-      loading: () => const LinearProgressIndicator(),
-      error: (_, __) => const Text("Error loading project members"),
-    );
-  }
+      );
+    },
+    loading: () => const Padding(
+      padding: EdgeInsets.symmetric(vertical: 20),
+      child: LinearProgressIndicator(),
+    ),
+    error: (_, __) => const Padding(
+      padding: EdgeInsets.all(16.0),
+      child: Text("Error loading project members", style: TextStyle(color: Colors.red)),
+    ),
+  );
+}
 
   Widget _buildCustomAppBar(bool isEdit, Task? currentTask) {
     return SafeArea(

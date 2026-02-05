@@ -116,7 +116,7 @@ class TaskCard extends StatelessWidget {
                             ),
                           ),
 
-                          // 4. ASSIGNEE AVATAR
+                          // 4. ASSIGNEE AVATAR (Enterprise Detail)
                           if (task.assigneeId != null)
                             _buildAssigneeAvatar(),
 
@@ -183,19 +183,35 @@ class TaskCard extends StatelessWidget {
   Widget _buildAssigneeAvatar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: CircleAvatar(
-        radius: 12,
-        backgroundColor: AppColors.primary.withOpacity(0.1),
-        child: assigneeName != null && assigneeName!.isNotEmpty
-            ? Text(
-                assigneeName![0].toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 10, 
-                  fontWeight: FontWeight.w900, 
-                  color: AppColors.primary
+      child: Tooltip(
+        message: assigneeName ?? "Assigned Member",
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 12,
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              child: assigneeName != null && assigneeName!.isNotEmpty
+                  ? Text(
+                      assigneeName![0].toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 10, 
+                        fontWeight: FontWeight.w900, 
+                        color: AppColors.primary
+                      ),
+                    )
+                  : const Icon(Icons.person, size: 12, color: AppColors.primary),
+            ),
+            if (assigneeName != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  assigneeName!.split(' ').first, // Show only first name for space
+                  style: const TextStyle(fontSize: 8, color: Colors.black38),
                 ),
-              )
-            : const Icon(Icons.person, size: 12, color: AppColors.primary),
+              ),
+          ],
+        ),
       ),
     );
   }

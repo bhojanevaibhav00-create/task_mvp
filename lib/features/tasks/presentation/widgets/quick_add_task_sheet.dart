@@ -28,7 +28,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FORCED PREMIUM WHITE THEME
+    // ✅ FORCED PREMIUM WHITE THEME: Matches Dashboard style
     const backgroundColor = Colors.white;
     const inputBg = Color(0xFFF8F9FD);
     const primaryText = Color(0xFF1A1C1E);
@@ -60,7 +60,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
               autofocus: true,
               style: const TextStyle(color: primaryText, fontWeight: FontWeight.w600),
               decoration: InputDecoration(
-                hintText: "Enter task title...",
+                hintText: "What needs to be done?",
                 hintStyle: const TextStyle(color: Colors.black26),
                 filled: true,
                 fillColor: inputBg,
@@ -73,7 +73,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             ),
             const SizedBox(height: 24),
             
-            // ✅ ADDED: Date Selection Row
+            // ✅ Date Selection Row
             _buildDateSelector(primaryText),
             const SizedBox(height: 24),
             
@@ -114,6 +114,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
         ),
         const SizedBox(height: 12),
         InkWell(
+          borderRadius: BorderRadius.circular(12),
           onTap: () async {
             final picked = await showDatePicker(
               context: context,
@@ -218,9 +219,10 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
       await db.into(db.tasks).insert(TasksCompanion.insert(
         title: title,
         priority: drift.Value(_selectedPriority),
-        dueDate: drift.Value(_selectedDate), // ✅ FIXED: Now saving actual date to DB
+        dueDate: drift.Value(_selectedDate), // ✅ SAVING: Actual date now persisted
         status: drift.Value(TaskStatus.todo.name),
         createdAt: drift.Value(DateTime.now()),
+        updatedAt: drift.Value(DateTime.now()),
       ));
 
       ref.invalidate(tasksProvider);

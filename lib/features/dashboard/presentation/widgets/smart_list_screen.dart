@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// 🚀 Essential for fixing the 'Value' wrapping error
 import 'package:drift/drift.dart' as drift;
 import '../../../../data/database/database.dart' as db;
 import '../../../../core/providers/task_providers.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/task_filters.dart';
+import '../../../../data/repositories/task_repository.dart'; // ✅ Added for TaskWithAssignee type
 
 enum SmartListType { myDay, important, planned, all }
 
@@ -32,7 +32,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the live stream of tasks from the database
+    // 🚀 WATCHING: Live stream of TaskWithAssignee wrappers
     final tasksAsync = ref.watch(filteredTasksProvider);
 
     return Scaffold(
@@ -69,27 +69,38 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen> {
         ],
       ),
       body: tasksAsync.when(
-        data: (tasks) {
-          final filteredList = _applySmartFilter(tasks);
+        data: (List<TaskWithAssignee> wrappers) {
+          // ✅ 1. Apply Smart Filtering on the wrappers
+          final filteredWrappers = _applySmartFilter(wrappers);
 
-          // Apply dynamic filters using TaskFilters logic
-          final finalTasks = TaskFilters.apply(
-            filteredList,
-            status: _statusFilter,
-            priority: _priorityFilter,
-            fromDate: _dueDateFilter,
-            toDate: _dueDateFilter
-                ?.add(const Duration(days: 1))
-                .subtract(const Duration(seconds: 1)),
-          );
+          // ✅ 2. Unwrap for dynamic filtering logic if necessary, or filter wrappers directly
+          // Using a modified filter approach to preserve assignee data
+          final finalWrappers = filteredWrappers.where((w) {
+            bool matches = true;
+            if (_statusFilter != null) matches &= w.task.status == _statusFilter;
+            if (_priorityFilter != null) matches &= w.task.priority == _priorityFilter;
+            if (_dueDateFilter != null) {
+              matches &= w.task.dueDate?.year == _dueDateFilter!.year &&
+                         w.task.dueDate?.month == _dueDateFilter!.month &&
+                         w.task.dueDate?.day == _dueDateFilter!.day;
+            }
+            return matches;
+          }).toList();
 
-          if (finalTasks.isEmpty) {
+          if (finalWrappers.isEmpty) {
             return const Center(child: Text("No tasks in this list."));
           }
+          
           return ListView.builder(
             padding: const EdgeInsets.all(20),
-            itemCount: finalTasks.length,
-            itemBuilder: (context, index) => _TaskCard(task: finalTasks[index]),
+            itemCount: finalWrappers.length,
+            itemBuilder: (context, index) {
+              final item = finalWrappers[index];
+              return _TaskCard(
+                task: item.task, 
+                assigneeName: item.assignee?.name // ✅ Pass member name
+              );
+            },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -98,28 +109,28 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen> {
     );
   }
 
-  List<db.Task> _applySmartFilter(List<db.Task> tasks) {
+  List<TaskWithAssignee> _applySmartFilter(List<TaskWithAssignee> wrappers) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     switch (widget.type) {
       case SmartListType.myDay:
-        return tasks
+        return wrappers
             .where(
-              (t) =>
-                  t.dueDate != null &&
-                  t.dueDate!.year == today.year &&
-                  t.dueDate!.month == today.month &&
-                  t.dueDate!.day == today.day,
+              (w) =>
+                  w.task.dueDate != null &&
+                  w.task.dueDate!.year == today.year &&
+                  w.task.dueDate!.month == today.month &&
+                  w.task.dueDate!.day == today.day,
             )
             .toList();
       case SmartListType.important:
-        return tasks.where((t) => t.priority == 3).toList();
+        return wrappers.where((w) => w.task.priority == 3).toList();
       case SmartListType.planned:
-        return tasks.where((t) => t.dueDate != null).toList();
+        return wrappers.where((w) => w.task.dueDate != null).toList();
       case SmartListType.all:
       default:
-        return tasks;
+        return wrappers;
     }
   }
 
@@ -339,7 +350,8 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen> {
 
 class _TaskCard extends ConsumerWidget {
   final db.Task task;
-  const _TaskCard({required this.task});
+  final String? assigneeName; // ✅ Added to show member names
+  const _TaskCard({required this.task, this.assigneeName});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -362,8 +374,6 @@ class _TaskCard extends ConsumerWidget {
           Checkbox(
             value: task.status == 'done',
             onChanged: (bool? val) {
-              // ✅ FIXED: Using drift.Value to wrap the String.
-              // This ensures the database update registers correctly.
               ref
                   .read(tasksProvider.notifier)
                   .updateTask(
@@ -376,16 +386,26 @@ class _TaskCard extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              task.title,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                decoration: task.status == 'done'
-                    ? TextDecoration.lineThrough
-                    : null,
-                color: task.status == 'done' ? Colors.grey : Colors.black87,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    decoration: task.status == 'done'
+                        ? TextDecoration.lineThrough
+                        : null,
+                    color: task.status == 'done' ? Colors.grey : Colors.black87,
+                  ),
+                ),
+                if (assigneeName != null)
+                  Text(
+                    "Assigned to: $assigneeName",
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+              ],
             ),
           ),
           if (task.priority == 3)

@@ -5,6 +5,14 @@ import '../seed/seed_data.dart';
 import 'i_task_repository.dart';
 import 'package:task_mvp/core/services/reminder_service.dart';
 
+/// ✅ NEW: Data class to hold Task along with its Assignee details
+class TaskWithAssignee {
+  final Task task;
+  final User? assignee;
+
+  TaskWithAssignee({required this.task, this.assignee});
+}
+
 class TaskRepository implements ITaskRepository {
   final AppDatabase _db;
   final NotificationRepository _notificationRepo;
@@ -38,12 +46,71 @@ class TaskRepository implements ITaskRepository {
           projectId: Value(task.projectId.value),
         ),
       );
+      
+      if (task.assigneeId.present && task.assigneeId.value != null) {
+          await _handleAssignmentTriggers(id, task.title.value, task.assigneeId.value!, task.projectId.value);
+      }
     }
     return id;
   }
 
   @override
   Future<List<Task>> getAllTasks() => _db.select(_db.tasks).get();
+
+  /// ✅ FIXED: Join with Users table to provide assignee names to the UI
+  Stream<List<TaskWithAssignee>> watchTasksWithAssignee({
+    List<String>? statuses,
+    int? priority,
+    DateTime? fromDate,
+    DateTime? toDate,
+    bool? hasDueDate,
+    int? tagId,
+    int? projectId,
+    String sortBy = 'updated_at_desc',
+  }) {
+    final query = _db.select(_db.tasks).join([
+      leftOuterJoin(_db.users, _db.users.id.equalsExp(_db.tasks.assigneeId)),
+    ]);
+
+    if (statuses != null && statuses.isNotEmpty) {
+      query.where(_db.tasks.status.isIn(statuses));
+    }
+    
+    if (priority != null) {
+      query.where(_db.tasks.priority.equals(priority));
+    }
+    
+    if (hasDueDate != null) {
+      query.where(hasDueDate ? _db.tasks.dueDate.isNotNull() : _db.tasks.dueDate.isNull());
+    }
+
+    if (fromDate != null) {
+      query.where(_db.tasks.dueDate.isBiggerOrEqualValue(fromDate));
+    }
+    if (toDate != null) {
+      query.where(_db.tasks.dueDate.isSmallerOrEqualValue(toDate));
+    }
+    
+    if (tagId != null) query.where(_db.tasks.tagId.equals(tagId));
+    if (projectId != null) query.where(_db.tasks.projectId.equals(projectId));
+
+    query.orderBy([
+      switch (sortBy) {
+        'priority_desc' => OrderingTerm(expression: _db.tasks.priority, mode: OrderingMode.desc),
+        'due_date_asc' => OrderingTerm(expression: _db.tasks.dueDate, mode: OrderingMode.asc),
+        _ => OrderingTerm(expression: _db.tasks.updatedAt, mode: OrderingMode.desc),
+      },
+    ]);
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return TaskWithAssignee(
+          task: row.readTable(_db.tasks),
+          assignee: row.readTableOrNull(_db.users),
+        );
+      }).toList();
+    });
+  }
 
   @override
   Stream<List<Task>> watchTasks({
@@ -58,7 +125,6 @@ class TaskRepository implements ITaskRepository {
   }) {
     final query = _db.select(_db.tasks);
 
-    // 1. FIXED STATUS FILTER: Added null check and empty check
     if (statuses != null && statuses.isNotEmpty) {
       query.where((t) => t.status.isIn(statuses));
     }
@@ -71,7 +137,6 @@ class TaskRepository implements ITaskRepository {
       query.where((t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull());
     }
 
-    // 2. FIXED DUE DATE FILTER: Allows filtering even if only one date is provided (e.g., just Overdue)
     if (fromDate != null) {
       query.where((t) => t.dueDate.isBiggerOrEqualValue(fromDate));
     }
@@ -112,7 +177,6 @@ class TaskRepository implements ITaskRepository {
     final old = await getTaskById(task.id);
     if (old == null) return false;
 
-    // Standardizing status check to lowercase to prevent mismatch
     final isDone = task.status?.toLowerCase() == 'done';
 
     if (isDone) {
@@ -123,6 +187,8 @@ class TaskRepository implements ITaskRepository {
       await _reminderService.schedule(task);
     }
 
+    final assigneeChanged = task.assigneeId != old.assigneeId;
+
     final now = DateTime.now();
     final updated = task.copyWith(
       updatedAt: Value(now),
@@ -132,6 +198,14 @@ class TaskRepository implements ITaskRepository {
     final ok = await _db.update(_db.tasks).replace(updated);
 
     if (ok) {
+      if (assigneeChanged) {
+        if (task.assigneeId != null) {
+          await _handleAssignmentTriggers(task.id, task.title, task.assigneeId!, task.projectId);
+        } else {
+          await _logActivity('unassigned', 'Task "${task.title}" unassigned', taskId: task.id, projectId: task.projectId);
+        }
+      }
+
       await _logActivity('edited', 'Task updated', taskId: task.id, projectId: task.projectId);
       await _notificationRepo.addNotification(
         NotificationsCompanion.insert(
@@ -144,6 +218,25 @@ class TaskRepository implements ITaskRepository {
       );
     }
     return ok;
+  }
+
+  Future<void> _handleAssignmentTriggers(int taskId, String title, int assigneeId, int? projectId) async {
+    await _logActivity(
+      'assigned',
+      'Task "$title" assigned to user $assigneeId',
+      taskId: taskId,
+      projectId: projectId,
+    );
+
+    await _notificationRepo.addNotification(
+      NotificationsCompanion.insert(
+        type: 'assignment',
+        title: 'New Task Assigned',
+        message: 'You have been assigned to: $title',
+        taskId: Value(taskId),
+        projectId: Value(projectId),
+      ),
+    );
   }
 
   @override

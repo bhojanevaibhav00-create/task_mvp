@@ -14,6 +14,7 @@ import '../../../core/providers/collaboration_providers.dart';
 // Data Layer
 import '../../../data/models/enums.dart';
 import '../../../data/database/database.dart'; 
+import '../../../data/repositories/task_repository.dart'; // Added for TaskWithAssignee
 
 // UI Features
 import '../../notifications/presentation/notification_screen.dart';
@@ -28,7 +29,7 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 🚀 WATCHING LIVE STREAMS: Ensures instant UI refresh
+    // 🚀 WATCHING LIVE STREAMS: Updated to handle TaskWithAssignee
     final tasksAsync = ref.watch(filteredTasksProvider); 
     final projectsAsync = ref.watch(allProjectsProvider);
     final unreadCount = ref.watch(unreadNotificationCountProvider);
@@ -51,9 +52,10 @@ class DashboardScreen extends ConsumerWidget {
                 _buildSectionHeader('Overview', null, primaryTextColor),
                 const SizedBox(height: 16),
                 tasksAsync.when(
-                  data: (tasks) => _buildStatCards(tasks),
+                  // ✅ FIX: Extracting raw tasks for stat calculation
+                  data: (wrappers) => _buildStatCards(wrappers.map((w) => w.task).toList()),
                   loading: () => const Center(child: LinearProgressIndicator()),
-                  error: (_, __) => const Text("Error loading stats"),
+                  error: (e, __) => Text("Error loading stats: $e"),
                 ),
 
                 const SizedBox(height: 32),
@@ -73,9 +75,10 @@ class DashboardScreen extends ConsumerWidget {
                 _buildSectionHeader('Recent Tasks', () => context.push(AppRoutes.tasks), primaryTextColor),
                 const SizedBox(height: 16),
                 tasksAsync.when(
-                  data: (tasks) => _buildTaskList(context, tasks, primaryTextColor),
+                  // ✅ FIX: Passing wrappers to include assignee names
+                  data: (wrappers) => _buildTaskList(context, wrappers, primaryTextColor),
                   loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (_, __) => const Text("Error loading tasks"),
+                  error: (e, __) => Text("Error loading tasks: $e"),
                 ),
               ]),
             ),
@@ -94,10 +97,10 @@ class DashboardScreen extends ConsumerWidget {
       expandedHeight: 140,
       stretch: true,
       backgroundColor: AppColors.primary,
-      leadingWidth: 72, // ✅ Increased for back-arrow/logo clearance
+      leadingWidth: 72, 
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16), // ✅ Fixed overlap
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 16), 
         title: const Text('My Workspace', 
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
         background: Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
@@ -114,7 +117,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildStatCards(List<Task> tasks) {
-    final completed = tasks.where((t) => t.status == TaskStatus.done.name).length;
+    final completed = tasks.where((t) => t.status?.toUpperCase() == 'DONE').length;
     final pending = tasks.length - completed;
 
     return Row(
@@ -211,9 +214,8 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTaskList(BuildContext context, List<Task> tasks, Color textColor) {
-    // ✅ FIX: Replaced Black Container with Premium White Empty State
-    if (tasks.isEmpty) {
+  Widget _buildTaskList(BuildContext context, List<TaskWithAssignee> wrappers, Color textColor) {
+    if (wrappers.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(32),
         width: double.infinity,
@@ -246,11 +248,12 @@ class DashboardScreen extends ConsumerWidget {
       );
     }
     return Column(
-      children: tasks.take(5).map((task) => _buildTaskItem(context, task, textColor)).toList(),
+      // Show top 5 recent tasks with assignee info
+      children: wrappers.take(5).map((wrapper) => _buildTaskItem(context, wrapper.task, wrapper.assignee?.name, textColor)).toList(),
     );
   }
 
-  Widget _buildTaskItem(BuildContext context, Task task, Color textColor) {
+  Widget _buildTaskItem(BuildContext context, Task task, String? assigneeName, Color textColor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -260,6 +263,9 @@ class DashboardScreen extends ConsumerWidget {
       ),
       child: ListTile(
         title: Text(task.title, style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+        subtitle: assigneeName != null 
+            ? Text("Assigned to: $assigneeName", style: const TextStyle(fontSize: 12, color: Colors.black38))
+            : null,
         trailing: const Icon(Icons.chevron_right, color: Colors.black12),
         onTap: () => context.push('/tasks/${task.id}'),
       ),

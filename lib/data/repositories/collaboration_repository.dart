@@ -24,59 +24,86 @@ class CollaborationRepository {
     )..where((t) => t.projectId.equals(projectId))).get();
   }
 
+  /// ✅ FIXED: Added duplicate check and notification triggers
   Future<void> addMember(
     int projectId,
     int userId, {
     ProjectRole role = ProjectRole.member,
   }) async {
-    await _db
-        .into(_db.projectMembers)
-        .insert(
+    // 1. Manual Check to prevent duplicate entries (Enterprise Requirement)
+    final existing = await (_db.select(_db.projectMembers)
+          ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
+        .getSingleOrNull();
+
+    if (existing != null) return;
+
+    // 2. Insert new member
+    await _db.into(_db.projectMembers).insert(
           ProjectMembersCompanion.insert(
             projectId: projectId,
             userId: userId,
             role: role.name,
             joinedAt: Value(DateTime.now()),
           ),
-          mode: InsertMode.insertOrReplace,
+          mode: InsertMode.insertOrIgnore,
         );
 
+    // 3. Trigger Activity Log
     await _logActivity(
       'member_added',
       'Member $userId added to project as ${role.label}',
       projectId: projectId,
     );
+
+    // 4. Trigger Notification for the added user
+    await _notificationRepo.addNotification(
+      NotificationsCompanion.insert(
+        type: 'project',
+        title: 'Added to Project',
+        message: 'You have been added to a new project as ${role.label}',
+        projectId: Value(projectId),
+      ),
+    );
   }
 
-  /// Removes a member from a project.
+  /// ✅ FIXED: Enhanced Role Safety and event triggers
   Future<void> removeMember(int projectId, int userId) async {
-    final member =
-        await (_db.select(_db.projectMembers)..where(
-              (t) => t.projectId.equals(projectId) & t.userId.equals(userId),
-            ))
-            .getSingleOrNull();
+    final member = await (_db.select(_db.projectMembers)
+          ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
+        .getSingleOrNull();
 
     if (member == null) return;
 
-    // Constraint: Cannot remove the last owner
+    // 1. Enforce Role Safety: Cannot remove the last owner
     if (member.role == ProjectRole.owner.name) {
       final ownersCount = await _countOwners(projectId);
       if (ownersCount <= 1) {
         throw Exception(
-          'Cannot remove the only owner of the project. Assign another owner first.',
+          'Role Safety Error: Cannot remove the only owner of the project. Assign another owner first.',
         );
       }
     }
 
-    await (_db.delete(_db.projectMembers)..where(
-          (t) => t.projectId.equals(projectId) & t.userId.equals(userId),
-        ))
+    // 2. Perform deletion
+    await (_db.delete(_db.projectMembers)
+          ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
         .go();
 
+    // 3. Trigger Activity Log
     await _logActivity(
       'member_removed',
       'Member $userId removed from project',
       projectId: projectId,
+    );
+
+    // 4. Trigger Notification
+    await _notificationRepo.addNotification(
+      NotificationsCompanion.insert(
+        type: 'project',
+        title: 'Project Membership Updated',
+        message: 'A member has been removed from the project.',
+        projectId: Value(projectId),
+      ),
     );
   }
 
@@ -131,24 +158,27 @@ class CollaborationRepository {
   ) async {
     // Constraint: Cannot downgrade the last owner
     if (newRole != ProjectRole.owner) {
-      final member =
-          await (_db.select(_db.projectMembers)..where(
-                (t) => t.projectId.equals(projectId) & t.userId.equals(userId),
-              ))
-              .getSingleOrNull();
+      final member = await (_db.select(_db.projectMembers)
+            ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
+          .getSingleOrNull();
 
       if (member != null && member.role == ProjectRole.owner.name) {
         final ownersCount = await _countOwners(projectId);
         if (ownersCount <= 1) {
-          throw Exception('Cannot downgrade the only owner of the project.');
+          throw Exception('Role Safety Error: Cannot downgrade the only owner of the project.');
         }
       }
     }
 
-    await (_db.update(_db.projectMembers)..where(
-          (t) => t.projectId.equals(projectId) & t.userId.equals(userId),
-        ))
+    await (_db.update(_db.projectMembers)
+          ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
         .write(ProjectMembersCompanion(role: Value(newRole.name)));
+
+    await _logActivity(
+      'role_updated',
+      'User $userId role updated to ${newRole.label}',
+      projectId: projectId,
+    );
   }
 
   /// Unassigns a task.
@@ -220,9 +250,7 @@ class CollaborationRepository {
     int? taskId,
     int? projectId,
   }) async {
-    await _db
-        .into(_db.activityLogs)
-        .insert(
+    await _db.into(_db.activityLogs).insert(
           ActivityLogsCompanion.insert(
             action: action,
             description: Value(description),
