@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:task_mvp/core/constants/app_colors.dart';
-import 'package:task_mvp/core/providers/task_providers.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/task_providers.dart';
+import '../../../../data/models/enums.dart';
 
 class QuickAddTaskSheet extends ConsumerStatefulWidget {
   const QuickAddTaskSheet({super.key});
@@ -11,12 +12,21 @@ class QuickAddTaskSheet extends ConsumerStatefulWidget {
 }
 
 class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
+  // ✅ Merged Controllers
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
 
-  int _priority = 1;
+  Priority? _priority;
   DateTime? _dueDate;
+  DateTime? _reminderDate;
+
   bool _showMore = false;
+  bool _tagsOpen = false;
+  bool _descOpen = false;
+  bool _reminderOpen = false;
+
+  final _availableTags = ['Work', 'Personal', 'Urgent', 'Bug'];
+  final _selectedTags = <String>{};
 
   @override
   void dispose() {
@@ -28,115 +38,187 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    const backgroundColor = Colors.white; // ✅ Forced Premium White Theme
+    const primaryText = Color(0xFF1A1C1E);
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 16,
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ================= DRAG HANDLE =================
+          /// DRAG HANDLE
           Center(
             child: Container(
               width: 40,
-              height: 5,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.grey.shade400,
+                color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // ================= TITLE =================
+          /// TITLE INPUT
           TextField(
             controller: _titleCtrl,
             autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Add a task…',
+            decoration: InputDecoration(
+              hintText: 'What needs to be done?',
+              hintStyle: TextStyle(
+                fontSize: 18,
+                color: isDark ? Colors.white54 : Colors.black26,
+              ),
               border: InputBorder.none,
             ),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.w700, 
+              color: primaryText
+            ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // ================= QUICK CONTROLS =================
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          /// QUICK CONTROLS
+          Row(
             children: [
-              _chip(
-                icon: Icons.flag,
-                label: _priorityLabel(),
-                color: _priorityColor(),
-                onTap: _cyclePriority,
+              _quickChip(
+                icon: Icons.flag_rounded,
+                label: _priority?.name.toUpperCase() ?? 'PRIORITY',
+                active: _priority != null,
+                onTap: _pickPriority,
+                color: _getPriorityColor(),
               ),
-              _chip(
-                icon: Icons.calendar_today,
+              const SizedBox(width: 12),
+              _quickChip(
+                icon: Icons.calendar_today_rounded,
                 label: _dueDate == null
-                    ? 'Due date'
-                    : '${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}',
-                onTap: _pickDueDate,
+                    ? 'DUE DATE'
+                    : '${_dueDate!.day}/${_dueDate!.month}',
+                active: _dueDate != null,
+                onTap: _pickDate,
               ),
-              _chip(
-                icon: Icons.more_horiz,
-                label: _showMore ? 'Less options' : 'More options',
-                onTap: () => setState(() => _showMore = !_showMore),
+              const Spacer(),
+              IconButton(
+                icon: Icon(
+                  _showMore ? Icons.expand_less : Icons.expand_more,
+                  color: AppColors.primary,
+                ),
+                onPressed: () => setState(() => _showMore = !_showMore),
               ),
             ],
           ),
 
-          // ================= MORE OPTIONS =================
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: TextField(
-                controller: _descCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Description (optional)',
-                  filled: true,
-                  fillColor: isDark
-                      ? AppColors.inputBackgroundDark
-                      : AppColors.inputBackgroundLight,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            crossFadeState: _showMore
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
+          /// MORE OPTIONS (Vaishnavi's Expandable UI)
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: _showMore
+                ? Column(
+                    children: [
+                      const Divider(height: 32),
+
+                      /// DESCRIPTION
+                      _expandTile(
+                        icon: Icons.notes_rounded,
+                        label: 'Description',
+                        expanded: _descOpen,
+                        onTap: () => setState(() => _descOpen = !_descOpen),
+                        child: TextField(
+                          controller: _descCtrl,
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            hintText: 'Add extra details...',
+                            filled: true,
+                            fillColor: const Color(0xFFF8F9FD),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      /// TAGS
+                      _expandTile(
+                        icon: Icons.local_offer_outlined,
+                        label: 'Tags',
+                        expanded: _tagsOpen,
+                        onTap: () => setState(() => _tagsOpen = !_tagsOpen),
+                        child: Wrap(
+                          spacing: 8,
+                          children: _availableTags.map((tag) {
+                            final selected = _selectedTags.contains(tag);
+                            return FilterChip(
+                              label: Text(tag),
+                              selected: selected,
+                              onSelected: (val) {
+                                setState(() {
+                                  val ? _selectedTags.add(tag) : _selectedTags.remove(tag);
+                                });
+                              },
+                              selectedColor: AppColors.primary.withOpacity(0.1),
+                              checkmarkColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+                      /// REMINDER
+                      _expandTile(
+                        icon: Icons.notifications_none_rounded,
+                        label: 'Reminder',
+                        expanded: _reminderOpen,
+                        onTap: () => setState(() => _reminderOpen = !_reminderOpen),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _reminderDate == null
+                                  ? 'Not set'
+                                  : '${_reminderDate!.day}/${_reminderDate!.month} at ${_reminderDate!.hour}:${_reminderDate!.minute}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Switch(
+                              value: _reminderDate != null,
+                              activeColor: AppColors.primary,
+                              onChanged: (v) => _pickReminder(v),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          // ================= ACTIONS =================
+          /// ACTIONS
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _saveTask,
-                  child: const Text('Add Task'),
+              const Spacer(),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
+                onPressed: _saveTask,
+                child: const Text('Add Task', style: TextStyle(fontWeight: FontWeight.w900)),
               ),
             ],
           ),
@@ -145,91 +227,131 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
     );
   }
 
-  // ================= HELPERS =================
+  /// ================= HELPERS =================
 
-  Widget _chip({
+  Widget _quickChip({
     required IconData icon,
     required String label,
-    Color? color,
     required VoidCallback onTap,
+    bool active = false,
+    Color? color,
   }) {
+    final activeColor = color ?? AppColors.primary;
     return InkWell(
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: color?.withOpacity(0.15) ?? AppColors.chipBackground,
-          borderRadius: BorderRadius.circular(20),
+          color: active ? activeColor.withOpacity(0.1) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: active ? activeColor : Colors.transparent),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(label),
+            Icon(icon, size: 16, color: active ? activeColor : Colors.grey),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: active ? activeColor : Colors.grey.shade600,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _cyclePriority() {
-    setState(() {
-      _priority = _priority == 3 ? 1 : _priority + 1;
-    });
+  Widget _expandTile({
+    required IconData icon,
+    required String label,
+    required bool expanded,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(icon, color: Colors.slate),
+          title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          trailing: Icon(expanded ? Icons.expand_less : Icons.expand_more, size: 20),
+          onTap: onTap,
+        ),
+        if (expanded)
+          Padding(
+            padding: const EdgeInsets.only(left: 40, bottom: 16),
+            child: child,
+          ),
+      ],
+    );
   }
 
-  String _priorityLabel() {
-    switch (_priority) {
-      case 1:
-        return 'Low';
-      case 2:
-        return 'Medium';
-      case 3:
-        return 'High';
-      default:
-        return 'Low';
-    }
+  Color? _getPriorityColor() {
+    if (_priority == Priority.high) return Colors.red;
+    if (_priority == Priority.medium) return Colors.orange;
+    if (_priority == Priority.low) return Colors.green;
+    return null;
   }
 
-  Color _priorityColor() {
-    switch (_priority) {
-      case 1:
-        return Colors.green;
-      case 2:
-        return Colors.orange;
-      case 3:
-        return Colors.red;
-      default:
-        return Colors.green;
-    }
+  void _pickPriority() async {
+    final result = await showModalBottomSheet<Priority>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: Priority.values.map((p) => ListTile(
+          leading: Icon(Icons.flag_rounded, color: p == Priority.high ? Colors.red : p == Priority.medium ? Colors.orange : Colors.green),
+          title: Text(p.name.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
+          onTap: () => Navigator.pop(context, p),
+        )).toList(),
+      ),
+    );
+    if (result != null) setState(() => _priority = result);
   }
 
-  Future<void> _pickDueDate() async {
-    final date = await showDatePicker(
+  void _pickDate() async {
+    final result = await showDatePicker(
       context: context,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       initialDate: _dueDate ?? DateTime.now(),
     );
+    if (result != null) setState(() => _dueDate = result);
+  }
 
+  void _pickReminder(bool enable) async {
+    if (!enable) {
+      setState(() => _reminderDate = null);
+      return;
+    }
+    final date = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: DateTime.now(),
+    );
     if (date != null) {
-      setState(() => _dueDate = date);
+      final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+      if (time != null) {
+        setState(() => _reminderDate = DateTime(date.year, date.month, date.day, time.hour, time.minute));
+      }
     }
   }
 
   Future<void> _saveTask() async {
-    if (_titleCtrl.text.trim().isEmpty) return;
+    final title = _titleCtrl.text.trim();
+    if (title.isEmpty) return;
 
-    await ref
-        .read(tasksProvider.notifier)
-        .addTask(
-          _titleCtrl.text.trim(),
-          _descCtrl.text.trim(),
-          priority: _priority,
-          dueDate: _dueDate,
-        );
+    await ref.read(tasksProvider.notifier).addTask(
+      title,
+      _descCtrl.text.trim(),
+      priority: _priority?.index ?? 1, // Default to Medium if not set
+      dueDate: _dueDate,
+    );
 
     if (mounted) Navigator.pop(context);
   }

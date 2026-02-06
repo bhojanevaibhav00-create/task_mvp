@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-
+import 'project_role.dart';
 /// Defines the 'ProjectMembers' table for the database.
 /// Run `dart run build_runner build` to generate the `ProjectMember` data class.
 @DataClassName('ProjectMember')

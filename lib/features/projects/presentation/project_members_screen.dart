@@ -20,112 +20,123 @@ class ProjectMembersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 🚀 Watching the provider for real-time member updates
     final membersAsync = ref.watch(projectMembersProvider(projectId));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     const darkText = Color(0xFF111827); // High contrast slate dark
 
     return Scaffold(
       // ✅ FORCED PREMIUM WHITE THEME
-      backgroundColor: const Color(0xFFF8F9FD),
+      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Project Members",
-          style: TextStyle(fontWeight: FontWeight.w900, color: darkText),
+          style: TextStyle(
+            fontWeight: FontWeight.w900, 
+            color: isDark ? Colors.white : darkText
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? AppColors.scaffoldDark : Colors.white,
         elevation: 0,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: darkText),
+        iconTheme: IconThemeData(
+          color: isDark ? Colors.white : Colors.black,
+        ),
       ),
+
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         onPressed: () => _showAddMemberDialog(context),
         child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
       ),
+
       body: membersAsync.when(
-        data: (List<MemberWithUser> membersList) {
-          if (membersList.isEmpty) {
-            return _buildEmptyState();
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            itemCount: membersList.length,
-            itemBuilder: (context, index) {
-              final item = membersList[index];
-              return _buildMemberTile(context, ref, item, membersList);
-            },
-          );
-        },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, stack) => Center(
+        error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Text("Connection Error: $e", textAlign: TextAlign.center),
+            child: Text(
+              "Error loading members\n$e", 
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.redAccent),
+            ),
           ),
         ),
+        data: (List<MemberWithUser> members) {
+          if (members.isEmpty) return _buildEmptyState();
+
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            itemCount: members.length,
+            itemBuilder: (context, index) =>
+                _buildMemberTile(context, ref, members[index], members, isDark),
+          );
+        },
       ),
     );
   }
 
-  void _showAddMemberDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AddMemberDialog(projectId: projectId),
-    );
-  }
+  // ================= MEMBER TILE =================
 
   Widget _buildMemberTile(
-    BuildContext context, 
-    WidgetRef ref, 
-    MemberWithUser item, 
+    BuildContext context,
+    WidgetRef ref,
+    MemberWithUser item,
     List<MemberWithUser> allMembers,
+    bool isDark,
   ) {
-    final member = item.member;
     final user = item.user;
+    final role = item.member.role.toLowerCase();
 
-    final isOwner = member.role.toLowerCase() == 'owner';
+    // Logic for Role Safety: Ensure at least one owner remains
     final ownerCount = allMembers.where((m) => m.member.role.toLowerCase() == 'owner').length;
-    final isLastOwner = isOwner && ownerCount <= 1;
+    final isLastOwner = role == 'owner' && ownerCount == 1;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
           radius: 24,
-          backgroundColor: AppColors.primary.withOpacity(0.1),
+          backgroundColor: AppColors.primary.withOpacity(0.12),
           child: Text(
-            user.name.isNotEmpty ? user.name[0].toUpperCase() : "?",
+            user.name[0].toUpperCase(),
             style: const TextStyle(
-              color: AppColors.primary, 
               fontWeight: FontWeight.bold,
               fontSize: 18,
+              color: AppColors.primary,
             ),
           ),
         ),
         title: Text(
           user.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF111827)),
+          style: TextStyle(
+            fontWeight: FontWeight.w700, 
+            fontSize: 16, 
+            color: isDark ? Colors.white : const Color(0xFF111827)
+          ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Row(
-            children: [_buildRoleChip(member.role, isOwner)],
+            children: [_buildRoleChip(role)],
           ),
         ),
         trailing: IconButton(
           icon: Icon(
-            Icons.person_remove_rounded,
-            color: isLastOwner ? Colors.grey.shade200 : Colors.redAccent.withOpacity(0.7),
+            isLastOwner ? Icons.lock_outline_rounded : Icons.person_remove_rounded,
+            color: isLastOwner ? Colors.grey.shade300 : Colors.redAccent.withOpacity(0.7),
           ),
           onPressed: () {
             if (isLastOwner) {
@@ -133,6 +144,7 @@ class ProjectMembersScreen extends ConsumerWidget {
                 const SnackBar(
                   content: Text("At least 1 Owner required for safety"),
                   backgroundColor: Colors.orange,
+                  behavior: SnackBarBehavior.floating,
                 ),
               );
             } else {
@@ -144,23 +156,30 @@ class ProjectMembersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRoleChip(String role, bool isOwner) {
+  // ================= ROLE CHIP =================
+
+  Widget _buildRoleChip(String role) {
+    final isOwner = role == 'owner';
+    final color = isOwner ? Colors.orange : Colors.blue;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isOwner ? Colors.orange.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         role.toUpperCase(),
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w900,
-          color: isOwner ? Colors.orange.shade800 : Colors.blue.shade800,
+          color: color.shade800,
         ),
       ),
     );
   }
+
+  // ================= EMPTY STATE =================
 
   Widget _buildEmptyState() {
     return Center(
@@ -170,17 +189,34 @@ class ProjectMembersScreen extends ConsumerWidget {
           Icon(Icons.group_outlined, size: 80, color: Colors.grey.shade200),
           const SizedBox(height: 16),
           const Text(
-            "Team is Empty", 
+            "Team is Empty",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.grey),
           ),
           const SizedBox(height: 8),
-          const Text("Invite members to collaborate.", style: TextStyle(color: Colors.black26)),
+          const Text(
+            "Invite members to collaborate.", 
+            style: TextStyle(color: Colors.black26)
+          ),
         ],
       ),
     );
   }
 
-  void _confirmRemoval(BuildContext context, WidgetRef ref, MemberWithUser item, List<MemberWithUser> allMembers) {
+  // ================= DIALOGS =================
+
+  void _showAddMemberDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AddMemberDialog(projectId: projectId),
+    );
+  }
+
+  void _confirmRemoval(
+    BuildContext context,
+    WidgetRef ref,
+    MemberWithUser item,
+    List<MemberWithUser> allMembers,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -189,18 +225,28 @@ class ProjectMembersScreen extends ConsumerWidget {
         title: const Text("Remove Member?", style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text("Are you sure you want to remove ${item.user.name} from this project?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey))
+          ),
           ElevatedButton(
             onPressed: () async {
-              await ref.read(collaborationActionProvider.notifier).removeMember(
-                projectId, 
-                item.member.userId, 
-                allMembers,
-              );
+              await ref
+                  .read(collaborationActionProvider.notifier)
+                  .removeMember(
+                    projectId,
+                    item.member.userId,
+                    allMembers,
+                  );
               ref.invalidate(projectMembersProvider(projectId));
               if (context.mounted) Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red, 
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             child: const Text("Remove"),
           ),
         ],

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/tag_model.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../data/models/enums.dart';
 
-/// Entry point to open the Filter Bottom Sheet
 void openFilterBottomSheet({
   required BuildContext context,
   required List<Tag> allTags,
-  required Set<String> statusFilters,
-  required Set<int> priorityFilters,
+  required Set<TaskStatus> statusFilters,
+  required Set<Priority> priorityFilters,
   required Set<Tag> tagFilters,
   required String? dueBucket,
   required String? sort,
   required Function(
-    Set<String>,
-    Set<int>,
+    Set<TaskStatus>,
+    Set<Priority>,
     Set<Tag>,
     String?,
     String?,
@@ -22,14 +22,14 @@ void openFilterBottomSheet({
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent, 
+    backgroundColor: Colors.transparent, // ✅ Main branch style for rounded corners
     builder: (_) => _FilterSheet(
       allTags: allTags,
-      initialStatus: statusFilters,
-      initialPriority: priorityFilters,
-      initialTags: tagFilters,
-      initialDueBucket: dueBucket,
-      initialSort: sort,
+      status: statusFilters,
+      priority: priorityFilters,
+      tags: tagFilters,
+      dueBucket: dueBucket,
+      sort: sort,
       onApply: onApply,
     ),
   );
@@ -37,14 +37,14 @@ void openFilterBottomSheet({
 
 class _FilterSheet extends StatefulWidget {
   final List<Tag> allTags;
-  final Set<String> initialStatus;
-  final Set<int> initialPriority;
-  final Set<Tag> initialTags;
-  final String? initialDueBucket;
-  final String? initialSort;
+  final Set<TaskStatus> status;
+  final Set<Priority> priority;
+  final Set<Tag> tags;
+  final String? dueBucket;
+  final String? sort;
   final Function(
-    Set<String>,
-    Set<int>,
+    Set<TaskStatus>,
+    Set<Priority>,
     Set<Tag>,
     String?,
     String?,
@@ -53,11 +53,11 @@ class _FilterSheet extends StatefulWidget {
   const _FilterSheet({
     super.key,
     required this.allTags,
-    required this.initialStatus,
-    required this.initialPriority,
-    required this.initialTags,
-    required this.initialDueBucket,
-    required this.initialSort,
+    required this.status,
+    required this.priority,
+    required this.tags,
+    required this.dueBucket,
+    required this.sort,
     required this.onApply,
   });
 
@@ -66,8 +66,8 @@ class _FilterSheet extends StatefulWidget {
 }
 
 class _FilterSheetState extends State<_FilterSheet> {
-  late Set<String> status;
-  late Set<int> priority;
+  late Set<TaskStatus> status;
+  late Set<Priority> priority;
   late Set<Tag> tags;
   String? dueBucket;
   String? sort;
@@ -75,11 +75,11 @@ class _FilterSheetState extends State<_FilterSheet> {
   @override
   void initState() {
     super.initState();
-    status = {...widget.initialStatus};
-    priority = {...widget.initialPriority};
-    tags = {...widget.initialTags};
-    dueBucket = widget.initialDueBucket;
-    sort = widget.initialSort;
+    status = {...widget.status};
+    priority = {...widget.priority};
+    tags = {...widget.tags};
+    dueBucket = widget.dueBucket;
+    sort = widget.sort;
   }
 
   @override
@@ -91,57 +91,65 @@ class _FilterSheetState extends State<_FilterSheet> {
     const chipDefaultBg = Color(0xFFF1F5F9); // Light Slate 100
 
     return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       decoration: const BoxDecoration(
         color: scaffoldBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          _dragHandle(),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: _header(primaryTextColor),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _dragHandle(),
-              const SizedBox(height: 16),
-              _header(primaryTextColor),
-              const SizedBox(height: 24),
-
-              // Status Section
-              _cardSection("STATUS", ["TODO", "INPROGRESS", "DONE", "REVIEW"].map((s) => 
-                _statusChip(s, chipDefaultBg)).toList(), sectionBg),
-              
-              // Priority Section
-              _cardSection("PRIORITY", [1, 2, 3].map((p) => 
-                _priorityChip(p, chipDefaultBg)).toList(), sectionBg),
-              
-              // Due Date Section
-              _cardSection("DUE DATE", ["Today", "Overdue", "Upcoming"].map((d) => 
-                _dueChip(d, chipDefaultBg)).toList(), sectionBg),
-              
-              if (widget.allTags.isNotEmpty)
-                _cardSection("TAGS", widget.allTags.map((t) => 
-                  _tagChip(t, chipDefaultBg)).toList(), sectionBg),
-
-              const SizedBox(height: 24),
-              _actions(primaryTextColor),
-            ],
+          const SizedBox(height: 24),
+          
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  // Status Section
+                  _cardSection("STATUS", TaskStatus.values.map((s) => 
+                    _statusChip(s, chipDefaultBg)).toList(), sectionBg),
+                  
+                  // Priority Section
+                  _cardSection("PRIORITY", Priority.values.map((p) => 
+                    _priorityChip(p, chipDefaultBg)).toList(), sectionBg),
+                  
+                  // Due Date Section
+                  _cardSection("DUE DATE", ["Today", "Overdue", "Upcoming"].map((d) => 
+                    _dueChip(d, chipDefaultBg)).toList(), sectionBg),
+                  
+                  if (widget.allTags.isNotEmpty)
+                    _cardSection("TAGS", widget.allTags.map((t) => 
+                      _tagChip(t, chipDefaultBg)).toList(), sectionBg),
+                ],
+              ),
+            ),
           ),
-        ),
+
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: _actions(primaryTextColor),
+          ),
+        ],
       ),
     );
   }
 
   Widget _dragHandle() {
-    return Center(
-      child: Container(
-        width: 48, height: 5,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade300,
-          borderRadius: BorderRadius.circular(10),
-        ),
+    return Container(
+      width: 44, height: 5,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(10),
       ),
     );
   }
@@ -195,7 +203,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               fontWeight: FontWeight.w900, 
               fontSize: 10, 
               letterSpacing: 1.5,
-              color: Color(0xFF94A3B8), // Slate 400
+              color: Color(0xFF94A3B8),
             )
           ),
           const SizedBox(height: 16),
@@ -216,27 +224,25 @@ class _FilterSheetState extends State<_FilterSheet> {
       label: Text(label),
       selected: selected,
       onSelected: onSelected,
-      pressElevation: 0,
-      elevation: 0,
       backgroundColor: defaultBg,
-      selectedColor: activeColor.withOpacity(0.08), // ✅ Soft tinted background
+      selectedColor: activeColor.withOpacity(0.08),
       side: BorderSide(
-        color: selected ? activeColor : Colors.transparent, // ✅ Colored border when selected
+        color: selected ? activeColor : Colors.transparent,
         width: 1.5,
       ),
       labelStyle: TextStyle(
-        color: selected ? activeColor : const Color(0xFF64748B), // Slate 500
+        color: selected ? activeColor : const Color(0xFF64748B),
         fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
         fontSize: 13,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      showCheckmark: false, // ✅ Cleaner premium look without the checkmark
+      showCheckmark: false,
     );
   }
 
-  Widget _statusChip(String s, Color defaultBg) {
+  Widget _statusChip(TaskStatus s, Color defaultBg) {
     return _themedChoiceChip(
-      label: s,
+      label: s.name.toUpperCase(),
       selected: status.contains(s),
       defaultBg: defaultBg,
       activeColor: AppColors.primary,
@@ -244,11 +250,14 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  Widget _priorityChip(int p, Color defaultBg) {
-    final labels = {1: "LOW", 2: "MEDIUM", 3: "HIGH"};
-    final colors = {1: Colors.green, 2: const Color(0xFFF59E0B), 3: const Color(0xFFEF4444)};
+  Widget _priorityChip(Priority p, Color defaultBg) {
+    final colors = {
+      Priority.low: Colors.green, 
+      Priority.medium: const Color(0xFFF59E0B), 
+      Priority.high: const Color(0xFFEF4444)
+    };
     return _themedChoiceChip(
-      label: labels[p]!,
+      label: p.name.toUpperCase(),
       selected: priority.contains(p),
       defaultBg: defaultBg,
       activeColor: colors[p]!,
@@ -258,7 +267,7 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   Widget _dueChip(String d, Color defaultBg) {
     return _themedChoiceChip(
-      label: d,
+      label: d.toUpperCase(),
       selected: dueBucket == d,
       defaultBg: defaultBg,
       activeColor: const Color(0xFF3B82F6),
@@ -268,7 +277,7 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   Widget _tagChip(Tag t, Color defaultBg) {
     return _themedChoiceChip(
-      label: t.label,
+      label: t.label.toUpperCase(),
       selected: tags.contains(t),
       defaultBg: defaultBg,
       activeColor: AppColors.primary,
@@ -282,10 +291,6 @@ class _FilterSheetState extends State<_FilterSheet> {
         Expanded(
           child: TextButton(
             onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
             child: const Text("Cancel", 
               style: TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
           ),
