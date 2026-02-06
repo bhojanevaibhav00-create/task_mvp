@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/database/database.dart' as db;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/task_providers.dart';
+import '../../../../data/repositories/task_repository.dart'; // ✅ Added for TaskWithAssignee type
 
 class ProjectCardImproved extends ConsumerWidget {
   final db.Project project;
@@ -17,17 +18,24 @@ class ProjectCardImproved extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watching all tasks to calculate real-time progress for this project
+    // 🚀 FIXED: Watching the provider which now returns TaskWithAssignee
     final tasksAsync = ref.watch(filteredTasksProvider);
 
     return tasksAsync.when(
-      data: (allTasks) {
-        // Filtering tasks belonging to this specific project
-        final projectTasks = allTasks.where((t) => t.projectId == project.id).toList();
+      data: (List<TaskWithAssignee> taskWrappers) {
+        // ✅ 1. Filter and Unwrap: Extracting db.Task from the wrappers for this project
+        final projectTasks = taskWrappers
+            .where((w) => w.task.projectId == project.id)
+            .map((w) => w.task)
+            .toList();
+            
         final totalTasks = projectTasks.length;
         
-        // Calculating progress based on 'done' status from DB
-        final completedTasks = projectTasks.where((t) => t.status == 'done').length;
+        // ✅ 2. Calculate Progress: Standardizing status check to lowercase
+        final completedTasks = projectTasks.where((t) => 
+          t.status?.toLowerCase() == 'done'
+        ).length;
+        
         final progress = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
 
         return GestureDetector(
@@ -105,10 +113,21 @@ class ProjectCardImproved extends ConsumerWidget {
           ),
         );
       },
-      // Loading state for the card
-      loading: () => const Center(child: CircularProgressIndicator()),
+      // Loading state for the card (matches Dashboard style)
+      loading: () => Container(
+        height: 120,
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
       // Error state handling
-      error: (err, _) => Center(child: Text("Error: $err")),
+      error: (err, _) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Text("Error: $err", style: const TextStyle(color: Colors.red)),
+      ),
     );
   }
 }

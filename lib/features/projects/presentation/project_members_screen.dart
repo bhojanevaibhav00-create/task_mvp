@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/database/database.dart' as db;
-import '../../../core/providers/collaboration_providers.dart';
+import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' as drift;
+
+// Core Constants & Providers
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/task_providers.dart';
+import '../../../core/providers/collaboration_providers.dart';
+
+// Data Layer
+import '../../../data/database/database.dart';
 import '../widgets/add_member_dialog.dart';
 
 class ProjectMembersScreen extends ConsumerWidget {
@@ -11,26 +18,30 @@ class ProjectMembersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 🚀 Watching the provider for real-time member updates
     final membersAsync = ref.watch(projectMembersProvider(projectId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    const darkText = Color(0xFF111827); // High contrast slate dark
 
     return Scaffold(
-      backgroundColor:
-      isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
-
+      // ✅ FORCED PREMIUM WHITE THEME
+      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Project Members",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w900, 
+            color: isDark ? Colors.white : darkText
+          ),
         ),
         backgroundColor: isDark ? AppColors.scaffoldDark : Colors.white,
         elevation: 0,
+        centerTitle: false,
         iconTheme: IconThemeData(
           color: isDark ? Colors.white : Colors.black,
         ),
       ),
 
-      /// ✅ ADD MEMBER FAB (correct)
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         onPressed: () => _showAddMemberDialog(context),
@@ -39,25 +50,24 @@ class ProjectMembersScreen extends ConsumerWidget {
 
       body: membersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-
         error: (e, _) => Center(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20.0),
             child: Text(
-              "Error loading members\n$e",
+              "Error loading members\n$e", 
               textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.redAccent),
             ),
           ),
         ),
-
         data: (List<MemberWithUser> members) {
           if (members.isEmpty) return _buildEmptyState();
 
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             itemCount: members.length,
-            itemBuilder: (_, i) =>
-                _memberTile(context, ref, members[i], members, isDark),
+            itemBuilder: (context, index) =>
+                _buildMemberTile(context, ref, members[index], members, isDark),
           );
         },
       ),
@@ -66,18 +76,18 @@ class ProjectMembersScreen extends ConsumerWidget {
 
   // ================= MEMBER TILE =================
 
-  Widget _memberTile(
-      BuildContext context,
-      WidgetRef ref,
-      MemberWithUser item,
-      List<MemberWithUser> allMembers,
-      bool isDark,
-      ) {
+  Widget _buildMemberTile(
+    BuildContext context,
+    WidgetRef ref,
+    MemberWithUser item,
+    List<MemberWithUser> allMembers,
+    bool isDark,
+  ) {
     final user = item.user;
     final role = item.member.role.toLowerCase();
 
-    final ownerCount =
-        allMembers.where((m) => m.member.role == 'owner').length;
+    // Logic for Role Safety: Ensure at least one owner remains
+    final ownerCount = allMembers.where((m) => m.member.role.toLowerCase() == 'owner').length;
     final isLastOwner = role == 'owner' && ownerCount == 1;
 
     return Container(
@@ -88,16 +98,15 @@ class ProjectMembersScreen extends ConsumerWidget {
         boxShadow: isDark
             ? []
             : [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(14),
-
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
           radius: 24,
           backgroundColor: AppColors.primary.withOpacity(0.12),
@@ -105,37 +114,43 @@ class ProjectMembersScreen extends ConsumerWidget {
             user.name[0].toUpperCase(),
             style: const TextStyle(
               fontWeight: FontWeight.bold,
+              fontSize: 18,
               color: AppColors.primary,
             ),
           ),
         ),
-
         title: Text(
           user.name,
-          style: const TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontWeight: FontWeight.w700, 
+            fontSize: 16, 
+            color: isDark ? Colors.white : const Color(0xFF111827)
+          ),
         ),
-
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: _roleChip(role),
+          child: Row(
+            children: [_buildRoleChip(role)],
+          ),
         ),
-
-        /// ✅ REMOVE MEMBER (SAFE)
         trailing: IconButton(
           icon: Icon(
-            isLastOwner ? Icons.lock : Icons.person_remove_rounded,
-            color: isLastOwner ? Colors.grey : Colors.redAccent,
+            isLastOwner ? Icons.lock_outline_rounded : Icons.person_remove_rounded,
+            color: isLastOwner ? Colors.grey.shade300 : Colors.redAccent.withOpacity(0.7),
           ),
-          onPressed: isLastOwner
-              ? () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("At least one Owner is required"),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-              : () => _confirmRemove(context, ref, item, allMembers),
+          onPressed: () {
+            if (isLastOwner) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("At least 1 Owner required for safety"),
+                  backgroundColor: Colors.orange,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            } else {
+              _confirmRemoval(context, ref, item, allMembers);
+            }
+          },
         ),
       ),
     );
@@ -143,23 +158,22 @@ class ProjectMembersScreen extends ConsumerWidget {
 
   // ================= ROLE CHIP =================
 
-  Widget _roleChip(String role) {
+  Widget _buildRoleChip(String role) {
     final isOwner = role == 'owner';
+    final color = isOwner ? Colors.orange : Colors.blue;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isOwner
-            ? Colors.orange.withOpacity(0.15)
-            : Colors.blue.withOpacity(0.15),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         role.toUpperCase(),
         style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: isOwner ? Colors.orange.shade800 : Colors.blue.shade800,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          color: color.shade800,
         ),
       ),
     );
@@ -172,16 +186,16 @@ class ProjectMembersScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.group_outlined, size: 80, color: Colors.grey.shade300),
+          Icon(Icons.group_outlined, size: 80, color: Colors.grey.shade200),
           const SizedBox(height: 16),
           const Text(
-            "No Members Yet",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            "Team is Empty",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.grey),
           ),
           const SizedBox(height: 8),
           const Text(
-            "Add members to start collaboration",
-            style: TextStyle(color: Colors.grey),
+            "Invite members to collaborate.", 
+            style: TextStyle(color: Colors.black26)
           ),
         ],
       ),
@@ -197,42 +211,42 @@ class ProjectMembersScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmRemove(
-      BuildContext context,
-      WidgetRef ref,
-      MemberWithUser item,
-      List<MemberWithUser> allMembers,
-      ) {
+  void _confirmRemoval(
+    BuildContext context,
+    WidgetRef ref,
+    MemberWithUser item,
+    List<MemberWithUser> allMembers,
+  ) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        title: const Text("Remove Member"),
-        content: Text(
-          "Are you sure you want to remove ${item.user.name} from this project?",
-        ),
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("Remove Member?", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text("Are you sure you want to remove ${item.user.name} from this project?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey))
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
             onPressed: () async {
               await ref
                   .read(collaborationActionProvider.notifier)
                   .removeMember(
-                projectId,
-                item.member.userId,
-                allMembers,
-              );
+                    projectId,
+                    item.member.userId,
+                    allMembers,
+                  );
               ref.invalidate(projectMembersProvider(projectId));
               if (context.mounted) Navigator.pop(context);
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red, 
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             child: const Text("Remove"),
           ),
         ],

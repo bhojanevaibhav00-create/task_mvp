@@ -1,21 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/database.dart';
 import '../../data/repositories/notification_repository.dart';
-
-/// =======================
-/// DATABASE PROVIDER
-/// =======================
-/// ⚠️ If this already exists elsewhere,
-/// reuse that instead of duplicating
-final databaseProvider = Provider<AppDatabase>((ref) {
-  return AppDatabase();
-});
+import 'task_providers.dart'; // ✅ Added to reuse the existing databaseProvider
 
 /// =======================
 /// NOTIFICATION REPOSITORY
 /// =======================
 final notificationRepositoryProvider =
     Provider<NotificationRepository>((ref) {
+  // ✅ REUSE: Uses the centralized databaseProvider from task_providers
   final db = ref.watch(databaseProvider);
   return NotificationRepository(db);
 });
@@ -23,8 +16,10 @@ final notificationRepositoryProvider =
 /// =======================
 /// NOTIFICATIONS STREAM
 /// =======================
+/// This watches the database stream via the repository.
+/// Any new assignment or member log will trigger this stream.
 final notificationsStreamProvider =
-    StreamProvider<List<Notification>>((ref) {
+    StreamProvider.autoDispose<List<Notification>>((ref) {
   final repo = ref.watch(notificationRepositoryProvider);
   return repo.watchNotifications();
 });
@@ -32,8 +27,9 @@ final notificationsStreamProvider =
 /// =======================
 /// UNREAD NOTIFICATION COUNT
 /// =======================
-/// ✅ SAFE | ✅ NO CRASH | ✅ BADGE READY
-final unreadNotificationCountProvider = Provider<int>((ref) {
+/// ✅ ENTERPRISE READY: Real-time badge updates.
+/// This provider reactively recalculates the count whenever the stream emits.
+final unreadNotificationCountProvider = Provider.autoDispose<int>((ref) {
   final notificationsAsync = ref.watch(notificationsStreamProvider);
 
   return notificationsAsync.when(
