@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
@@ -13,57 +13,55 @@ Future<void> seedProjectData(db.AppDatabase database) async {
 
     if (existingUsers.isEmpty) {
       await database.transaction(() async {
-        final userId = await database
-            .into(database.users)
-            .insert(
-              db.UsersCompanion.insert(
-                name: 'Vaibhav Bhojane',
-                email: const drift.Value('vaibhav@jbbtechnologies.com'),
-              ),
-            );
 
-        // Ensure Project 1 exists to prevent Foreign Key error
-        await database
-            .into(database.projects)
-            .insert(
-              db.ProjectsCompanion.insert(
-                id: const drift.Value(1),
-                name: 'General Project',
-                color: const drift.Value(0xFF2196F3),
-              ),
-              mode: drift.InsertMode.insertOrIgnore,
-            );
+        // ✅ Insert User 1
+        final userId = await database.into(database.users).insert(
+          db.UsersCompanion.insert(
+            name: 'Vaibhav Bhojane',
+            email: 'vaibhav@jbbtechnologies.com', // ✅ FIXED
+            password: 'password123',              // ✅ FIXED
+          ),
+        );
 
-        await database
-            .into(database.projectMembers)
-            .insert(
-              db.ProjectMembersCompanion.insert(
-                projectId: 1,
-                userId: userId,
-                role: 'Owner',
-              ),
-            );
+        // ✅ Ensure Project exists
+        await database.into(database.projects).insert(
+          db.ProjectsCompanion.insert(
+            id: const drift.Value(1), // OK because id is optional
+            name: 'General Project',
+            color: const drift.Value(0xFF2196F3), // optional field
+          ),
+          mode: drift.InsertMode.insertOrIgnore,
+        );
 
-        await database
-            .into(database.users)
-            .insert(
-              db.UsersCompanion.insert(
-                name: 'Ajinkya Ghode',
-                email: const drift.Value('ajinkya@test.com'),
-              ),
-            );
+        // ✅ Add Owner
+        await database.into(database.projectMembers).insert(
+          db.ProjectMembersCompanion.insert(
+            projectId: 1,
+            userId: userId,
+            role: 'Owner',
+          ),
+        );
 
-        await database
-            .into(database.users)
-            .insert(
-              db.UsersCompanion.insert(
-                name: 'Vaishnavi Mogal',
-                email: const drift.Value('vaishnavi@test.com'),
-              ),
-            );
+        // ✅ Insert User 2
+        await database.into(database.users).insert(
+          db.UsersCompanion.insert(
+            name: 'Ajinkya Ghode',
+            email: 'ajinkya@test.com', // ✅ FIXED
+            password: 'password123',   // ✅ FIXED
+          ),
+        );
+
+        // ✅ Insert User 3
+        await database.into(database.users).insert(
+          db.UsersCompanion.insert(
+            name: 'Vaishnavi Mogal',
+            email: 'vaishnavi@test.com', // ✅ FIXED
+            password: 'password123',     // ✅ FIXED
+          ),
+        );
       });
 
-      debugPrint("✅ Database Seeded with Vaibhav, Ajinkya, and Vaishnavi");
+      debugPrint("✅ Database Seeded Successfully");
     }
   } catch (e) {
     debugPrint("❌ Seed Error: $e");
@@ -76,16 +74,20 @@ void main() {
 
 class AppBootstrap extends ConsumerStatefulWidget {
   const AppBootstrap({super.key});
+
   @override
   ConsumerState<AppBootstrap> createState() => _AppBootstrapState();
 }
 
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
+
   @override
   void initState() {
     super.initState();
+
     Future.microtask(() async {
       final database = ref.read(databaseProvider);
+
       await seedProjectData(database);
 
       final reminder = ref.read(reminderServiceProvider);

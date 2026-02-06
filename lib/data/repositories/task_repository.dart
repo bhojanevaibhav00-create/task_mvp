@@ -37,14 +37,11 @@ class TaskRepository implements ITaskRepository {
         projectId: task.projectId.value,
       );
 
+      // ✅ FIXED: Using simplified notification method
       await _notificationRepo.addNotification(
-        NotificationsCompanion.insert(
-          type: 'task',
-          title: 'Task Created',
-          message: 'Task "${task.title.value}" created',
-          taskId: Value(id),
-          projectId: Value(task.projectId.value),
-        ),
+        type: 'task',
+        title: 'Task Created',
+        body: 'Task "${task.title.value}" created',
       );
       
       if (task.assigneeId.present && task.assigneeId.value != null) {
@@ -207,14 +204,12 @@ class TaskRepository implements ITaskRepository {
       }
 
       await _logActivity('edited', 'Task updated', taskId: task.id, projectId: task.projectId);
+      
+      // ✅ FIXED: Using simplified notification method
       await _notificationRepo.addNotification(
-        NotificationsCompanion.insert(
-          type: 'task',
-          title: 'Task Updated',
-          message: 'Task "${task.title}" updated',
-          taskId: Value(task.id),
-          projectId: Value(task.projectId),
-        ),
+        type: 'task',
+        title: 'Task Updated',
+        body: 'Task "${task.title}" updated',
       );
     }
     return ok;
@@ -228,14 +223,11 @@ class TaskRepository implements ITaskRepository {
       projectId: projectId,
     );
 
+    // ✅ FIXED: Using simplified notification method
     await _notificationRepo.addNotification(
-      NotificationsCompanion.insert(
-        type: 'assignment',
-        title: 'New Task Assigned',
-        message: 'You have been assigned to: $title',
-        taskId: Value(taskId),
-        projectId: Value(projectId),
-      ),
+      type: 'assignment',
+      title: 'New Task Assigned',
+      body: 'You have been assigned to: $title',
     );
   }
 

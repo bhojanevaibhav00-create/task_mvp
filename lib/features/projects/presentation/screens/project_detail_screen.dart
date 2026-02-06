@@ -11,26 +11,20 @@ import 'package:task_mvp/features/projects/widgets/add_member_dialog.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/task_card.dart'; 
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/models/enums.dart';
-import 'package:task_mvp/data/repositories/task_repository.dart'; // ✅ KEEP: Required for TaskWithAssignee
-import 'package:task_mvp/features/projects/presentation/project_members_screen.dart';
 
-// Local state for project task sorting
+// ✅ NEW PROVIDER: Local state for project task sorting
 final projectSortProvider = StateProvider.autoDispose<String>((ref) => 'date');
 
 class ProjectDetailScreen extends ConsumerWidget {
   final int projectId;
 
-  const ProjectDetailScreen({
-    super.key,
-    required this.projectId,
-  });
+  const ProjectDetailScreen({super.key, required this.projectId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(allProjectsProvider);
-    final repository = ref.watch(taskRepositoryProvider);
-    final currentSort = ref.watch(projectSortProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final db = ref.watch(databaseProvider);
+    final currentSort = ref.watch(projectSortProvider); // ✅ Listen to sort state
 
     return projectsAsync.when(
       data: (projects) {
@@ -49,11 +43,11 @@ class ProjectDetailScreen extends ConsumerWidget {
         }
         
         return Scaffold(
-          backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+          backgroundColor: const Color(0xFFF8F9FD),
           body: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // 1. PREMIUM MODERN APP BAR
+              // 1. PREMIUM MODERN APP BAR (Fixed Overlap)
               _buildModernAppBar(context, ref, project),
 
               SliverPadding(
@@ -61,30 +55,27 @@ class ProjectDetailScreen extends ConsumerWidget {
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     // 2. MODERN EDITABLE DESCRIPTION
-                    _buildPremiumDescription(context, ref, project, isDark),
+                    _buildPremiumDescription(context, ref, project),
                     const SizedBox(height: 24),
                     
                     // 3. PROGRESS TRACKER
-                    _buildModernProgressHeader(ref),
+                    _buildModernProgressHeader(db),
                     const SizedBox(height: 32),
                     
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
+                        const Row(
                           children: [
-                            Icon(Icons.list_alt_rounded, color: isDark ? Colors.white : const Color(0xFF1A1C1E), size: 22),
-                            const SizedBox(width: 12),
+                            Icon(Icons.list_alt_rounded, color: Color(0xFF1A1C1E), size: 22),
+                            SizedBox(width: 12),
                             Text(
                               "Project Tasks",
-                              style: TextStyle(
-                                fontSize: 20, 
-                                fontWeight: FontWeight.w900, 
-                                color: isDark ? Colors.white : const Color(0xFF1A1C1E)
-                              ),
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1A1C1E)),
                             ),
                           ],
                         ),
+                        // ✅ SORT INDICATOR LABEL
                         Text(
                           "Sorted by ${currentSort == 'priority' ? 'Priority' : 'Date'}",
                           style: const TextStyle(fontSize: 10, color: Colors.black26, fontWeight: FontWeight.bold),
@@ -96,16 +87,21 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ),
               ),
               
-              // 4. DYNAMIC TASK LIST (With TaskWithAssignee Support)
-              StreamBuilder<List<TaskWithAssignee>>(
-                stream: repository.watchTasksWithAssignee(
-                  projectId: projectId,
-                  sortBy: currentSort == 'priority' ? 'priority_desc' : 'due_date_asc',
-                ),
+              // 4. DYNAMIC TASK LIST (With Advanced Sorting Logic)
+              StreamBuilder<List<Task>>(
+                stream: (db.select(db.tasks)
+                  ..where((t) => t.projectId.equals(projectId))
+                  ..orderBy([
+                    (t) => drift.OrderingTerm(
+                      // ✅ DYNAMIC SORTING LOGIC
+                      expression: currentSort == 'priority' ? t.priority : t.dueDate,
+                      mode: drift.OrderingMode.asc,
+                    ),
+                  ])).watch(),
                 builder: (context, snapshot) {
-                  final wrappers = snapshot.data ?? [];
+                  final tasks = snapshot.data ?? [];
 
-                  if (wrappers.isEmpty) {
+                  if (tasks.isEmpty) {
                     return SliverFillRemaining(
                       hasScrollBody: false,
                       child: Center(
@@ -126,18 +122,16 @@ class ProjectDetailScreen extends ConsumerWidget {
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final item = wrappers[index];
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12.0),
                             child: TaskCard(
-                              task: item.task,
-                              assigneeName: item.assignee?.name, // ✅ FIXED: Pass member name to card
-                              onTap: () => context.push('/tasks/${item.task.id}'),
-                              onToggleDone: () => _toggleTaskStatus(ref, item.task),
+                              task: tasks[index],
+                              onTap: () => context.push('/tasks/${tasks[index].id}'),
+                              onToggleDone: () => _toggleTaskStatus(ref, tasks[index]),
                             ),
                           );
                         },
-                        childCount: wrappers.length,
+                        childCount: tasks.length,
                       ),
                     ),
                   );
@@ -162,6 +156,7 @@ class ProjectDetailScreen extends ConsumerWidget {
       elevation: 0,
       stretch: true,
       backgroundColor: AppColors.primary,
+      // ✅ FIX: Increase leadingWidth to prevent back arrow overlap
       leadingWidth: 70, 
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
@@ -183,6 +178,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         onPressed: () => context.pop(),
       ),
       actions: [
+        // ✅ ADVANCED SORTING MENU
         PopupMenuButton<String>(
           icon: const Icon(Icons.sort_rounded, color: Colors.white),
           onSelected: (value) => ref.read(projectSortProvider.notifier).state = value,
@@ -204,14 +200,14 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPremiumDescription(BuildContext context, WidgetRef ref, Project project, bool isDark) {
+  Widget _buildPremiumDescription(BuildContext context, WidgetRef ref, Project project) {
     return GestureDetector(
       onTap: () => _showEditDescriptionDialog(context, ref, project),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(28),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 8))],
         ),
@@ -231,7 +227,7 @@ class ProjectDetailScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 15, 
                 height: 1.6, 
-                color: project.description == null ? Colors.black26 : (isDark ? Colors.white70 : const Color(0xFF1F2937)),
+                color: project.description == null ? Colors.black26 : const Color(0xFF1F2937),
               ),
             ),
           ],
@@ -240,8 +236,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildModernProgressHeader(WidgetRef ref) {
-    final db = ref.watch(databaseProvider);
+  Widget _buildModernProgressHeader(AppDatabase db) {
     return StreamBuilder<List<Task>>(
       stream: (db.select(db.tasks)..where((t) => t.projectId.equals(projectId))).watch(),
       builder: (context, snapshot) {

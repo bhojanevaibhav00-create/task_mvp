@@ -45,7 +45,6 @@ class DashboardScreen extends ConsumerWidget {
         slivers: [
           _buildPremiumAppBar(context, unreadCount),
           
-          // Pull to Refresh could go here if needed in future
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
             sliver: SliverList(
@@ -222,7 +221,7 @@ class DashboardScreen extends ConsumerWidget {
       child: projects.when(
         data: (list) {
           final validProjects = list.where((p) => p.name.isNotEmpty && p.name != "General").toList();
-          if (validProjects.isEmpty) return _emptyContentCard("No projects", Icons.folder_open_outlined);
+          if (validProjects.isEmpty) return _emptyContentCard("No projects found", Icons.folder_open_outlined);
 
           return ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -279,6 +278,7 @@ class DashboardScreen extends ConsumerWidget {
   // --- TASK LIST COMPONENTS ---
 
   Widget _buildTaskList(BuildContext context, List<TaskWithAssignee> wrappers, Color textColor, bool isDark) {
+    // ✅ FIXED: Using DashboardEmptyState to remove the black box
     if (wrappers.isEmpty) return const DashboardEmptyState();
     
     return Column(
@@ -369,7 +369,7 @@ class DashboardScreen extends ConsumerWidget {
     return ElevatedButton.icon(
       onPressed: () => context.push(route),
       icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color.withOpacity(0.08), 
         foregroundColor: color, 
@@ -466,15 +466,21 @@ class DashboardScreen extends ConsumerWidget {
         content: TextField(
           controller: controller,
           autofocus: true,
+          // ✅ FIXED: Added visible text color for input
+          style: const TextStyle(color: Color(0xFF1A1C1E), fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: "Enter project name",
+            hintStyle: const TextStyle(color: Colors.black26),
             filled: true,
             fillColor: const Color(0xFFF8F9FD),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))
+          ),
           ElevatedButton(
             onPressed: () async {
               if (controller.text.trim().isEmpty) return;
@@ -486,8 +492,12 @@ class DashboardScreen extends ConsumerWidget {
               ref.invalidate(allProjectsProvider);
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-            child: const Text("Create"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary, 
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text("Create", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

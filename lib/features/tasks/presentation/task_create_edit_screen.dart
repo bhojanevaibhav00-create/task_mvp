@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:go_router/go_router.dart';
 
-import '../../../core/providers/task_providers.dart';
-import '../../../core/providers/collaboration_providers.dart';
-import '../../../data/database/database.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/providers/task_providers.dart' hide notificationRepositoryProvider;
+import '../../../core/providers/collaboration_providers.dart';
+import '../../../core/providers/notification_providers.dart'; // ✅ Added for Sprint 8
+import '../../../data/database/database.dart';
 import 'widgets/reminder_section.dart';
 
 class TaskCreateEditScreen extends ConsumerStatefulWidget {
@@ -21,22 +23,22 @@ class TaskCreateEditScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<TaskCreateEditScreen> createState() =>
-      _TaskCreateEditScreenState();
+  ConsumerState<TaskCreateEditScreen> createState() => _TaskCreateEditScreenState();
 }
 
 class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  // Controllers
   late TextEditingController _titleCtrl;
   late TextEditingController _descCtrl;
 
+  // State Variables
   bool reminderEnabled = false;
   DateTime? reminderAt;
   int _priority = 1;
-  DateTime? _dueDate; // ✅ Rationale: Keeping this private for state management
+  DateTime? _dueDate; 
   int? _selectedAssigneeId;
-
   Task? _fetchedTask;
 
   @override
@@ -82,12 +84,267 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     super.dispose();
   }
 
+  // ===========================================================================
+  // ACTION LOGIC - DELETE (FIXES HANGING, NOTIFICATIONS & CIRCULAR ERRORS)
+  // ===========================================================================
+
+  Future<void> _confirmDelete(BuildContext context, Task task) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text("Delete Task?", style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A1C1E))),
+        content: Text("Are you sure you want to remove '${task.title}'? This cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Keep Task", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Confirm Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        // 1. 🚀 NAVIGATION FIRST: Pop the screen IMMEDIATELY.
+        // This prevents the UI from trying to rebuild a 'deleted' task which causes the circular error.
+        if (mounted) {
+          context.pop(); 
+        }
+
+        // 2. Trigger Notification via Repo (Use ref.read to avoid circular dependency)
+        await ref.read(notificationRepositoryProvider).addNotification(
+          title: "Task Deleted",
+          body: "Task '${task.title}' was successfully removed.",
+          type: "system",
+        );
+
+        // 3. Perform Database Deletion
+        await ref.read(tasksProvider.notifier).deleteTask(task.id);
+
+        // 4. Refresh background lists
+        ref.invalidate(tasksProvider);
+        ref.invalidate(filteredTasksProvider);
+
+      } catch (e) {
+        debugPrint("Error: $e");
+      }
+    }
+  }
+
+  // ===========================================================================
+  // WIDGET BUILDERS - APP BAR & SECTIONS
+  // ===========================================================================
+
+  Widget _buildCustomAppBar(bool isEdit, Task? currentTask) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+            const Spacer(),
+            Text(
+              isEdit ? 'Edit Task' : 'New Task',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const Spacer(),
+            if (isEdit)
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                onPressed: () => _confirmDelete(context, currentTask!),
+              )
+            else
+              const SizedBox(width: 48),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 12, top: 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.5,
+          color: Colors.grey.shade400,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputGroup() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _titleCtrl,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1A1C1E)),
+            decoration: InputDecoration(
+              hintText: 'What needs to be done?',
+              hintStyle: TextStyle(color: Colors.grey.shade300, fontWeight: FontWeight.w500),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+            ),
+            validator: (v) => (v == null || v.isEmpty) ? 'Title required' : null,
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
+          ),
+          TextFormField(
+            controller: _descCtrl,
+            maxLines: 4,
+            style: const TextStyle(fontSize: 16, color: Color(0xFF4B5563), height: 1.5),
+            decoration: InputDecoration(
+              hintText: 'Add description or notes...',
+              hintStyle: TextStyle(color: Colors.grey.shade300, fontWeight: FontWeight.w400),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrioritySelector() {
+    return Row(
+      children: [
+        _priorityButton(1, "Low", const Color(0xFF34D399)),
+        const SizedBox(width: 12),
+        _priorityButton(2, "Medium", const Color(0xFFFB923C)),
+        const SizedBox(width: 12),
+        _priorityButton(3, "High", const Color(0xFFF87171)),
+      ],
+    );
+  }
+
+  Widget _priorityButton(int value, String label, Color color) {
+    final isSelected = _priority == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _priority = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: isSelected ? color : Colors.grey.shade100, width: 2),
+            boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : [],
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade500,
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsGroup() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+              child: const Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 20),
+            ),
+            title: const Text("Due Date", style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1A1C1E))),
+            subtitle: Text(_dueDate == null ? "Set a deadline" : "${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}"),
+            trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+            onTap: _pickDueDate,
+          ),
+          const Divider(height: 1, indent: 70, color: Color(0xFFF3F4F6)),
+          ReminderSection(
+            initialEnabled: reminderEnabled,
+            initialTime: reminderAt,
+            onChanged: (enabled, time) {
+              setState(() {
+                reminderEnabled = enabled;
+                reminderAt = time;
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickDueDate() async {
+    final date = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+      initialDate: _dueDate ?? DateTime.now(),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (date != null) setState(() => _dueDate = date);
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentTask = widget.task ?? _fetchedTask;
     final isEdit = currentTask != null;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -101,28 +358,25 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
                 decoration: const BoxDecoration(
                   color: Color(0xFFF8F9FD),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
                 ),
                 child: Form(
                   key: _formKey,
                   child: ListView(
                     physics: const BouncingScrollPhysics(),
                     children: [
-                      _buildSectionLabel("TASK DETAILS"),
+                      _buildSectionLabel("TASK INFORMATION"),
                       _buildInputGroup(),
                       const SizedBox(height: 24),
-
-                      _buildSectionLabel("ASSIGN TO"),
+                      _buildSectionLabel("ASSIGNMENT"),
                       _buildAssigneeSelector(currentTask),
                       const SizedBox(height: 24),
-
-                      _buildSectionLabel("PRIORITY"),
+                      _buildSectionLabel("TASK PRIORITY"),
                       _buildPrioritySelector(),
                       const SizedBox(height: 24),
-
-                      _buildSectionLabel("SETTINGS"),
+                      _buildSectionLabel("SCHEDULE & REMINDERS"),
                       _buildSettingsGroup(),
-                      const SizedBox(height: 100),
+                      const SizedBox(height: 120),
                     ],
                   ),
                 ),
@@ -135,371 +389,63 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _saveTask(currentTask),
         backgroundColor: AppColors.primary,
-        elevation: 4,
-        extendedPadding: const EdgeInsets.symmetric(horizontal: 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        icon: const Icon(Icons.check, color: Colors.white),
-        label: const Text(
-          "Save Task",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+        elevation: 6,
+        extendedPadding: const EdgeInsets.symmetric(horizontal: 60),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        label: Text(
+          isEdit ? "Update Task" : "Create Task",
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
         ),
       ),
     );
   }
 
   Widget _buildAssigneeSelector(Task? currentTask) {
-  // Use the provided projectId or the one from the existing task
-  final pid = widget.projectId ?? currentTask?.projectId;
+    final pid = widget.projectId ?? currentTask?.projectId;
+    if (pid == null) return const SizedBox.shrink();
+    final membersAsync = ref.watch(projectMembersProvider(pid));
 
-  if (pid == null) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Text(
-        "Linking to a project is required for assignment.",
-        style: TextStyle(color: Colors.grey),
-      ),
-    );
-  }
+    return membersAsync.when(
+      data: (members) {
+        final bool idExists = _selectedAssigneeId == null || members.any((m) => m.user.id == _selectedAssigneeId);
+        final currentId = idExists ? _selectedAssigneeId : null;
 
-  // Watch the members of the specific project
-  final membersAsync = ref.watch(projectMembersProvider(pid));
-
-  return membersAsync.when(
-    data: (members) {
-      // ✅ SAFETY CHECK: Ensure the selected ID actually exists in the fetched members list.
-      // If it doesn't exist (and isn't null), we reset it to null to prevent the "empty box" error.
-      final bool idExists = _selectedAssigneeId == null || 
-                           members.any((m) => m.user.id == _selectedAssigneeId);
-      
-      final currentId = idExists ? _selectedAssigneeId : null;
-
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04), 
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<int?>(
-            isExpanded: true,
-            value: currentId, // ✅ Use the validated ID
-            hint: const Text("Select Assignee"),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey),
-            // ✅ Map the list of members to DropdownMenuItems
-            items: [
-              const DropdownMenuItem<int?>(
-                value: null,
-                child: Text("Unassigned"),
-              ),
-              ...members.map(
-                (m) => DropdownMenuItem<int?>(
-                  value: m.user.id,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outline, size: 18, color: Colors.blueGrey),
-                      const SizedBox(width: 8),
-                      // ✅ This is what displays the name in the box
-                      Text(
-                        m.user.name,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            onChanged: (val) {
-              setState(() {
-                _selectedAssigneeId = val;
-              });
-            },
-          ),
-        ),
-      );
-    },
-    loading: () => const Padding(
-      padding: EdgeInsets.symmetric(vertical: 20),
-      child: LinearProgressIndicator(),
-    ),
-    error: (_, __) => const Padding(
-      padding: EdgeInsets.all(16.0),
-      child: Text("Error loading project members", style: TextStyle(color: Colors.red)),
-    ),
-  );
-}
-
-  Widget _buildCustomAppBar(bool isEdit, Task? currentTask) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-            const Spacer(),
-            Text(
-              isEdit ? 'Edit Task' : 'New Task',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Spacer(),
-            if (isEdit)
-              IconButton(
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: Colors.white,
-                ),
-                onPressed: () => _confirmDelete(context, currentTask!),
-              )
-            else
-              const SizedBox(width: 48),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.2,
-          color: Colors.grey.shade500,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputGroup() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          TextFormField(
-            controller: _titleCtrl,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF111827),
-            ),
-            decoration: InputDecoration(
-              hintText: 'Task Title',
-              hintStyle: TextStyle(color: Colors.grey.shade400),
-              border: InputBorder.none,
-            ),
-            validator: (v) =>
-                (v == null || v.isEmpty) ? 'Title required' : null,
-          ),
-          const Divider(height: 24),
-          TextFormField(
-            controller: _descCtrl,
-            maxLines: 3,
-            style: const TextStyle(fontSize: 16, color: Color(0xFF111827)),
-            decoration: InputDecoration(
-              hintText: 'Add details...',
-              hintStyle: TextStyle(color: Colors.grey.shade400),
-              border: InputBorder.none,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrioritySelector() {
-    return Row(
-      children: [
-        _priorityButton(1, "Low", Colors.green),
-        const SizedBox(width: 8),
-        _priorityButton(2, "Med", Colors.orange),
-        const SizedBox(width: 8),
-        _priorityButton(3, "High", Colors.red),
-      ],
-    );
-  }
-
-  Widget _priorityButton(int value, String label, Color color) {
-    final isSelected = _priority == value;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _priority = value),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           decoration: BoxDecoration(
-            color: isSelected ? color : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? color : Colors.grey.shade200,
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int?>(
+              isExpanded: true,
+              value: currentId,
+              icon: const Icon(Icons.unfold_more_rounded, color: Colors.grey),
+              items: [
+                const DropdownMenuItem(value: null, child: Text("Unassigned", style: TextStyle(color: Colors.grey))),
+                ...members.map((m) => DropdownMenuItem(value: m.user.id, child: Text(m.user.name, style: const TextStyle(fontWeight: FontWeight.w600)))),
+              ],
+              onChanged: (val) => setState(() => _selectedAssigneeId = val),
             ),
           ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey.shade600,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
+        );
+      },
+      loading: () => const LinearProgressIndicator(),
+      error: (_, __) => const Text("Error loading members"),
     );
-  }
-
-  Widget _buildSettingsGroup() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(
-              Icons.calendar_today_rounded,
-              color: AppColors.primary,
-            ),
-            title: const Text(
-              "Due Date",
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF111827),
-              ),
-            ),
-            subtitle: Text(
-              _dueDate == null
-                  ? "Not set"
-                  : "${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}",
-            ),
-            trailing: const Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.grey,
-            ),
-            onTap: _pickDueDate,
-          ),
-          const Divider(height: 1, indent: 60),
-          ReminderSection(
-            initialEnabled: reminderEnabled,
-            initialTime: reminderAt,
-            onChanged: (enabled, time) {
-              setState(() {
-                reminderEnabled = enabled;
-                reminderAt = time;
-              });
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _pickDueDate() async {
-    final date = await showDatePicker(
-      context: context,
-      firstDate: DateTime.now(), // ✅ Fixed: Prevents selecting past dates
-      lastDate: DateTime(2100),
-      initialDate: _dueDate ?? DateTime.now(),
-    );
-    // ✅ FIXED: UI Refresh logic
-    if (date != null) {
-      setState(() {
-        _dueDate = date;
-      });
-    }
-  }
-
-  Future<void> _confirmDelete(BuildContext context, Task task) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Delete Task?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await ref.read(tasksProvider.notifier).deleteTask(task.id);
-      if (mounted) Navigator.pop(context, true);
-    }
   }
 
   Future<void> _saveTask(Task? currentTask) async {
     if (!_formKey.currentState!.validate()) return;
-
     final notifier = ref.read(tasksProvider.notifier);
-    final title = _titleCtrl.text.trim();
-    final description = _descCtrl.text.trim();
-
     try {
       if (currentTask == null) {
-        // 1. ADD NEW TASK
-        await notifier.addTask(
-          title,
-          description,
-          priority: _priority,
-          dueDate: _dueDate,
-          assigneeId: _selectedAssigneeId,
-          projectId: widget.projectId,
-        );
+        await notifier.addTask(_titleCtrl.text, _descCtrl.text, priority: _priority, dueDate: _dueDate, assigneeId: _selectedAssigneeId, projectId: widget.projectId);
       } else {
-        // 2. UPDATE EXISTING TASK
-        // ✅ FIXED: Ensure copyWith uses drift.Value for nullable fields
         final updated = currentTask.copyWith(
-          title: title,
-          description: drift.Value(description.isEmpty ? null : description),
+          title: _titleCtrl.text,
+          description: drift.Value(_descCtrl.text),
           priority: drift.Value(_priority),
           dueDate: drift.Value(_dueDate),
           reminderEnabled: reminderEnabled,
@@ -508,17 +454,9 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
         );
         await notifier.updateTask(updated);
       }
-
-      // 3. ✅ UI REFRESH: Signal back to list screen to refresh
-      if (mounted) Navigator.pop(context, true);
-      
+      if (mounted) context.pop();
     } catch (e) {
-      // ✅ Error handling: Optional SnackBar for user feedback
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to save task: $e")),
-        );
-      }
+      debugPrint("Save failed: $e");
     }
   }
 }
