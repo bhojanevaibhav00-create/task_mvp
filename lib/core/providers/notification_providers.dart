@@ -1,15 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/database.dart';
 import '../../data/repositories/notification_repository.dart';
-
+import 'package:task_mvp/core/providers/database_provider.dart';
 /// =======================
 /// DATABASE PROVIDER
 /// =======================
 /// ⚠️ If this already exists elsewhere,
 /// reuse that instead of duplicating
-final databaseProvider = Provider<AppDatabase>((ref) {
-  return AppDatabase();
-});
 
 /// =======================
 /// NOTIFICATION REPOSITORY

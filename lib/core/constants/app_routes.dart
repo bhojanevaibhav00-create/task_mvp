@@ -8,7 +8,7 @@ class AppRoutes {
   static const demo = '/demo';
   static const test = '/test';
   static const notifications = '/notifications';
-
+  static const createProject ='/project/create';
   // ✅ Add this for Sprint 7
   static const projectDetails = '/projects/:projectId';
   static const projects = '/projects';

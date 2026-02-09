@@ -1,29 +1,30 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../constants/app_routes.dart';
 
-// Auth Screens
+// AUTH
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 
-// Dashboard & Tasks
+// DASHBOARD
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+
+// TASKS ✅
 import '../../features/tasks/presentation/task_list_screen.dart';
 
-// Notifications
+// PROJECTS
+import '../../features/projects/presentation/screens/project_detail_screen.dart';
+import '../../features/projects/presentation/screens/create_project_screen.dart';
+
+// OTHER
 import '../../features/notifications/presentation/notification_screen.dart';
-
-// Project Screens (Added for Sprint 7)
-import '../../features/projects/presentation/screens/project_detail_screen.dart'; // ✅ Import your new screen
-
-// Other Screens
-import '../../features/demo/presentation/demo_screen.dart';
-import '../../features/test/presentation/test_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: AppRoutes.login,
+
   routes: [
-    // ================= AUTH =================
+    /// ================= AUTH =================
     GoRoute(
       path: AppRoutes.login,
       builder: (context, state) => const LoginScreen(),
@@ -33,43 +34,43 @@ final appRouter = GoRouter(
       builder: (context, state) => const RegisterScreen(),
     ),
 
-    // ================= DASHBOARD =================
+    /// ================= DASHBOARD =================
     GoRoute(
       path: AppRoutes.dashboard,
       builder: (context, state) => const DashboardScreen(),
     ),
 
-    // ================= PROJECTS (Sprint 7) =================
+    /// ================= TASKS (🔥 THIS WAS MISSING) =================
     GoRoute(
-      path: '/projects/:projectId', // Matches the path pushed from Dashboard
+      path: AppRoutes.tasks, // '/tasks'
+      builder: (context, state) => const TaskListScreen(),
+    ),
+
+    /// ================= CREATE PROJECT =================
+    GoRoute(
+      path: AppRoutes.createProject,
+      builder: (context, state) => const CreateProjectScreen(),
+    ),
+
+    /// ================= PROJECT DETAIL =================
+    GoRoute(
+      path: '/projects/:projectId',
       builder: (context, state) {
-        // Extract the ID from the URL path and convert to int
-        final projectId = int.parse(state.pathParameters['projectId']!);
+        final projectId =
+        int.tryParse(state.pathParameters['projectId'] ?? '');
+        if (projectId == null) {
+          return const Scaffold(
+            body: Center(child: Text('Invalid Project ID')),
+          );
+        }
         return ProjectDetailScreen(projectId: projectId);
       },
     ),
 
-    // ================= TASKS =================
-    GoRoute(
-      path: AppRoutes.tasks,
-      builder: (context, state) => const TaskListScreen(),
-    ),
-
-    // ================= NOTIFICATIONS =================
+    /// ================= NOTIFICATIONS =================
     GoRoute(
       path: AppRoutes.notifications,
       builder: (context, state) => const NotificationScreen(),
-    ),
-
-    // ================= DEMO / TEST =================
-    GoRoute(
-      path: AppRoutes.demo,
-      builder: (context, state) =>
-          const DemoScreen(title: 'Demo Home Page'),
-    ),
-    GoRoute(
-      path: AppRoutes.test,
-      builder: (context, state) => const TestScreen(),
     ),
   ],
 );

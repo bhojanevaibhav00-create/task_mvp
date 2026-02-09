@@ -2,50 +2,52 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class DashboardEmptyState extends StatelessWidget {
-  const DashboardEmptyState({super.key});
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  const DashboardEmptyState({
+    super.key,
+    this.title = 'Nothing here yet',
+    this.subtitle = 'Start by creating something new',
+    this.icon = Icons.inbox,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.cardLight,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.inbox_outlined,
-            size: 48,
-            color: AppColors.primary,
+          CircleAvatar(
+            radius: 36,
+            backgroundColor: AppColors.primary.withOpacity(0.12),
+            child: Icon(
+              icon,
+              size: 36,
+              color: AppColors.primary,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
-            'No tasks yet',
+            title,
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: isDark
-                  ? AppColors.textPrimaryDark
-                  : AppColors.textPrimaryLight,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Create your first task to get started',
-            style: TextStyle(
-              color: isDark
-                  ? AppColors.textSecondaryDark
-                  : AppColors.textSecondaryLight,
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.grey,
             ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.add),
-            label: const Text('Add Task'),
           ),
         ],
       ),

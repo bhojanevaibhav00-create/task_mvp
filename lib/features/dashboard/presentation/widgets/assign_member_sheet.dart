@@ -1,103 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' as drift;
 
+import '../../../../core/providers/task_providers.dart';
 import '../../../../core/providers/collaboration_providers.dart';
-import '../../../../core/constants/app_colors.dart';
 
 class AssignMemberSheet extends ConsumerWidget {
-  final int projectId;
+  final int? projectId;
+  final int? taskId;
 
   const AssignMemberSheet({
     super.key,
-    required this.projectId,
+    this.projectId,
+    this.taskId,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final membersAsync = ref.watch(projectMembersProvider(projectId));
+    final usersAsync = ref.watch(allUsersProvider);
 
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Assign Member',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 16),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: usersAsync.when(
+        loading: () =>
+        const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Text('Error: $e'),
+        data: (users) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: users.map((user) {
+              return ListTile(
+                title: Text(user.name),
+                onTap: () async {
+                  /// ✅ ASSIGN TO TASK
+                  if (taskId != null) {
+                    final task = ref
+                        .read(tasksProvider)
+                        .firstWhere((t) => t.id == taskId);
 
-            membersAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              ),
-              error: (e, _) => Text('Error: $e'),
-              data: (members) {
-                if (members.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('No members available'),
-                  );
-                }
-
-                return ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: members.length + 1,
-                  separatorBuilder: (_, __) =>
-                  const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    // 🔹 UNASSIGN OPTION
-                    if (index == 0) {
-                      return ListTile(
-                        leading: const Icon(Icons.close, color: Colors.red),
-                        title: const Text(
-                          'Unassign',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context, null);
-                        },
-                      );
-                    }
-
-                    final item = members[index - 1];
-
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor:
-                        AppColors.primary.withOpacity(0.1),
-                        child: Text(
-                          item.user.name[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    await ref
+                        .read(tasksProvider.notifier)
+                        .updateTask(
+                      task.copyWith(
+                        assigneeId: drift.Value(user.id),
                       ),
-                      title: Text(item.user.name),
-                      subtitle: Text(item.member.role),
-                      onTap: () {
-                        Navigator.pop(context, item);
-                      },
                     );
-                  },
-                );
-              },
-            ),
-          ],
-        ),
+                  }
+
+                  /// ✅ ASSIGN TO PROJECT
+                  if (projectId != null) {
+                    await ref
+                        .read(collaborationRepositoryProvider)
+                        .addMember(
+                      projectId!,
+                      user.id,
+                    );
+                  }
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+                },
+              );
+            }).toList(),
+          );
+        },
       ),
     );
   }

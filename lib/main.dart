@@ -5,7 +5,7 @@ import 'package:drift/drift.dart' as drift;
 import 'app.dart';
 import 'core/providers/task_providers.dart';
 import 'data/database/database.dart' as db;
-
+import 'package:task_mvp/core/providers/database_provider.dart';
 // 🚀 पायरी १: नवीन टेस्ट युजर्स ॲड करण्यासाठी 'Seed' फंक्शन अपडेट करा
 Future<void> seedProjectData(db.AppDatabase database) async {
   try {

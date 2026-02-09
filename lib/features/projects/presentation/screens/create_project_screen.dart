@@ -1,64 +1,139 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
-import '../../../../data/database/database.dart';
-import '../../../../core/providers/task_providers.dart';
-import '../../../../core/constants/app_colors.dart';
+
+// ✅ IMPORTANT IMPORT (THIS FIXES YOUR ERROR)
+import 'package:task_mvp/data/database/database.dart';
+import 'package:task_mvp/core/providers/database_provider.dart';
+import 'package:task_mvp/core/providers/project_providers.dart';
+import 'package:task_mvp/core/constants/app_colors.dart';
 
 class CreateProjectScreen extends ConsumerStatefulWidget {
   const CreateProjectScreen({super.key});
 
   @override
-  ConsumerState<CreateProjectScreen> createState() => _CreateProjectScreenState();
+  ConsumerState<CreateProjectScreen> createState() =>
+      _CreateProjectScreenState();
 }
 
-class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
+class _CreateProjectScreenState
+    extends ConsumerState<CreateProjectScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  bool _isSaving = false;
 
-  Future<void> _handleCreate() async {
-    if (_nameController.text.isEmpty) return;
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
 
+  Future<void> _createProject() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _isSaving = true);
+
+    // ✅ THIS IS CORRECT
     final db = ref.read(databaseProvider);
-    
-    // Insert new project into Drift Database
-    await db.into(db.projects).insert(ProjectsCompanion.insert(
-      name: _nameController.text.trim(),
-      description: drift.Value(_descController.text.trim()),
-      createdAt: drift.Value(DateTime.now()),
-    ));
+
+    await db.into(db.projects).insert(
+      ProjectsCompanion(
+        name: drift.Value(name),
+        createdAt: drift.Value(DateTime.now()),
+      ),
+    );
+
+    // 🔄 Refresh dashboard
+    ref.invalidate(allProjectsProvider);
 
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Create New Project")),
+      backgroundColor:
+      isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
+
+      // ===== PREMIUM HEADER =====
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.primaryGradient,
+          ),
+        ),
+        title: const Text(
+          'Create Project',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+      ),
+
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 24),
+
+            const Text(
+              'Project Name',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: "Project Name", border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                hintText: 'e.g. Task MVP App',
+                filled: true,
+                fillColor:
+                isDark ? AppColors.cardDark : Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _descController,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: "Description", border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 32),
+
+            const Spacer(),
+
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton(
-                onPressed: _handleCreate,
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                child: const Text("Create Project", style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: _isSaving ? null : _createProject,
+                child: _isSaving
+                    ? const CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                )
+                    : const Text(
+                  'Create Project',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            )
+            ),
           ],
         ),
       ),

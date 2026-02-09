@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/database/database.dart';
 import 'package:task_mvp/features/dashboard/presentation/widgets/assignee_chip.dart';
-import 'package:task_mvp/features/dashboard/presentation/widgets/assign_member_sheet.dart';
 
-class TaskDetailScreen extends ConsumerStatefulWidget {
+class TaskDetailScreen extends ConsumerWidget {
   final Task task;
 
   const TaskDetailScreen({
@@ -15,70 +14,93 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<TaskDetailScreen> createState() =>
-      _TaskDetailScreenState();
-}
-
-class _TaskDetailScreenState
-    extends ConsumerState<TaskDetailScreen> {
-  String? assignedName;
-
-  @override
-  void initState() {
-    super.initState();
-    assignedName = null; // UI-only for now
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness == Brightness.dark;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor:
-      isDark ? AppColors.scaffoldDark : Colors.white,
+      isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
       appBar: AppBar(
         title: const Text('Task Details'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            widget.task.title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// ===== TITLE =====
+            Text(
+              task.title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
 
-          /// ===== ASSIGNED TO =====
-          const Text(
-            'Assigned To',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
-          AssigneeChip(
-            name: assignedName,
-            showClear: true,
-            onTap: () async {
-              final result = await showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (_) => AssignMemberSheet(
-                  projectId: widget.task.projectId ?? 0,
+            /// ===== DESCRIPTION =====
+            if (task.description != null && task.description!.isNotEmpty)
+              Text(
+                task.description!,
+                style: TextStyle(
+                  color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                 ),
-              );
+              ),
 
-              setState(() {
-                assignedName = result?.user.name;
-              });
-            },
+            const SizedBox(height: 24),
+
+            /// ===== ASSIGNEE =====
+            const Text(
+              'Assigned To',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            AssigneeChip(
+              /// ✅ FIXED — NEVER NULL
+              name: task.assigneeId != null
+                  ? 'User ${task.assigneeId}'
+                  : 'Unassigned',
+              showClear: false,
+              onTap: () {
+                // later: open AssignMemberSheet
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            /// ===== META =====
+            _infoRow('Status', task.status ?? '-'),
+            _infoRow('Priority', task.priority.toString()),
+            _infoRow(
+              'Project',
+              task.projectId != null ? task.projectId.toString() : '-',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
+          Text(value),
         ],
       ),
     );

@@ -1,16 +1,22 @@
 import 'package:drift/drift.dart';
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/notification_repository.dart';
+import 'package:task_mvp/core/services/reminder_service.dart';
 import '../seed/seed_data.dart';
 import 'i_task_repository.dart';
-import 'package:task_mvp/core/services/reminder_service.dart';
 
 class TaskRepository implements ITaskRepository {
   final AppDatabase _db;
   final NotificationRepository _notificationRepo;
   final ReminderService _reminderService;
 
-  TaskRepository(this._db, this._notificationRepo, this._reminderService);
+  TaskRepository(
+      this._db,
+      this._notificationRepo,
+      this._reminderService,
+      );
+
+  // ================= CREATE =================
 
   @override
   Future<int> createTask(TasksCompanion task) async {
@@ -39,11 +45,22 @@ class TaskRepository implements ITaskRepository {
         ),
       );
     }
+
     return id;
   }
 
+  // ================= READ =================
+
   @override
-  Future<List<Task>> getAllTasks() => _db.select(_db.tasks).get();
+  Future<List<Task>> getAllTasks() {
+    return _db.select(_db.tasks).get();
+  }
+
+  @override
+  Future<Task?> getTaskById(int id) {
+    return (_db.select(_db.tasks)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
 
   @override
   Stream<List<Task>> watchTasks({
@@ -65,7 +82,9 @@ class TaskRepository implements ITaskRepository {
       query.where((t) => t.priority.equals(priority));
     }
     if (hasDueDate != null) {
-      query.where((t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull());
+      query.where(
+            (t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull(),
+      );
     }
     if (fromDate != null && toDate != null) {
       query.where((t) => t.dueDate.isBetweenValues(fromDate, toDate));
@@ -75,28 +94,19 @@ class TaskRepository implements ITaskRepository {
 
     query.orderBy([
       switch (sortBy) {
-        'priority_desc' => (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.desc),
-        'due_date_asc' => (t) => OrderingTerm(expression: t.dueDate, mode: OrderingMode.asc),
-        _ => (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
+        'priority_desc' =>
+            (t) => OrderingTerm(expression: t.priority, mode: OrderingMode.desc),
+        'due_date_asc' =>
+            (t) => OrderingTerm(expression: t.dueDate, mode: OrderingMode.asc),
+        _ =>
+            (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
       },
     ]);
 
     return query.watch();
   }
 
-  @override
-  Future<Task?> getTaskById(int id) {
-    return (_db.select(_db.tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
-  }
-
-  @override
-  Future<List<Task>> fetchUpcomingReminders(DateTime from, DateTime to) {
-    return (_db.select(_db.tasks)
-          ..where((t) => t.reminderEnabled.equals(true))
-          ..where((t) => t.reminderAt.isBetweenValues(from, to))
-          ..where((t) => t.status.isNotValue('done')))
-        .get();
-  }
+  // ================= UPDATE =================
 
   @override
   Future<bool> updateTask(Task task) async {
@@ -119,7 +129,13 @@ class TaskRepository implements ITaskRepository {
     final ok = await _db.update(_db.tasks).replace(updated);
 
     if (ok) {
-      await _logActivity('edited', 'Task updated', taskId: task.id, projectId: task.projectId);
+      await _logActivity(
+        'edited',
+        'Task updated',
+        taskId: task.id,
+        projectId: task.projectId,
+      );
+
       await _notificationRepo.addNotification(
         NotificationsCompanion.insert(
           type: 'task',
@@ -130,8 +146,11 @@ class TaskRepository implements ITaskRepository {
         ),
       );
     }
+
     return ok;
   }
+
+  // ================= DELETE =================
 
   @override
   Future<int> deleteTask(int id) async {
@@ -140,34 +159,61 @@ class TaskRepository implements ITaskRepository {
   }
 
   @override
-  Future<int> deleteAllTasks() async {
+  Future<int> deleteAllTasks() {
     return _db.delete(_db.tasks).go();
   }
 
-  @override
-  Future<void> seedDatabase() => SeedData(_db).seed();
+  // ================= EXTRA =================
 
-  // 🚀 FIXED METHOD
   @override
-  Future<int> getDatabaseVersion() => _db.getDatabaseVersion();
+  Future<void> seedDatabase() {
+    return SeedData(_db).seed();
+  }
+
+  @override
+  Future<List<Task>> fetchUpcomingReminders(DateTime from, DateTime to) {
+    return (_db.select(_db.tasks)
+      ..where((t) => t.reminderEnabled.equals(true))
+      ..where((t) => t.reminderAt.isBetweenValues(from, to))
+      ..where((t) => t.status.isNotValue('done')))
+        .get();
+  }
 
   @override
   Future<List<ActivityLog>> getRecentActivity() {
     return (_db.select(_db.activityLogs)
-          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)])
-          ..limit(20))
+      ..orderBy([
+            (t) => OrderingTerm(
+          expression: t.timestamp,
+          mode: OrderingMode.desc,
+        )
+      ])
+      ..limit(20))
         .get();
   }
 
-  Future<void> _logActivity(String action, String description, {int? taskId, int? projectId}) async {
+  // ✅ THE ONLY FIX THAT MATTERS
+  @override
+  Future<int> getDatabaseVersion() async {
+    return _db.schemaVersion;
+  }
+
+  // ================= PRIVATE =================
+
+  Future<void> _logActivity(
+      String action,
+      String description, {
+        int? taskId,
+        int? projectId,
+      }) async {
     await _db.into(_db.activityLogs).insert(
-          ActivityLogsCompanion.insert(
-            action: action,
-            description: Value(description),
-            taskId: Value(taskId),
-            projectId: Value(projectId),
-            timestamp: Value(DateTime.now()),
-          ),
-        );
+      ActivityLogsCompanion.insert(
+        action: action,
+        description: Value(description),
+        taskId: Value(taskId),
+        projectId: Value(projectId),
+        timestamp: Value(DateTime.now()),
+      ),
+    );
   }
 }
