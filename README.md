@@ -1,6 +1,7 @@
 # Database, Models & Offline CRUD
 
 ---
+
 ## Demo Script Flow (current)
 
 - **Login**: Enter user ID and password.
@@ -393,3 +394,5 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
     - `listAvailableUsersNotInProject(projectId)`: Efficiently filters users not yet in a project.
     - `getUserById(userId)`: Fetches individual user details.
     - `searchUsers(query)`: Allows searching users by name for invitations.
+
+---
