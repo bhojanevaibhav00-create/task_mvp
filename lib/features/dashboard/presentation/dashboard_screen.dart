@@ -8,10 +8,10 @@ import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 import '../../../core/providers/project_providers.dart';
 
-import '../../tasks/presentation/task_list_screen.dart';
+import 'settings_screen.dart';
 import 'widgets/dashboard_empty_state.dart';
 import 'widgets/quick_add_task_sheet.dart';
-import 'package:task_mvp/features/dashboard/presentation/settings_screen.dart';
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -33,8 +33,10 @@ class DashboardScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label:
-        const Text('Quick Add', style: TextStyle(color: Colors.white)),
+        label: const Text(
+          'Quick Add',
+          style: TextStyle(color: Colors.white),
+        ),
         onPressed: () => _openQuickAdd(context),
       ),
 
@@ -50,12 +52,13 @@ class DashboardScreen extends ConsumerWidget {
                 [
                   _sectionTitle('Overview', isDark),
                   const SizedBox(height: 16),
-                  _statsRow(completed, pending, tasks.length),
+                  _statsRow(tasks.length, pending, completed),
 
                   const SizedBox(height: 32),
                   _sectionTitle('Projects', isDark),
                   const SizedBox(height: 12),
 
+                  // ✅ CREATE PROJECT BUTTON (RESTORED)
                   _createProjectButton(context),
 
                   const SizedBox(height: 16),
@@ -79,7 +82,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ================= PREMIUM APP BAR =================
+  // ================= APP BAR =================
   Widget _premiumAppBar(BuildContext context, int unread) {
     return SliverAppBar(
       pinned: true,
@@ -105,8 +108,10 @@ class DashboardScreen extends ConsumerWidget {
         Stack(
           children: [
             IconButton(
-              icon: const Icon(Icons.notifications_none, color: Colors.white),
-              onPressed: () => context.push(AppRoutes.notifications),
+              icon:
+              const Icon(Icons.notifications_none, color: Colors.white),
+              onPressed: () =>
+                  context.push(AppRoutes.notifications),
             ),
             if (unread > 0)
               Positioned(
@@ -123,6 +128,16 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
           ],
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings, color: Colors.white),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const SettingsScreen()),
+            );
+          },
         ),
         const SizedBox(width: 8),
       ],
@@ -142,10 +157,11 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ================= STATS =================
-  Widget _statsRow(int done, int pending, int total) {
+  Widget _statsRow(int total, int pending, int done) {
     return Row(
       children: [
-        _statCard('Total', total, Icons.grid_view, AppColors.primaryGradient),
+        _statCard(
+            'Total', total, Icons.grid_view, AppColors.primaryGradient),
         const SizedBox(width: 12),
         _statCard(
             'Pending', pending, Icons.bolt, AppColors.upcomingGradient),
@@ -187,8 +203,8 @@ class DashboardScreen extends ConsumerWidget {
             ),
             Text(
               label,
-              style:
-              const TextStyle(color: Colors.white70, fontSize: 12),
+              style: const TextStyle(
+                  color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
@@ -224,6 +240,7 @@ class DashboardScreen extends ConsumerWidget {
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
+                  fontSize: 15,
                 ),
               ),
             ],
@@ -235,14 +252,12 @@ class DashboardScreen extends ConsumerWidget {
 
   // ================= PROJECTS =================
   Widget _projects(
-      AsyncValue projects,
-      bool isDark,
-      BuildContext context,
-      ) {
+      AsyncValue projects, bool isDark, BuildContext context) {
     return SizedBox(
       height: 140,
       child: projects.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () =>
+        const Center(child: CircularProgressIndicator()),
         error: (e, _) => Text(e.toString()),
         data: (list) {
           if (list.isEmpty) {
@@ -261,9 +276,8 @@ class DashboardScreen extends ConsumerWidget {
                   margin: const EdgeInsets.only(right: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.cardDark
-                        : Colors.white,
+                    color:
+                    isDark ? AppColors.cardDark : Colors.white,
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: const [
                       BoxShadow(
@@ -274,7 +288,8 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                    CrossAxisAlignment.start,
                     children: [
                       const Icon(Icons.folder,
                           color: AppColors.primary),
@@ -342,13 +357,15 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             Icon(icon,
                 size: 18,
-                color: primary ? Colors.white : AppColors.primary),
+                color:
+                primary ? Colors.white : AppColors.primary),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color:
-                primary ? Colors.white : AppColors.primary,
+                color: primary
+                    ? Colors.white
+                    : AppColors.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -367,7 +384,8 @@ class DashboardScreen extends ConsumerWidget {
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
+            color:
+            isDark ? AppColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
           child: ListTile(

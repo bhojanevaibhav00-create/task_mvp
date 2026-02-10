@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
@@ -12,9 +11,11 @@ import '../../../data/models/enums.dart';
 import '../../notifications/presentation/notification_screen.dart';
 import 'task_create_edit_screen.dart';
 import 'widgets/task_card.dart';
-import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
-import 'package:task_mvp/features/dashboard/presentation/widgets/task_list_empty_state.dart';
-import 'package:task_mvp/features/dashboard/presentation/widgets/task_list_skeleton.dart';
+
+// ✅ IMPORTANT: Correct filter import
+import 'package:task_mvp/features/common/widgets/filter_bottom_sheet.dart';
+import 'package:task_mvp/features/common//widgets/task_list_empty_state.dart';
+import 'package:task_mvp/features/common/widgets/task_list_skeleton.dart';
 
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
@@ -33,75 +34,104 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     super.dispose();
   }
 
-  // ✅ MERGED: Uses standard Navigator but maintains loadTasks logic
+  // ================= CREATE TASK =================
   void _openCreateTask() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const TaskCreateEditScreen()),
+      MaterialPageRoute(builder: (_) => const TaskCreateEditScreen()),
     ).then((changed) {
-      if (changed == true) ref.read(tasksProvider.notifier).loadTasks();
+      if (changed == true) {
+        ref.read(tasksProvider.notifier).loadTasks();
+      }
     });
   }
 
   void _openEditTask(db.Task task) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => TaskCreateEditScreen(task: task)),
+      MaterialPageRoute(
+        builder: (_) => TaskCreateEditScreen(task: task),
+      ),
     ).then((changed) {
-      if (changed == true) ref.read(tasksProvider.notifier).loadTasks();
+      if (changed == true) {
+        ref.read(tasksProvider.notifier).loadTasks();
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredTasksAsync = ref.watch(filteredTasksProvider);
+    final tasksAsync = ref.watch(filteredTasksProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+      backgroundColor:
+      isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          _buildSliverAppBar(isDark),
-          _buildSearchHeader(isDark),
-          filteredTasksAsync.when(
-            // ✅ VAISHNAVI: Uses the specialized Skeleton
-            loading: () => const SliverFillRemaining(child: TaskListSkeleton()),
-            error: (e, _) => SliverFillRemaining(child: Center(child: Text('Error: $e'))),
-            data: (dynamic tasksData) {
-              final List tasks = tasksData is List ? tasksData : [];
-              
+          _buildAppBar(),
+
+          _buildSearchBar(isDark),
+
+          tasksAsync.when(
+            loading: () =>
+            const SliverFillRemaining(child: TaskListSkeleton()),
+
+            error: (e, _) => SliverFillRemaining(
+              child: Center(child: Text('Error: $e')),
+            ),
+
+            data: (tasks) {
               final visibleTasks = tasks.where((t) {
                 final task = t as db.Task;
-                return task.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                       (task.description ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
+                return task.title
+                    .toLowerCase()
+                    .contains(_searchQuery.toLowerCase()) ||
+                    (task.description ?? '')
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase());
               }).toList();
 
               if (visibleTasks.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
-                  // ✅ VAISHNAVI: Uses the specialized Empty State
-                  child: TaskListEmptyState(onAddTask: _openCreateTask),
+                  child:
+                  TaskListEmptyState(onAddTask: _openCreateTask),
                 );
               }
 
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                padding:
+                const EdgeInsets.fromLTRB(20, 12, 20, 100),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final db.Task task = visibleTasks[index] as db.Task;
+                        (context, index) {
+                      final db.Task task =
+                      visibleTasks[index] as db.Task;
+
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding:
+                        const EdgeInsets.only(bottom: 12),
                         child: TaskCard(
                           task: task,
                           onTap: () => _openEditTask(task),
                           onToggleDone: () {
-                            final isDone = task.status == TaskStatus.done.name;
-                            final newStatus = isDone ? TaskStatus.todo.name : TaskStatus.done.name;
-                            ref.read(tasksProvider.notifier).updateTask(
-                                  task.copyWith(status: drift.Value(newStatus)),
-                                );
+                            final isDone = task.status ==
+                                TaskStatus.done.name;
+
+                            ref
+                                .read(tasksProvider.notifier)
+                                .updateTask(
+                              task.copyWith(
+                                status: drift.Value(
+                                  isDone
+                                      ? TaskStatus.todo.name
+                                      : TaskStatus.done.name,
+                                ),
+                              ),
+                            );
                           },
                         ),
                       );
@@ -114,69 +144,100 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           ),
         ],
       ),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateTask,
-        label: const Text('Add Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
         backgroundColor: AppColors.primary,
-        elevation: 6,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Add Task',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildSliverAppBar(bool isDark) {
+  // ================= APP BAR =================
+  Widget _buildAppBar() {
     return SliverAppBar(
       pinned: true,
       expandedHeight: 120,
       backgroundColor: AppColors.primary,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-        title: const Text('My Tasks', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-        background: Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
+        titlePadding:
+        const EdgeInsets.only(left: 20, bottom: 16),
+        title: const Text(
+          'My Tasks',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+        background: Container(
+          decoration:
+          const BoxDecoration(gradient: AppColors.primaryGradient),
+        ),
       ),
       actions: [
-        _buildNotificationIcon(ref),
+        _notificationIcon(),
         IconButton(
           icon: const Icon(Icons.filter_list, color: Colors.white),
-          onPressed: () => openFilterBottomSheet(
-            context: context,
-            allTags: const [],
-            statusFilters: {},
-            priorityFilters: {},
-            tagFilters: {},
-            dueBucket: null,
-            sort: null,
-            onApply: (_, __, ___, ____, _____) {},
-          ),
+          onPressed: () {
+            // ✅ FIXED: correct function call
+            openFilterBottomSheet(
+              context: context,
+              onApply: (
+                  statusFilters,
+                  priorityFilters,
+                  tagFilters,
+                  dueBucket,
+                  sort,
+                  ) {
+                // ✅ For now just reload tasks (safe default)
+                ref.read(tasksProvider.notifier).loadTasks();
+              },
+            );
+          },
         ),
         const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildSearchHeader(bool isDark) {
+  // ================= SEARCH =================
+  Widget _buildSearchBar(bool isDark) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.inputBackgroundDark : Colors.white,
+            color:
+            isDark ? AppColors.inputBackgroundDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: TextField(
             controller: _searchController,
-            onChanged: (v) => setState(() => _searchQuery = v),
-            style: TextStyle(color: isDark ? Colors.white : const Color(0xFF111827), fontSize: 15),
-            decoration: InputDecoration(
-              hintText: 'Search your tasks...',
-              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6B7280)),
+            onChanged: (v) =>
+                setState(() => _searchQuery = v),
+            decoration: const InputDecoration(
+              hintText: 'Search tasks...',
+              prefixIcon:
+              Icon(Icons.search_rounded, color: Colors.grey),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 15),
-              filled: true,
-              fillColor: Colors.transparent,
+              contentPadding:
+              EdgeInsets.symmetric(vertical: 14),
             ),
           ),
         ),
@@ -184,22 +245,37 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     );
   }
 
-  Widget _buildNotificationIcon(WidgetRef ref) {
-    final unreadCount = ref.watch(unreadNotificationCountProvider);
+  // ================= NOTIFICATIONS =================
+  Widget _notificationIcon() {
+    final unread =
+    ref.watch(unreadNotificationCountProvider);
+
     return Stack(
-      alignment: Alignment.center,
       children: [
         IconButton(
-          icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationScreen())),
+          icon: const Icon(Icons.notifications_none,
+              color: Colors.white),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const NotificationScreen(),
+              ),
+            );
+          },
         ),
-        if (unreadCount > 0)
+        if (unread > 0)
           Positioned(
-            right: 8, top: 10,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-              child: Text(unreadCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            right: 8,
+            top: 10,
+            child: CircleAvatar(
+              radius: 8,
+              backgroundColor: Colors.red,
+              child: Text(
+                unread.toString(),
+                style: const TextStyle(
+                    fontSize: 10, color: Colors.white),
+              ),
             ),
           ),
       ],

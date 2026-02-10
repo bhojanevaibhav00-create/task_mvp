@@ -23,7 +23,7 @@ class Skeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark
             ? AppColors.cardDark.withOpacity(0.6)
-            : AppColors.cardLight.withOpacity(0.6),
+            : AppColors.cardDark.withOpacity(0.6),
         borderRadius: radius ?? BorderRadius.circular(12),
       ),
     );
