@@ -217,7 +217,7 @@ lib/data/
 │   ├── export_repository.dart
 │   └── task_repository.dart
 ├── seed/
-│   └── seed_data.dart
+    └── seed_data.dart
 ```
 
 ---
@@ -397,18 +397,13 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 
 ## Recent Updates (v10)
 
-### Database Migration & Integrity
+### Productivity Analytics
 
-- **Schema Version Bumped to 9**:
-  - Added `email` and `password` columns to the `Users` table to support authentication.
-  - Ensured `Notifications`, `ActivityLogs`, and `ProjectMembers` tables are correctly created during migration.
-
-- **Productivity Analytics**:
-  - Added `AnalyticsRepository` to fetch insights.
-  - Implemented "Insights" screen with:
-    - Overdue task counts.
-    - Weekly completion trends.
-    - Team performance metrics.
+- Added `AnalyticsRepository` to fetch insights.
+- Implemented "Insights" screen with:
+  - Overdue task counts.
+  - Weekly completion trends.
+  - Team performance metrics.
 
 ### Data Integrity Hardening (v10)
 
