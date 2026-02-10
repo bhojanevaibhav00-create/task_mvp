@@ -6,7 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/providers/task_providers.dart' hide notificationRepositoryProvider;
 import '../../../core/providers/collaboration_providers.dart';
-import '../../../core/providers/notification_providers.dart'; // ✅ Added for Sprint 8
+import '../../../core/providers/notification_providers.dart';
+import '../../../core/providers/database_provider.dart';
 import '../../../data/database/database.dart';
 import 'widgets/reminder_section.dart';
 
@@ -40,6 +41,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   DateTime? _dueDate; 
   int? _selectedAssigneeId;
   Task? _fetchedTask;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -85,7 +87,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   }
 
   // ===========================================================================
-  // ACTION LOGIC - DELETE (FIXES HANGING, NOTIFICATIONS & CIRCULAR ERRORS)
+  // ACTION LOGIC: DELETE & SAVE
   // ===========================================================================
 
   Future<void> _confirmDelete(BuildContext context, Task task) async {
@@ -118,23 +120,21 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
 
     if (confirmed == true) {
       try {
-        // 1. 🚀 NAVIGATION FIRST: Pop the screen IMMEDIATELY.
-        // This prevents the UI from trying to rebuild a 'deleted' task which causes the circular error.
-        if (mounted) {
-          context.pop(); 
-        }
-
-        // 2. Trigger Notification via Repo (Use ref.read to avoid circular dependency)
+        // 🚀 FIX: Notification Call
         await ref.read(notificationRepositoryProvider).addNotification(
           title: "Task Deleted",
-          body: "Task '${task.title}' was successfully removed.",
+          message: "Task '${task.title}' was successfully removed.",
           type: "system",
+          taskId: task.id,
+          projectId: task.projectId,
         );
 
-        // 3. Perform Database Deletion
+        // Perform Database Deletion
         await ref.read(tasksProvider.notifier).deleteTask(task.id);
 
-        // 4. Refresh background lists
+        if (mounted) {
+          context.pop(); // Return to previous screen
+        }
         ref.invalidate(tasksProvider);
         ref.invalidate(filteredTasksProvider);
 
@@ -144,9 +144,114 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     }
   }
 
+  Future<void> _saveTask(Task? currentTask) async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    setState(() => _isLoading = true);
+    final notifier = ref.read(tasksProvider.notifier);
+
+    try {
+      if (currentTask == null) {
+        // CREATE MODE
+        await notifier.addTask(
+          _titleCtrl.text, 
+          _descCtrl.text, 
+          priority: _priority, 
+          dueDate: _dueDate, 
+          assigneeId: _selectedAssigneeId, 
+          projectId: widget.projectId
+        );
+      } else {
+        // EDIT MODE
+        final updated = currentTask.copyWith(
+          title: _titleCtrl.text,
+          description: drift.Value(_descCtrl.text),
+          priority: drift.Value(_priority),
+          dueDate: drift.Value(_dueDate),
+          reminderEnabled: reminderEnabled,
+          reminderAt: drift.Value(reminderAt),
+          assigneeId: drift.Value(_selectedAssigneeId),
+        );
+        await notifier.updateTask(updated);
+      }
+      if (mounted) context.pop();
+    } catch (e) {
+      debugPrint("Save failed: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   // ===========================================================================
-  // WIDGET BUILDERS - APP BAR & SECTIONS
+  // UI BUILDERS
   // ===========================================================================
+
+  @override
+  Widget build(BuildContext context) {
+    final currentTask = widget.task ?? _fetchedTask;
+    final isEdit = currentTask != null;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        child: Column(
+          children: [
+            _buildCustomAppBar(isEdit, currentTask),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8F9FD),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      _buildSectionLabel("TASK INFORMATION"),
+                      _buildInputGroup(),
+                      const SizedBox(height: 24),
+                      
+                      _buildSectionLabel("ASSIGNMENT"),
+                      _buildAssigneeSelector(currentTask),
+                      const SizedBox(height: 24),
+                      
+                      _buildSectionLabel("TASK PRIORITY"),
+                      _buildPrioritySelector(),
+                      const SizedBox(height: 24),
+                      
+                      _buildSectionLabel("SCHEDULE & REMINDERS"),
+                      _buildSettingsGroup(),
+                      const SizedBox(height: 120),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isLoading ? null : () => _saveTask(currentTask),
+        backgroundColor: AppColors.primary,
+        elevation: 6,
+        extendedPadding: const EdgeInsets.symmetric(horizontal: 60),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        label: _isLoading 
+          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : Text(
+              isEdit ? "Update Task" : "Create Task",
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+            ),
+      ),
+    );
+  }
 
   Widget _buildCustomAppBar(bool isEdit, Task? currentTask) {
     return SafeArea(
@@ -162,12 +267,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
             const Spacer(),
             Text(
               isEdit ? 'Edit Task' : 'New Task',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
             ),
             const Spacer(),
             if (isEdit)
@@ -183,30 +283,13 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     );
   }
 
-  Widget _buildSectionLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12, top: 8),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1.5,
-          color: Colors.grey.shade400,
-        ),
-      ),
-    );
-  }
-
   Widget _buildInputGroup() {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
@@ -221,10 +304,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
             ),
             validator: (v) => (v == null || v.isEmpty) ? 'Title required' : null,
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
-          ),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6))),
           TextFormField(
             controller: _descCtrl,
             maxLines: 4,
@@ -238,6 +318,47 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAssigneeSelector(Task? currentTask) {
+    final pid = widget.projectId ?? currentTask?.projectId;
+    if (pid == null) return const Text("Please select a project first", style: TextStyle(color: Colors.grey, fontSize: 12));
+    
+    final membersAsync = ref.watch(projectMembersProvider(pid));
+
+    return membersAsync.when(
+      data: (members) {
+        // Ensure selected ID still exists in the project members
+        final bool idExists = _selectedAssigneeId == null || members.any((m) => m.user.id == _selectedAssigneeId);
+        final currentId = idExists ? _selectedAssigneeId : null;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int?>(
+              isExpanded: true,
+              value: currentId,
+              icon: const Icon(Icons.unfold_more_rounded, color: Colors.grey),
+              items: [
+                const DropdownMenuItem(value: null, child: Text("Unassigned", style: TextStyle(color: Colors.grey))),
+                ...members.map((m) => DropdownMenuItem(
+                  value: m.user.id, 
+                  child: Text(m.user.name, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A1C1E)))
+                )),
+              ],
+              onChanged: (val) => setState(() => _selectedAssigneeId = val),
+            ),
+          ),
+        );
+      },
+      loading: () => const LinearProgressIndicator(),
+      error: (_, __) => const Text("Error loading members"),
     );
   }
 
@@ -269,12 +390,12 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
           ),
           child: Center(
             child: Text(
-              label,
+              label, 
               style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey.shade500,
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-              ),
+                color: isSelected ? Colors.white : Colors.grey.shade500, 
+                fontWeight: FontWeight.w900, 
+                fontSize: 13
+              )
             ),
           ),
         ),
@@ -287,9 +408,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
@@ -328,135 +447,22 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
       initialDate: _dueDate ?? DateTime.now(),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.primary),
-        ),
-        child: child!,
-      ),
     );
     if (date != null) setState(() => _dueDate = date);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final currentTask = widget.task ?? _fetchedTask;
-    final isEdit = currentTask != null;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
-        child: Column(
-          children: [
-            _buildCustomAppBar(isEdit, currentTask),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8F9FD),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      _buildSectionLabel("TASK INFORMATION"),
-                      _buildInputGroup(),
-                      const SizedBox(height: 24),
-                      _buildSectionLabel("ASSIGNMENT"),
-                      _buildAssigneeSelector(currentTask),
-                      const SizedBox(height: 24),
-                      _buildSectionLabel("TASK PRIORITY"),
-                      _buildPrioritySelector(),
-                      const SizedBox(height: 24),
-                      _buildSectionLabel("SCHEDULE & REMINDERS"),
-                      _buildSettingsGroup(),
-                      const SizedBox(height: 120),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _saveTask(currentTask),
-        backgroundColor: AppColors.primary,
-        elevation: 6,
-        extendedPadding: const EdgeInsets.symmetric(horizontal: 60),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        label: Text(
-          isEdit ? "Update Task" : "Create Task",
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 12, top: 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.5,
+          color: Colors.grey.shade400,
         ),
       ),
     );
-  }
-
-  Widget _buildAssigneeSelector(Task? currentTask) {
-    final pid = widget.projectId ?? currentTask?.projectId;
-    if (pid == null) return const SizedBox.shrink();
-    final membersAsync = ref.watch(projectMembersProvider(pid));
-
-    return membersAsync.when(
-      data: (members) {
-        final bool idExists = _selectedAssigneeId == null || members.any((m) => m.user.id == _selectedAssigneeId);
-        final currentId = idExists ? _selectedAssigneeId : null;
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<int?>(
-              isExpanded: true,
-              value: currentId,
-              icon: const Icon(Icons.unfold_more_rounded, color: Colors.grey),
-              items: [
-                const DropdownMenuItem(value: null, child: Text("Unassigned", style: TextStyle(color: Colors.grey))),
-                ...members.map((m) => DropdownMenuItem(value: m.user.id, child: Text(m.user.name, style: const TextStyle(fontWeight: FontWeight.w600)))),
-              ],
-              onChanged: (val) => setState(() => _selectedAssigneeId = val),
-            ),
-          ),
-        );
-      },
-      loading: () => const LinearProgressIndicator(),
-      error: (_, __) => const Text("Error loading members"),
-    );
-  }
-
-  Future<void> _saveTask(Task? currentTask) async {
-    if (!_formKey.currentState!.validate()) return;
-    final notifier = ref.read(tasksProvider.notifier);
-    try {
-      if (currentTask == null) {
-        await notifier.addTask(_titleCtrl.text, _descCtrl.text, priority: _priority, dueDate: _dueDate, assigneeId: _selectedAssigneeId, projectId: widget.projectId);
-      } else {
-        final updated = currentTask.copyWith(
-          title: _titleCtrl.text,
-          description: drift.Value(_descCtrl.text),
-          priority: drift.Value(_priority),
-          dueDate: drift.Value(_dueDate),
-          reminderEnabled: reminderEnabled,
-          reminderAt: drift.Value(reminderAt),
-          assigneeId: drift.Value(_selectedAssigneeId),
-        );
-        await notifier.updateTask(updated);
-      }
-      if (mounted) context.pop();
-    } catch (e) {
-      debugPrint("Save failed: $e");
-    }
   }
 }

@@ -156,7 +156,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     };
   }
 
-  // ================= DELETE LOGIC (FIXED HANG) =================
+  // ================= DELETE LOGIC (FIXED HANG & NOTIFICATION) =================
 
   void _showDeleteDialog(BuildContext context) {
     showDialog(
@@ -192,20 +192,22 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       // 1. Database Delete
       await (dbRepo.delete(dbRepo.tasks)..where((t) => t.id.equals(widget.task.id))).go();
 
-      // 2. Notification Entry
+      // 2. ✅ FIXED: Aligning with NotificationRepository signature
       await ref.read(notificationRepositoryProvider).addNotification(
         title: "Task Deleted",
-        body: "The task '${widget.task.title}' was successfully removed.",
-        type: "system",
+        message: "The task '${widget.task.title}' was successfully removed.",
+        type: "system", // Required parameter
+        taskId: widget.task.id,
+        projectId: widget.task.projectId,
       );
 
-      // 3. 🚀 NAVIGATION FIX: Pop context before invalidating providers to prevent state "hang"
+      // 3. 🚀 NAVIGATION FIX: Pop context before invalidating providers to prevent state rebuild "hang"
       if (mounted) {
         Navigator.pop(context); // Close Dialog
-        context.pop();          // Return to Task List
+        context.pop();          // Return to Task List/Dashboard
       }
 
-      // 4. State Refresh
+      // 4. State Refresh (Happens after we are safely off this screen)
       ref.invalidate(tasksProvider);
       ref.invalidate(filteredTasksProvider);
 

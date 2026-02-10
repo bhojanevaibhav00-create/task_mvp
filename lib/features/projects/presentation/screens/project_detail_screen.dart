@@ -7,7 +7,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/core/constants/app_colors.dart';
 import 'package:task_mvp/core/providers/task_providers.dart';
 import 'package:task_mvp/core/providers/collaboration_providers.dart';
-import 'package:task_mvp/core/providers/project_providers.dart';
+import 'package:task_mvp/core/providers/project_providers.dart' hide allProjectsProvider;
 import 'package:task_mvp/core/providers/database_provider.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/task_card.dart';
 import 'package:task_mvp/data/database/database.dart';

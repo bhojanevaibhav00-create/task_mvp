@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:task_mvp/core/providers/database_provider.dart';
 
 // Ensure these paths match your project structure exactly
 import '../../../../core/constants/app_colors.dart';

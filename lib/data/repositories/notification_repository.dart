@@ -6,17 +6,22 @@ class NotificationRepository {
 
   NotificationRepository(this._db);
 
-  /// ✅ FIXED: Matches the 'message' column in your generated database
+  /// ✅ ALIGNED: Uses 'message' to match TaskRepository calls
+  /// ✅ FEATURE: Added taskId and projectId for better traceability
   Future<int> addNotification({
     required String title,
-    required String body,
+    required String message, 
     required String type,
+    int? taskId,
+    int? projectId,
   }) {
     return _db.into(_db.notifications).insert(
-      NotificationsCompanion(
-        title: Value(title),
-        message: Value(body), // 'message' is the column, 'body' is the input string
-        type: Value(type),
+      NotificationsCompanion.insert(
+        title: title,
+        message: message, 
+        type: type,
+        taskId: Value(taskId),
+        projectId: Value(projectId),
         isRead: const Value(false),
         createdAt: Value(DateTime.now()),
       ),

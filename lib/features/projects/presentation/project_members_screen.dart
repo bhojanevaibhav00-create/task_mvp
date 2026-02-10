@@ -205,12 +205,12 @@ class ProjectMembersScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () async {
+              // ✅ FIXED: Ensure named parameters are used here
               await ref.read(collaborationActionProvider.notifier).removeMember(
-                projectId, 
-                item.member.userId, 
-                allMembers,
+                projectId: projectId, 
+                userId: item.member.userId, 
+                allMembers: allMembers,
               );
-              // Refreshing the provider to update the UI
               ref.invalidate(projectMembersProvider(projectId));
               if (context.mounted) Navigator.pop(context);
             },

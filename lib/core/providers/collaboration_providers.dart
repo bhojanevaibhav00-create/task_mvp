@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import '../../data/database/database.dart' as db;
 import 'package:task_mvp/core/providers/database_provider.dart';
+import 'task_providers.dart';
 
 /// =======================================================
 /// 1. SHARED PROVIDERS
@@ -78,7 +79,12 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
 
   CollaborationNotifier(this.database, this.ref) : super(const AsyncValue.data(null));
 
-  Future<void> addMember(int projectId, int userId, String role) async {
+  /// ✅ FIXED: Added curly braces for Named Parameters to match UI call
+  Future<void> addMember({
+    required int projectId,
+    required int userId,
+    required String role,
+  }) async {
     state = const AsyncValue.loading();
     try {
       final existing = await (database.select(database.projectMembers)
@@ -104,15 +110,20 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  Future<void> removeMember(int projectId, int userId) async {
+  /// ✅ FIXED: Added curly braces and allMembers logic for Safety Checks
+  Future<void> removeMember({
+    required int projectId,
+    required int userId,
+    required List<MemberWithUser> allMembers,
+  }) async {
     state = const AsyncValue.loading();
     try {
-      final members = await ref.read(projectMembersProvider(projectId).future);
-      final memberToDelete = members.firstWhere((m) => m.member.userId == userId);
-      final owners = members.where((m) => m.member.role.toLowerCase() == 'owner').toList();
+      final memberToDelete = allMembers.firstWhere((m) => m.member.userId == userId);
+      final owners = allMembers.where((m) => m.member.role.toLowerCase() == 'owner').toList();
 
+      // Last-Owner Safety Check
       if (memberToDelete.member.role.toLowerCase() == 'owner' && owners.length <= 1) {
-        throw Exception("Safety Error: Cannot remove the last owner.");
+        throw Exception("Safety Error: Cannot remove the last owner of the project.");
       }
 
       await (database.delete(database.projectMembers)

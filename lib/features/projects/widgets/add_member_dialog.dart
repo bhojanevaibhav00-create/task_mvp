@@ -21,9 +21,9 @@ class ProjectMembersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 🚀 Watching the provider for real-time member updates
     final membersAsync = ref.watch(projectMembersProvider(projectId));
     
-    // ✅ FORCE PREMIUM WHITE THEME CONSTANTS
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD);
     final darkText = isDark ? Colors.white : const Color(0xFF111827);
@@ -60,9 +60,8 @@ class ProjectMembersScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final memberData = members[index];
               return ProjectMemberTile(
-                member: memberData.member,
-                userName: memberData.user.name,
-                allMembers: members,
+                memberWithUser: memberData, // Correctly passing the full object
+                allMembers: members, 
                 isDark: isDark,
               );
             },
@@ -91,21 +90,22 @@ class ProjectMembersScreen extends ConsumerWidget {
 
 /// A premium styled tile for team members.
 class ProjectMemberTile extends ConsumerWidget {
-  final ProjectMember member;
-  final String userName;
+  final MemberWithUser memberWithUser; // Using the domain model
   final List<MemberWithUser> allMembers;
   final bool isDark;
 
   const ProjectMemberTile({
     super.key,
-    required this.member,
-    required this.userName,
+    required this.memberWithUser,
     required this.allMembers,
     required this.isDark,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final member = memberWithUser.member;
+    final user = memberWithUser.user;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -121,14 +121,15 @@ class ProjectMemberTile extends ConsumerWidget {
           radius: 24,
           backgroundColor: AppColors.primary.withOpacity(0.1),
           child: Text(
-            userName.isNotEmpty ? userName[0].toUpperCase() : "?",
+            user.name.isNotEmpty ? user.name[0].toUpperCase() : "?",
             style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
           ),
         ),
-        title: Text(userName, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF111827))),
+        title: Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF111827))),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text("Role: ${member.role.toUpperCase()}", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black38)),
+          child: Text("Role: ${member.role.toUpperCase()}", 
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black38)),
         ),
         trailing: IconButton(
           icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent, size: 22),
@@ -140,17 +141,22 @@ class ProjectMemberTile extends ConsumerWidget {
 
   Future<void> _handleRemove(BuildContext context, WidgetRef ref) async {
     try {
+      // ✅ Use named parameters to match the CollaborationNotifier definition
       await ref.read(collaborationActionProvider.notifier).removeMember(
-            member.projectId,
-            member.userId,
-            allMembers,
+            projectId: memberWithUser.member.projectId,
+            userId: memberWithUser.member.userId,
+            allMembers: allMembers,
           );
 
-      ref.invalidate(projectMembersProvider(member.projectId));
+      ref.invalidate(projectMembersProvider(memberWithUser.member.projectId));
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Member removed successfully"), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
+          const SnackBar(
+            content: Text("Member removed successfully"), 
+            backgroundColor: Colors.green, 
+            behavior: SnackBarBehavior.floating
+          ),
         );
       }
     } catch (e) {
@@ -195,7 +201,6 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
         height: 400,
         child: Column(
           children: [
-            // Role Selection Dropdown from Vaishnavi's branch
             DropdownButtonFormField<String>(
               value: selectedRole,
               dropdownColor: isDark ? AppColors.cardDark : Colors.white,
@@ -225,7 +230,13 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
 
                   final users = snapshot.data ?? [];
                   if (users.isEmpty) {
-                    return const Center(child: Text("No more users available to add.", textAlign: TextAlign.center, style: TextStyle(color: Colors.black26)));
+                    return const Center(
+                      child: Text(
+                        "No more users available to add.", 
+                        textAlign: TextAlign.center, 
+                        style: TextStyle(color: Colors.black26)
+                      )
+                    );
                   }
 
                   return ListView.separated(
@@ -237,7 +248,10 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
                           backgroundColor: AppColors.primary.withOpacity(0.1),
-                          child: Text(user.name[0].toUpperCase(), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            user.name[0].toUpperCase(), 
+                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)
+                          ),
                         ),
                         title: Text(user.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: darkText)),
                         trailing: IconButton(
@@ -269,11 +283,20 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
   }
 
   Future<void> _addMemberToProject(BuildContext context, WidgetRef ref, User user) async {
-    await ref.read(collaborationActionProvider.notifier).addMember(widget.projectId, user.id, selectedRole);
+    // ✅ Using named parameters here as well
+    await ref.read(collaborationActionProvider.notifier).addMember(
+      projectId: widget.projectId, 
+      userId: user.id, 
+      role: selectedRole
+    );
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("${user.name} added as $selectedRole"), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text("${user.name} added as $selectedRole"), 
+          backgroundColor: Colors.green, 
+          behavior: SnackBarBehavior.floating
+        ),
       );
       ref.invalidate(projectMembersProvider(widget.projectId));
       Navigator.pop(context);

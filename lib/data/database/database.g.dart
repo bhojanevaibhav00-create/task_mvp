@@ -736,6 +736,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     'name',
     aliasedName,
     false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 50,
+    ),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
@@ -1140,6 +1144,20 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       'REFERENCES tags (id)',
     ),
   );
+  static const VerificationMeta _assigneeIdMeta = const VerificationMeta(
+    'assigneeId',
+  );
+  @override
+  late final GeneratedColumn<int> assigneeId = GeneratedColumn<int>(
+    'assignee_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES users (id)',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1174,20 +1192,6 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _assigneeIdMeta = const VerificationMeta(
-    'assigneeId',
-  );
-  @override
-  late final GeneratedColumn<int> assigneeId = GeneratedColumn<int>(
-    'assignee_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES users (id)',
-    ),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1201,10 +1205,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     priority,
     projectId,
     tagId,
+    assigneeId,
     createdAt,
     updatedAt,
     completedAt,
-    assigneeId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1289,6 +1293,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         tagId.isAcceptableOrUnknown(data['tag_id']!, _tagIdMeta),
       );
     }
+    if (data.containsKey('assignee_id')) {
+      context.handle(
+        _assigneeIdMeta,
+        assigneeId.isAcceptableOrUnknown(data['assignee_id']!, _assigneeIdMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1308,12 +1318,6 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
           data['completed_at']!,
           _completedAtMeta,
         ),
-      );
-    }
-    if (data.containsKey('assignee_id')) {
-      context.handle(
-        _assigneeIdMeta,
-        assigneeId.isAcceptableOrUnknown(data['assignee_id']!, _assigneeIdMeta),
       );
     }
     return context;
@@ -1369,6 +1373,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.int,
         data['${effectivePrefix}tag_id'],
       ),
+      assigneeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}assignee_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1380,10 +1388,6 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
-      ),
-      assigneeId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}assignee_id'],
       ),
     );
   }
@@ -1406,10 +1410,10 @@ class Task extends DataClass implements Insertable<Task> {
   final int? priority;
   final int? projectId;
   final int? tagId;
+  final int? assigneeId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? completedAt;
-  final int? assigneeId;
   const Task({
     required this.id,
     required this.title,
@@ -1422,10 +1426,10 @@ class Task extends DataClass implements Insertable<Task> {
     this.priority,
     this.projectId,
     this.tagId,
+    this.assigneeId,
     this.createdAt,
     this.updatedAt,
     this.completedAt,
-    this.assigneeId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1457,6 +1461,9 @@ class Task extends DataClass implements Insertable<Task> {
     if (!nullToAbsent || tagId != null) {
       map['tag_id'] = Variable<int>(tagId);
     }
+    if (!nullToAbsent || assigneeId != null) {
+      map['assignee_id'] = Variable<int>(assigneeId);
+    }
     if (!nullToAbsent || createdAt != null) {
       map['created_at'] = Variable<DateTime>(createdAt);
     }
@@ -1465,9 +1472,6 @@ class Task extends DataClass implements Insertable<Task> {
     }
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
-    }
-    if (!nullToAbsent || assigneeId != null) {
-      map['assignee_id'] = Variable<int>(assigneeId);
     }
     return map;
   }
@@ -1501,6 +1505,9 @@ class Task extends DataClass implements Insertable<Task> {
       tagId: tagId == null && nullToAbsent
           ? const Value.absent()
           : Value(tagId),
+      assigneeId: assigneeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assigneeId),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
           : Value(createdAt),
@@ -1510,9 +1517,6 @@ class Task extends DataClass implements Insertable<Task> {
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
-      assigneeId: assigneeId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(assigneeId),
     );
   }
 
@@ -1533,10 +1537,10 @@ class Task extends DataClass implements Insertable<Task> {
       priority: serializer.fromJson<int?>(json['priority']),
       projectId: serializer.fromJson<int?>(json['projectId']),
       tagId: serializer.fromJson<int?>(json['tagId']),
+      assigneeId: serializer.fromJson<int?>(json['assigneeId']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
-      assigneeId: serializer.fromJson<int?>(json['assigneeId']),
     );
   }
   @override
@@ -1554,10 +1558,10 @@ class Task extends DataClass implements Insertable<Task> {
       'priority': serializer.toJson<int?>(priority),
       'projectId': serializer.toJson<int?>(projectId),
       'tagId': serializer.toJson<int?>(tagId),
+      'assigneeId': serializer.toJson<int?>(assigneeId),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
-      'assigneeId': serializer.toJson<int?>(assigneeId),
     };
   }
 
@@ -1573,10 +1577,10 @@ class Task extends DataClass implements Insertable<Task> {
     Value<int?> priority = const Value.absent(),
     Value<int?> projectId = const Value.absent(),
     Value<int?> tagId = const Value.absent(),
+    Value<int?> assigneeId = const Value.absent(),
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
-    Value<int?> assigneeId = const Value.absent(),
   }) => Task(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -1589,10 +1593,10 @@ class Task extends DataClass implements Insertable<Task> {
     priority: priority.present ? priority.value : this.priority,
     projectId: projectId.present ? projectId.value : this.projectId,
     tagId: tagId.present ? tagId.value : this.tagId,
+    assigneeId: assigneeId.present ? assigneeId.value : this.assigneeId,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
-    assigneeId: assigneeId.present ? assigneeId.value : this.assigneeId,
   );
   Task copyWithCompanion(TasksCompanion data) {
     return Task(
@@ -1613,14 +1617,14 @@ class Task extends DataClass implements Insertable<Task> {
       priority: data.priority.present ? data.priority.value : this.priority,
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
       tagId: data.tagId.present ? data.tagId.value : this.tagId,
+      assigneeId: data.assigneeId.present
+          ? data.assigneeId.value
+          : this.assigneeId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
-      assigneeId: data.assigneeId.present
-          ? data.assigneeId.value
-          : this.assigneeId,
     );
   }
 
@@ -1638,10 +1642,10 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('priority: $priority, ')
           ..write('projectId: $projectId, ')
           ..write('tagId: $tagId, ')
+          ..write('assigneeId: $assigneeId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('completedAt: $completedAt, ')
-          ..write('assigneeId: $assigneeId')
+          ..write('completedAt: $completedAt')
           ..write(')'))
         .toString();
   }
@@ -1659,10 +1663,10 @@ class Task extends DataClass implements Insertable<Task> {
     priority,
     projectId,
     tagId,
+    assigneeId,
     createdAt,
     updatedAt,
     completedAt,
-    assigneeId,
   );
   @override
   bool operator ==(Object other) =>
@@ -1679,10 +1683,10 @@ class Task extends DataClass implements Insertable<Task> {
           other.priority == this.priority &&
           other.projectId == this.projectId &&
           other.tagId == this.tagId &&
+          other.assigneeId == this.assigneeId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.completedAt == this.completedAt &&
-          other.assigneeId == this.assigneeId);
+          other.completedAt == this.completedAt);
 }
 
 class TasksCompanion extends UpdateCompanion<Task> {
@@ -1697,10 +1701,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<int?> priority;
   final Value<int?> projectId;
   final Value<int?> tagId;
+  final Value<int?> assigneeId;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
   final Value<DateTime?> completedAt;
-  final Value<int?> assigneeId;
   const TasksCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -1713,10 +1717,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.priority = const Value.absent(),
     this.projectId = const Value.absent(),
     this.tagId = const Value.absent(),
+    this.assigneeId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.completedAt = const Value.absent(),
-    this.assigneeId = const Value.absent(),
   });
   TasksCompanion.insert({
     this.id = const Value.absent(),
@@ -1730,10 +1734,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.priority = const Value.absent(),
     this.projectId = const Value.absent(),
     this.tagId = const Value.absent(),
+    this.assigneeId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.completedAt = const Value.absent(),
-    this.assigneeId = const Value.absent(),
   }) : title = Value(title);
   static Insertable<Task> custom({
     Expression<int>? id,
@@ -1747,10 +1751,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<int>? priority,
     Expression<int>? projectId,
     Expression<int>? tagId,
+    Expression<int>? assigneeId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? completedAt,
-    Expression<int>? assigneeId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1764,10 +1768,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (priority != null) 'priority': priority,
       if (projectId != null) 'project_id': projectId,
       if (tagId != null) 'tag_id': tagId,
+      if (assigneeId != null) 'assignee_id': assigneeId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (completedAt != null) 'completed_at': completedAt,
-      if (assigneeId != null) 'assignee_id': assigneeId,
     });
   }
 
@@ -1783,10 +1787,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<int?>? priority,
     Value<int?>? projectId,
     Value<int?>? tagId,
+    Value<int?>? assigneeId,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
     Value<DateTime?>? completedAt,
-    Value<int?>? assigneeId,
   }) {
     return TasksCompanion(
       id: id ?? this.id,
@@ -1800,10 +1804,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
       priority: priority ?? this.priority,
       projectId: projectId ?? this.projectId,
       tagId: tagId ?? this.tagId,
+      assigneeId: assigneeId ?? this.assigneeId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       completedAt: completedAt ?? this.completedAt,
-      assigneeId: assigneeId ?? this.assigneeId,
     );
   }
 
@@ -1843,6 +1847,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (tagId.present) {
       map['tag_id'] = Variable<int>(tagId.value);
     }
+    if (assigneeId.present) {
+      map['assignee_id'] = Variable<int>(assigneeId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1851,9 +1858,6 @@ class TasksCompanion extends UpdateCompanion<Task> {
     }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
-    }
-    if (assigneeId.present) {
-      map['assignee_id'] = Variable<int>(assigneeId.value);
     }
     return map;
   }
@@ -1872,10 +1876,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('priority: $priority, ')
           ..write('projectId: $projectId, ')
           ..write('tagId: $tagId, ')
+          ..write('assigneeId: $assigneeId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('completedAt: $completedAt, ')
-          ..write('assigneeId: $assigneeId')
+          ..write('completedAt: $completedAt')
           ..write(')'))
         .toString();
   }
@@ -4279,10 +4283,10 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int?> priority,
       Value<int?> projectId,
       Value<int?> tagId,
+      Value<int?> assigneeId,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
       Value<DateTime?> completedAt,
-      Value<int?> assigneeId,
     });
 typedef $$TasksTableUpdateCompanionBuilder =
     TasksCompanion Function({
@@ -4297,10 +4301,10 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int?> priority,
       Value<int?> projectId,
       Value<int?> tagId,
+      Value<int?> assigneeId,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
       Value<DateTime?> completedAt,
-      Value<int?> assigneeId,
     });
 
 final class $$TasksTableReferences
@@ -4872,10 +4876,10 @@ class $$TasksTableTableManager
                 Value<int?> priority = const Value.absent(),
                 Value<int?> projectId = const Value.absent(),
                 Value<int?> tagId = const Value.absent(),
+                Value<int?> assigneeId = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
-                Value<int?> assigneeId = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
                 title: title,
@@ -4888,10 +4892,10 @@ class $$TasksTableTableManager
                 priority: priority,
                 projectId: projectId,
                 tagId: tagId,
+                assigneeId: assigneeId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 completedAt: completedAt,
-                assigneeId: assigneeId,
               ),
           createCompanionCallback:
               ({
@@ -4906,10 +4910,10 @@ class $$TasksTableTableManager
                 Value<int?> priority = const Value.absent(),
                 Value<int?> projectId = const Value.absent(),
                 Value<int?> tagId = const Value.absent(),
+                Value<int?> assigneeId = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
-                Value<int?> assigneeId = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
                 title: title,
@@ -4922,10 +4926,10 @@ class $$TasksTableTableManager
                 priority: priority,
                 projectId: projectId,
                 tagId: tagId,
+                assigneeId: assigneeId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 completedAt: completedAt,
-                assigneeId: assigneeId,
               ),
           withReferenceMapper: (p0) => p0
               .map(

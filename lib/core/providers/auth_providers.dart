@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:task_mvp/core/providers/database_provider.dart';
 import '../../data/database/database.dart';
 import '../../data/repositories/auth_repository.dart';
 import 'task_providers.dart'; // To access databaseProvider
