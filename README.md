@@ -172,6 +172,14 @@ Provides data for the "Insights" screen to visualize productivity.
   - Tasks assigned vs completed.
   - Supports filtering by project.
 
+### ExportRepository (`lib/data/repositories/export_repository.dart`)
+
+Handles data export and sharing.
+
+- **`exportProjectTasks(projectId)`**:
+  - Generates a CSV file containing task details (Title, Status, Priority, Due Date, Assignee).
+  - Uses `share_plus` to prompt the user to save or share the file locally.
+
 ---
 
 ### Run Code Generation
@@ -206,6 +214,7 @@ lib/data/
 │   ├── project_repository.dart
 │   ├── collaboration_repository.dart
 │   ├── analytics_repository.dart
+│   ├── export_repository.dart
 │   └── task_repository.dart
 ├── seed/
 │   └── seed_data.dart
@@ -409,5 +418,10 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
     - Deleting a **Project** now deletes its Tasks, Members, Activity Logs, and Notifications.
     - Deleting a **Task** now deletes its Activity Logs and Notifications.
   - **Migration**: Added a manual index creation step for existing databases to enforce the tag uniqueness constraint.
+
+### Export Feature
+
+- **CSV Export**: Added ability to export project tasks to CSV.
+- **Fields Included**: Title, Status, Priority, Due Date, Assignee, Created/Updated timestamps.
 
 ---
