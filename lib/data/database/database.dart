@@ -14,12 +14,18 @@ class Tasks extends Table {
   DateTimeColumn get dueDate => dateTime().nullable()();
   TextColumn get dueTime => text().nullable()();
   DateTimeColumn get reminderAt => dateTime().nullable()();
-  BoolColumn get reminderEnabled => boolean().withDefault(const Constant(false))();
+  BoolColumn get reminderEnabled =>
+      boolean().withDefault(const Constant(false))();
   IntColumn get priority => integer().nullable()();
-  IntColumn get projectId => integer().nullable().references(Projects, #id)();
+  IntColumn get projectId => integer().nullable().references(
+    Projects,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
   IntColumn get tagId => integer().nullable().references(Tags, #id)();
   IntColumn get assigneeId => integer().nullable().references(Users, #id)();
-  DateTimeColumn get createdAt => dateTime().nullable().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt =>
+      dateTime().nullable().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
 }
@@ -54,14 +60,25 @@ class Tags extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get label => text().withLength(min: 1, max: 30)();
   IntColumn get colorHex => integer()();
+
+  @override
+  List<String> get customConstraints => ['UNIQUE(label COLLATE NOCASE)'];
 }
 
 class ActivityLogs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get action => text()();
   TextColumn get description => text().nullable()();
-  IntColumn get taskId => integer().nullable()();
-  IntColumn get projectId => integer().nullable()();
+  IntColumn get taskId => integer().nullable().references(
+    Tasks,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  IntColumn get projectId => integer().nullable().references(
+    Projects,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
   DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -70,15 +87,25 @@ class Notifications extends Table {
   TextColumn get type => text()();
   TextColumn get title => text()();
   TextColumn get message => text()();
-  IntColumn get taskId => integer().nullable().references(Tasks, #id)();
-  IntColumn get projectId => integer().nullable().references(Projects, #id)();
+  IntColumn get taskId => integer().nullable().references(
+    Tasks,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  IntColumn get projectId => integer().nullable().references(
+    Projects,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isRead => boolean().withDefault(const Constant(false))();
 }
 
 class ProjectMembers extends Table {
-  IntColumn get projectId => integer().references(Projects, #id)();
-  IntColumn get userId => integer().references(Users, #id)();
+  IntColumn get projectId =>
+      integer().references(Projects, #id, onDelete: KeyAction.cascade)();
+  IntColumn get userId =>
+      integer().references(Users, #id, onDelete: KeyAction.cascade)();
   TextColumn get role => text()();
   DateTimeColumn get joinedAt => dateTime().withDefault(currentDateAndTime)();
   @override
@@ -109,7 +136,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 9; // ✅ Unified version
+  int get schemaVersion => 10; // ✅ Unified version
 
   @override
   MigrationStrategy get migration {
@@ -150,6 +177,14 @@ class AppDatabase extends _$AppDatabase {
           } catch (e) {
             // Log as no-op if tables exist
           }
+        }
+        if (from < 10) {
+          // Apply unique constraint for Tags (Case Insensitive)
+          // Note: FK Cascade updates usually require table recreation in SQLite.
+          // This index ensures tag uniqueness for existing data.
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_label_nocase ON tags(label COLLATE NOCASE);',
+          );
         }
       },
     );
