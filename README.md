@@ -18,7 +18,7 @@
 
 The database schema is versioned using the `schemaVersion` getter in `AppDatabase` (`lib/data/database/database.dart`).
 
-- **Current Version**: 9
+- **Current Version**: 10
 - **Rule**: Every time a table structure changes (new column, new table), increment this version number by 1.
 
 ### 2. Handling Upgrades (Migration Strategy)
