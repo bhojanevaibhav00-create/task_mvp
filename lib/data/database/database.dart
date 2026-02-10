@@ -18,16 +18,45 @@ class Tasks extends Table {
       boolean().withDefault(const Constant(false))();
   IntColumn get priority => integer().nullable()();
   IntColumn get projectId => integer().nullable().references(
-    Projects,
-    #id,
-    onDelete: KeyAction.cascade,
-  )();
+        Projects,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
   IntColumn get tagId => integer().nullable().references(Tags, #id)();
   IntColumn get assigneeId => integer().nullable().references(Users, #id)();
   DateTimeColumn get createdAt =>
       dateTime().nullable().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
+}
+
+/// =======================
+/// SUBTASKS (New for Sprint 9)
+/// =======================
+class Subtasks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text().withLength(min: 1, max: 100)();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+  IntColumn get taskId => integer().references(
+        Tasks,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
+}
+
+/// =======================
+/// COMMENTS (New for Sprint 9)
+/// =======================
+class Comments extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get taskId => integer().references(
+        Tasks,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
+  IntColumn get userId => integer().references(Users, #id)();
+  TextColumn get content => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 /// =======================
@@ -44,17 +73,17 @@ class Projects extends Table {
 }
 
 /// =======================
-/// USERS (Merged: Added Password & Unique Email)
+/// USERS
 /// =======================
 class Users extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 50)();
-  TextColumn get email => text().unique()(); // Enforces unique login emails
-  TextColumn get password => text()(); // Mandatory for Auth
+  TextColumn get email => text().unique()(); 
+  TextColumn get password => text()(); 
 }
 
 /// =======================
-/// OTHER TABLES (Tags, ActivityLogs, Notifications, ProjectMembers)
+/// OTHER TABLES
 /// =======================
 class Tags extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -70,15 +99,15 @@ class ActivityLogs extends Table {
   TextColumn get action => text()();
   TextColumn get description => text().nullable()();
   IntColumn get taskId => integer().nullable().references(
-    Tasks,
-    #id,
-    onDelete: KeyAction.cascade,
-  )();
+        Tasks,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
   IntColumn get projectId => integer().nullable().references(
-    Projects,
-    #id,
-    onDelete: KeyAction.cascade,
-  )();
+        Projects,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
   DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
 }
 
@@ -88,15 +117,15 @@ class Notifications extends Table {
   TextColumn get title => text()();
   TextColumn get message => text()();
   IntColumn get taskId => integer().nullable().references(
-    Tasks,
-    #id,
-    onDelete: KeyAction.cascade,
-  )();
+        Tasks,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
   IntColumn get projectId => integer().nullable().references(
-    Projects,
-    #id,
-    onDelete: KeyAction.cascade,
-  )();
+        Projects,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isRead => boolean().withDefault(const Constant(false))();
 }
@@ -118,6 +147,8 @@ class ProjectMembers extends Table {
 @DriftDatabase(
   tables: [
     Tasks,
+    Subtasks, // ✅ Added for Sprint 9
+    Comments, // ✅ Added for Sprint 9
     Projects,
     Users,
     Tags,
@@ -129,20 +160,20 @@ class ProjectMembers extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
-  // ✅ Essential for AuthRepository & TaskRepository
   Future<int> getDatabaseVersion() async {
     final result = await customSelect('PRAGMA user_version;').getSingle();
     return result.read<int>('user_version');
   }
 
   @override
-  int get schemaVersion => 10; // ✅ Unified version
+  int get schemaVersion => 11; // ✅ Incremented for new tables
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (m) async => await m.createAll(),
       onUpgrade: (Migrator m, int from, int to) async {
+        // Previous Migrations (1-10)
         if (from < 2) {
           await m.createTable(projects);
           await m.createTable(users);
@@ -160,31 +191,26 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(tasks, tasks.reminderEnabled);
         }
         if (from < 8) {
-          // ✅ Critical: Adding password field for current users
-          try {
-            await m.addColumn(users, users.password);
-          } catch (e) {
-            // Already exists in some environments
-          }
+          try { await m.addColumn(users, users.password); } catch (_) {}
         }
         if (from < 9) {
-          // Full schema synchronization for notifications and members
           try {
             await m.createTable(notifications);
             await m.createTable(activityLogs);
             await m.createTable(projectMembers);
             await m.addColumn(tasks, tasks.assigneeId);
-          } catch (e) {
-            // Log as no-op if tables exist
-          }
+          } catch (_) {}
         }
         if (from < 10) {
-          // Apply unique constraint for Tags (Case Insensitive)
-          // Note: FK Cascade updates usually require table recreation in SQLite.
-          // This index ensures tag uniqueness for existing data.
           await customStatement(
             'CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_label_nocase ON tags(label COLLATE NOCASE);',
           );
+        }
+        
+        // ✅ Sprint 9 Migration (10 to 11)
+        if (from < 11) {
+          await m.createTable(subtasks);
+          await m.createTable(comments);
         }
       },
     );

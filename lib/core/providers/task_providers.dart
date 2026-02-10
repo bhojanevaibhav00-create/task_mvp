@@ -4,6 +4,8 @@ import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/task_repository.dart';
 import 'package:task_mvp/data/repositories/notification_repository.dart';
+import 'package:task_mvp/data/repositories/subtask_repository.dart';
+import 'package:task_mvp/data/repositories/comment_repository.dart'; // ✅ Sprint 9 New
 import 'package:task_mvp/core/services/reminder_service.dart';
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/core/providers/database_provider.dart';
@@ -27,6 +29,18 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   final notificationRepo = ref.watch(notificationRepositoryProvider);
   final reminderService = ref.watch(reminderServiceProvider);
   return TaskRepository(db, notificationRepo, reminderService);
+});
+
+final subtaskRepositoryProvider = Provider<SubtaskRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  return SubtaskRepository(db);
+});
+
+// ✅ New Repository Provider for Sprint 9 Collaboration
+final commentRepositoryProvider = Provider<CommentRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  final notificationRepo = ref.watch(notificationRepositoryProvider);
+  return CommentRepository(db, notificationRepo);
 });
 
 /// ======================================================
@@ -72,6 +86,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       await _triggerCollabEvents(taskId, "Assigned: $title", projectId);
     }
     await loadTasks();
+    _ref.invalidate(projectProgressProvider); 
   }
 
   Future<void> updateTask(Task task) async {
@@ -82,6 +97,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       await _triggerCollabEvents(task.id, "New assignment: ${task.title}", task.projectId);
     }
     await loadTasks();
+    _ref.invalidate(projectProgressProvider);
   }
 
   Future<void> assignTask(int taskId, int? userId) async {
@@ -91,7 +107,6 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     await _repository.updateTask(updatedTask);
     await _triggerCollabEvents(taskId, userId != null ? "Task Assigned: ${task.title}" : "Task Unassigned", task.projectId);
 
-    // Invalidate streams to force UI refresh with new member data
     _ref.invalidate(filteredTasksProvider);
     _ref.invalidate(projectTasksProvider);
     await loadTasks();
@@ -101,11 +116,11 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     await _repository.deleteTask(id);
     state = state.where((t) => t.id != id).toList();
     _ref.invalidate(tasksProvider); 
+    _ref.invalidate(projectProgressProvider);
   }
 
   Future<void> _triggerCollabEvents(int taskId, String msg, int? pId) async {
     final db = _ref.read(databaseProvider);
-    // Log Activity
     await db.into(db.activityLogs).insert(ActivityLogsCompanion.insert(
       action: 'Task Assignment',
       description: drift.Value(msg),
@@ -113,7 +128,6 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       projectId: drift.Value(pId),
       timestamp: drift.Value(DateTime.now()),
     ));
-    // Create Notification
     await db.into(db.notifications).insert(NotificationsCompanion.insert(
       type: 'assignment',
       title: 'New Assignment',
@@ -127,7 +141,30 @@ class TasksNotifier extends StateNotifier<List<Task>> {
 }
 
 /// ======================================================
-/// 3. UI & STREAM PROVIDERS
+/// 3. SPRINT 9: SUBTASKS, PROGRESS & COLLABORATION
+/// ======================================================
+
+// ✅ Watch subtasks for real-time checklist updates
+final subtasksStreamProvider = StreamProvider.family<List<Subtask>, int>((ref, taskId) {
+  final repo = ref.watch(subtaskRepositoryProvider);
+  return repo.watchSubtasks(taskId);
+});
+
+// ✅ Accurate Project Progress calculation
+final projectProgressProvider = FutureProvider.family<double, int>((ref, projectId) async {
+  final repo = ref.watch(subtaskRepositoryProvider);
+  ref.watch(tasksProvider); 
+  return await repo.getProjectProgress(projectId);
+});
+
+// ✅ SPRINT 9 P0: Real-time Comment Stream with User Data
+final taskCommentsProvider = StreamProvider.family<List<CommentWithUser>, int>((ref, taskId) {
+  final repo = ref.watch(commentRepositoryProvider);
+  return repo.watchComments(taskId);
+});
+
+/// ======================================================
+/// 4. UI & STREAM PROVIDERS
 /// ======================================================
 
 final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
@@ -135,7 +172,6 @@ final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
   return TasksNotifier(repository, ref); 
 });
 
-/// ✅ Filtered tasks with JOINED User data
 final filteredTasksProvider = StreamProvider.autoDispose<List<TaskWithAssignee>>((ref) {
   final repository = ref.watch(taskRepositoryProvider);
   
@@ -190,7 +226,7 @@ final allUsersProvider = FutureProvider.autoDispose<List<User>>((ref) async {
 });
 
 /// ======================================================
-/// 4. FILTER & SORT STATE
+/// 5. FILTER & SORT STATE
 /// ======================================================
 
 final statusFilterProvider = StateProvider<String>((ref) => 'all');
