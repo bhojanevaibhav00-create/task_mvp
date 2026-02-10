@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/providers/auth_providers.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -22,6 +24,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // ===========================================================================
+  // LOGIC: Real Database Authentication with Password Check
+  // ===========================================================================
   Future<void> _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -37,17 +42,46 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
 
-    if (mounted) {
-      context.go(AppRoutes.dashboard);
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      
+      // ✅ LOGIC FIX: Pass both email and password to verify correctly
+      final user = await authRepo.login(email, password);
+
+      ref.read(authStateProvider.notifier).state = user;
+
+      if (mounted) {
+        context.go(AppRoutes.dashboard);
+      }
+    } catch (e) {
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    setState(() => _isLoading = false);
   }
 
+  // ✅ UI FIX: Corrected SnackBar properties (Fixed Side/Border error)
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Color(0xFF1A1C1E), 
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        behavior: SnackBarBehavior.floating,
+        elevation: 10,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE5E7EB), width: 1), // ✅ FIXED syntax
+        ),
+        margin: const EdgeInsets.all(20),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 
@@ -91,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         "Welcome Back",
                         textAlign: TextAlign.center,
                         style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                           color: const Color(0xFF1A1C1E),
                         ),
                       ),
@@ -107,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       
                       _buildTextField(
                         controller: _emailController,
-                        label: "Email",
+                        label: "Email Address",
                         icon: Icons.email_outlined,
                         theme: theme,
                       ),
@@ -127,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       
                       TextButton(
                         onPressed: () => context.go(AppRoutes.register),
-                        child: Text(
+                        child: const Text(
                           "Don't have an account? Register",
                           style: TextStyle(
                             color: AppColors.primary,
@@ -150,15 +184,9 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       height: 80,
       width: 80,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-          )
-        ],
       ),
       child: const Icon(
         Icons.task_alt_rounded,
@@ -178,12 +206,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return TextFormField(
       controller: controller,
       obscureText: isObscure,
-      // --- THE FIX: Forces the typed text to be dark grey/black ---
-      style: const TextStyle(color: Color(0xFF111827), fontSize: 16), 
+      style: const TextStyle(color: Color(0xFF1A1C1E), fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        // --- Added labelStyle to ensure label is also visible ---
-        labelStyle: const TextStyle(color: Color(0xFF6B7280)),
+        labelStyle: const TextStyle(color: Colors.grey),
         prefixIcon: Icon(icon, color: AppColors.primary),
         filled: true,
         fillColor: const Color(0xFFF8F9FD),
@@ -193,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.shade100),
+          borderSide: const BorderSide(color: Color(0xFFF3F4F6)),
         ),
       ),
     );

@@ -6,6 +6,7 @@ enum TaskStatus {
   review,
   done;
 
+  /// ✅ Converts Enum to Database String
   String get dbValue {
     switch (this) {
       case TaskStatus.inProgress:
@@ -13,6 +14,13 @@ enum TaskStatus {
       default:
         return name;
     }
+  }
+
+  /// ✅ Converts UI Selection (e.g., "IN PROGRESS") to DB String
+  static String fromUItoDB(String uiValue) {
+    final clean = uiValue.toLowerCase().replaceAll(' ', '');
+    if (clean == 'inprogress') return 'in_progress';
+    return clean;
   }
 }
 

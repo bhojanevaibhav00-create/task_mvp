@@ -1,99 +1,131 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' as drift;
 
+// Core Constants & Providers
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 import '../../../core/providers/project_providers.dart';
+import 'package:task_mvp/core/providers/database_provider.dart';
 
-import '../../tasks/presentation/task_list_screen.dart';
+// Data Layer
+import '../../../data/database/database.dart'; 
+import '../../../data/repositories/task_repository.dart';
+
+// UI Features
+import 'settings_screen.dart';
 import 'widgets/dashboard_empty_state.dart';
 import 'widgets/quick_add_task_sheet.dart';
-import 'package:task_mvp/features/dashboard/presentation/settings_screen.dart';
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tasks = ref.watch(tasksProvider);
-    final unread = ref.watch(unreadNotificationCountProvider);
+    // 🚀 WATCHING LIVE STREAMS (Sprint 8 Integrated Logic)
+    final tasksAsync = ref.watch(filteredTasksProvider); 
     final projectsAsync = ref.watch(allProjectsProvider);
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
 
+    // ✅ PREMIUM THEME CONSTANTS
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final completed = tasks.where((t) => t.status == 'done').length;
-    final pending = tasks.where((t) => t.status != 'done').length;
+    final backgroundColor = isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD); 
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF1A1C1E);
 
     return Scaffold(
-      backgroundColor:
-      isDark ? AppColors.scaffoldDark : const Color(0xFFF6F7FB),
-
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label:
-        const Text('Quick Add', style: TextStyle(color: Colors.white)),
-        onPressed: () => _openQuickAdd(context),
-      ),
-
+      backgroundColor: backgroundColor, 
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          _premiumAppBar(context, unread),
-
+          _buildPremiumAppBar(context, unreadCount, isDark),
+          
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
             sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  _sectionTitle('Overview', isDark),
-                  const SizedBox(height: 16),
-                  _statsRow(completed, pending, tasks.length),
+              delegate: SliverChildListDelegate([
+                // 1. STATS OVERVIEW
+                _buildSectionHeader(
+                  title: 'Overview', 
+                  textColor: primaryTextColor,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 16),
+                tasksAsync.when(
+                  data: (wrappers) => _buildStatCards(wrappers.map((w) => w.task).toList(), isDark),
+                  loading: () => _buildLoadingShimmer(height: 100),
+                  error: (e, __) => _buildErrorWidget(e.toString()),
+                ),
 
-                  const SizedBox(height: 32),
-                  _sectionTitle('Projects', isDark),
-                  const SizedBox(height: 12),
+                const SizedBox(height: 32),
+                
+                // 2. ACTIVE PROJECTS
+                _buildSectionHeader(
+                  title: 'Active Projects', 
+                  textColor: primaryTextColor,
+                  isDark: isDark,
+                  onAction: () => _showQuickProjectDialog(context, ref),
+                ),
+                const SizedBox(height: 16),
+                _buildHorizontalProjectList(projectsAsync, primaryTextColor, isDark),
 
-                  _createProjectButton(context),
+                const SizedBox(height: 32),
+                
+                // 3. QUICK ACTIONS
+                _buildSectionHeader(
+                  title: 'Quick Actions', 
+                  textColor: primaryTextColor,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 16),
+                _buildQuickActionRow(context, isDark),
 
-                  const SizedBox(height: 16),
-                  _projects(projectsAsync, isDark, context),
-
-                  const SizedBox(height: 32),
-                  _sectionTitle('Quick Actions', isDark),
-                  const SizedBox(height: 16),
-                  _quickActions(context),
-
-                  const SizedBox(height: 32),
-                  _sectionTitle('Recent Tasks', isDark),
-                  const SizedBox(height: 16),
-                  _recentTasks(tasks, isDark),
-                ],
-              ),
+                const SizedBox(height: 32),
+                
+                // 4. RECENT TASKS
+                _buildSectionHeader(
+                  title: 'Recent Tasks', 
+                  textColor: primaryTextColor,
+                  isDark: isDark,
+                  onAction: () => context.push(AppRoutes.tasks),
+                  actionLabel: 'View All',
+                ),
+                const SizedBox(height: 16),
+                tasksAsync.when(
+                  data: (wrappers) => _buildTaskList(context, wrappers, primaryTextColor, isDark),
+                  loading: () => _buildLoadingShimmer(height: 200),
+                  error: (e, __) => _buildErrorWidget(e.toString()),
+                ),
+              ]),
             ),
           ),
         ],
       ),
+      floatingActionButton: _buildFAB(context),
     );
   }
 
-  // ================= PREMIUM APP BAR =================
-  Widget _premiumAppBar(BuildContext context, int unread) {
+  // --- APP BAR COMPONENT ---
+
+  Widget _buildPremiumAppBar(BuildContext context, int unreadCount, bool isDark) {
     return SliverAppBar(
       pinned: true,
-      expandedHeight: 150,
+      expandedHeight: 140,
+      stretch: true,
       backgroundColor: AppColors.primary,
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+        centerTitle: false,
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 16), 
         title: const Text(
-          'My Workspace',
+          'My Workspace', 
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+            fontSize: 22, 
+            fontWeight: FontWeight.w900, 
             color: Colors.white,
-          ),
+            letterSpacing: -0.5,
+          )
         ),
         background: Container(
           decoration: const BoxDecoration(
@@ -102,93 +134,74 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       actions: [
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_none, color: Colors.white),
-              onPressed: () => context.push(AppRoutes.notifications),
-            ),
-            if (unread > 0)
-              Positioned(
-                right: 8,
-                top: 10,
-                child: CircleAvatar(
-                  radius: 8,
-                  backgroundColor: Colors.red,
-                  child: Text(
-                    unread.toString(),
-                    style: const TextStyle(
-                        fontSize: 10, color: Colors.white),
-                  ),
-                ),
-              ),
-          ],
+        _buildNotificationButton(context, unreadCount),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined, color: Colors.white), 
+          onPressed: () => Navigator.push(
+            context, 
+            MaterialPageRoute(builder: (context) => const SettingsScreen())
+          ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
       ],
     );
   }
 
-  // ================= SECTION TITLE =================
-  Widget _sectionTitle(String title, bool isDark) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w800,
-        color: isDark ? Colors.white : Colors.black87,
-      ),
-    );
-  }
+  // --- STATS COMPONENTS ---
 
-  // ================= STATS =================
-  Widget _statsRow(int done, int pending, int total) {
+  Widget _buildStatCards(List<Task> tasks, bool isDark) {
+    final completed = tasks.where((t) => t.status?.toLowerCase() == 'done').length;
+    final pending = tasks.length - completed;
+
     return Row(
       children: [
-        _statCard('Total', total, Icons.grid_view, AppColors.primaryGradient),
+        _statCard('Total', tasks.length, Icons.grid_view_rounded, AppColors.primary, isDark),
         const SizedBox(width: 12),
-        _statCard(
-            'Pending', pending, Icons.bolt, AppColors.upcomingGradient),
+        _statCard('Pending', pending, Icons.bolt_rounded, Colors.orange, isDark),
         const SizedBox(width: 12),
-        _statCard(
-            'Done', done, Icons.done_all, AppColors.completedGradient),
+        _statCard('Done', completed, Icons.done_all_rounded, Colors.green, isDark),
       ],
     );
   }
 
-  Widget _statCard(
-      String label, int value, IconData icon, Gradient gradient) {
+  Widget _statCard(String label, int count, IconData icon, Color color, bool isDark) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: gradient,
+          color: isDark ? AppColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(22),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Colors.black12,
-              blurRadius: 12,
-              offset: Offset(0, 6),
-            ),
+              color: Colors.black.withOpacity(0.04), 
+              blurRadius: 12, 
+              offset: const Offset(0, 4)
+            )
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: Colors.white),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
             const SizedBox(height: 14),
             Text(
-              value.toString(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-              ),
+              '$count', 
+              style: TextStyle(
+                fontSize: 22, 
+                fontWeight: FontWeight.w900, 
+                color: isDark ? Colors.white : const Color(0xFF1A1C1E)
+              )
             ),
             Text(
-              label,
-              style:
-              const TextStyle(color: Colors.white70, fontSize: 12),
+              label, 
+              style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black38, fontWeight: FontWeight.w600)
             ),
           ],
         ),
@@ -196,197 +209,292 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ================= CREATE PROJECT =================
-  Widget _createProjectButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push(AppRoutes.createProject),
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_circle_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Text(
-                'Create New Project',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // --- PROJECT COMPONENTS ---
 
-  // ================= PROJECTS =================
-  Widget _projects(
-      AsyncValue projects,
-      bool isDark,
-      BuildContext context,
-      ) {
+  Widget _buildHorizontalProjectList(AsyncValue<List<Project>> projects, Color textColor, bool isDark) {
     return SizedBox(
-      height: 140,
+      height: 120,
       child: projects.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Text(e.toString()),
         data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('No projects yet'));
-          }
+          final validProjects = list.where((p) => p.name.isNotEmpty && p.name != "General").toList();
+          if (validProjects.isEmpty) return _emptyContentCard("No projects found", Icons.folder_open_outlined, isDark);
+
           return ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: list.length,
-            itemBuilder: (_, i) {
-              final project = list[i];
-              return GestureDetector(
-                onTap: () =>
-                    context.push('/projects/${project.id}'),
-                child: Container(
-                  width: 170,
-                  margin: const EdgeInsets.only(right: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.cardDark
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 12,
-                        offset: Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.folder,
-                          color: AppColors.primary),
-                      const Spacer(),
-                      Text(
-                        project.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+            physics: const BouncingScrollPhysics(),
+            itemCount: validProjects.length,
+            itemBuilder: (context, index) => _projectCard(context, validProjects[index], textColor, isDark),
           );
         },
+        loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        error: (err, _) => _buildErrorWidget("Projects failed"),
       ),
     );
   }
 
-  // ================= QUICK ACTIONS =================
-  Widget _quickActions(BuildContext context) {
+  Widget _projectCard(BuildContext context, Project project, Color textColor, bool isDark) {
+    return Container(
+      width: 160,
+      margin: const EdgeInsets.only(right: 14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push('/projects/${project.id}'),
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  child: const Icon(Icons.work_outline_rounded, color: AppColors.primary, size: 18),
+                ),
+                const Spacer(),
+                Text(
+                  project.name, 
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: textColor), 
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- TASK LIST COMPONENTS ---
+
+  Widget _buildTaskList(BuildContext context, List<TaskWithAssignee> wrappers, Color textColor, bool isDark) {
+    if (wrappers.isEmpty) return const DashboardEmptyState();
+    
+    return Column(
+      children: wrappers.take(5).map((wrapper) => _buildTaskItem(context, wrapper, textColor, isDark)).toList(),
+    );
+  }
+
+  Widget _buildTaskItem(BuildContext context, TaskWithAssignee wrapper, Color textColor, bool isDark) {
+    final task = wrapper.task;
+    final assigneeName = wrapper.assignee?.name;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03), 
+            blurRadius: 15, 
+            offset: const Offset(0, 6)
+          )
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        title: Text(
+          task.title, 
+          style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 15)
+        ),
+        subtitle: assigneeName != null 
+            ? Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_outline, size: 12, color: Colors.black38),
+                    const SizedBox(width: 4),
+                    Text(assigneeName, style: const TextStyle(fontSize: 12, color: Colors.black38)),
+                  ],
+                ),
+              )
+            : null,
+        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.black12),
+        onTap: () => context.push('/tasks/${task.id}'),
+      ),
+    );
+  }
+
+  // --- SHARED UI HELPERS ---
+
+  Widget _buildSectionHeader({
+    required String title, 
+    required Color textColor, 
+    required bool isDark,
+    VoidCallback? onAction,
+    String actionLabel = 'Add New'
+  }) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: _actionButton(
-            'View Tasks',
-            Icons.view_list,
-                () => context.push(AppRoutes.tasks),
-            primary: true,
-          ),
+        Text(
+          title, 
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: textColor, letterSpacing: -0.5)
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _actionButton(
-            'Calendar',
-            Icons.calendar_month,
-                () {},
+        if (onAction != null) 
+          TextButton(
+            onPressed: onAction, 
+            child: Text(
+              actionLabel, 
+              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800)
+            )
           ),
-        ),
       ],
     );
   }
 
-  Widget _actionButton(
-      String label,
-      IconData icon,
-      VoidCallback onTap, {
-        bool primary = false,
-      }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: primary
-              ? AppColors.primary
-              : AppColors.primary.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 18,
-                color: primary ? Colors.white : AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color:
-                primary ? Colors.white : AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+  Widget _buildQuickActionRow(BuildContext context, bool isDark) {
+    return Row(
+      children: [
+        Expanded(child: _actionButton(context, 'All Tasks', Icons.format_list_bulleted_rounded, AppColors.primary, AppRoutes.tasks, isDark)),
+        const SizedBox(width: 12),
+        Expanded(child: _actionButton(context, 'Calendar', Icons.calendar_today_rounded, Colors.orange, AppRoutes.tasks, isDark)),
+      ],
+    );
+  }
+
+  Widget _actionButton(BuildContext context, String label, IconData icon, Color color, String route, bool isDark) {
+    return ElevatedButton.icon(
+      onPressed: () => context.push(route),
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.08), 
+        foregroundColor: color, 
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))
       ),
     );
   }
 
-  // ================= RECENT TASKS =================
-  Widget _recentTasks(List tasks, bool isDark) {
-    if (tasks.isEmpty) return const DashboardEmptyState();
-
-    return Column(
-      children: tasks.take(5).map((t) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: ListTile(
-            title: Text(
-              t.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+  Widget _buildNotificationButton(BuildContext context, int count) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 26), 
+          onPressed: () => context.push(AppRoutes.notifications)
+        ),
+        if (count > 0)
+          Positioned(
+            right: 8, top: 10, 
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              child: Text(
+                count.toString(), 
+                style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)
+              ),
             ),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 
-  void _openQuickAdd(BuildContext context) {
-    showModalBottomSheet(
+  Widget _emptyContentCard(String message, IconData icon, bool isDark) {
+    return Container(
+      width: 180,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white, 
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.black.withOpacity(0.03))
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.black12, size: 28),
+          const SizedBox(height: 8),
+          Text(message, style: const TextStyle(color: Colors.black26, fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFAB(BuildContext context) {
+    return FloatingActionButton.extended(
+      onPressed: () => showModalBottomSheet(
+        context: context, 
+        isScrollControlled: true, 
+        backgroundColor: Colors.transparent, 
+        builder: (_) => const QuickAddTaskSheet()
+      ),
+      label: const Text('Quick Add', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+      icon: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+      backgroundColor: AppColors.primary,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    );
+  }
+
+  Widget _buildLoadingShimmer({required double height}) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    );
+  }
+
+  Widget _buildErrorWidget(String error) {
+    return Center(child: Text("Error: $error", style: const TextStyle(color: Colors.redAccent, fontSize: 12)));
+  }
+
+  void _showQuickProjectDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => const QuickAddTaskSheet(),
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.cardDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text("New Project", style: TextStyle(fontWeight: FontWeight.w900)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87),
+          decoration: InputDecoration(
+            hintText: "Enter project name",
+            hintStyle: const TextStyle(color: Colors.black26),
+            filled: true,
+            fillColor: Colors.black.withOpacity(0.03),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+              final db = ref.read(databaseProvider);
+              await db.into(db.projects).insert(ProjectsCompanion.insert(
+                name: controller.text.trim(), 
+                createdAt: drift.Value(DateTime.now())
+              ));
+              ref.invalidate(allProjectsProvider);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary, 
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text("Create", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 }

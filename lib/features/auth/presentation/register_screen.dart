@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Added for Riverpod logic
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/providers/auth_providers.dart'; // ✅ Connect to Auth logic
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget { // ✅ Changed to ConsumerStatefulWidget
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  final TextEditingController _nameController = TextEditingController(); 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
@@ -18,18 +21,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
   }
 
+  // ===========================================================================
+  // LOGIC FIX: Real Database Registration with Error Handling
+  // ===========================================================================
   Future<void> _register() async {
+    final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirm = _confirmController.text;
 
-    if (email.isEmpty || password.isEmpty || confirm.isEmpty) {
+    if (name.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
       _showSnackBar('All fields are required');
       return;
     }
@@ -43,21 +51,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showSnackBar('Passwords do not match');
       return;
     }
-
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      _showSnackBar('Registration successful!');
-      context.go(AppRoutes.login);
+    
+    if (password.length < 6) {
+      _showSnackBar('Password must be at least 6 characters');
+      return;
     }
 
-    setState(() => _isLoading = false);
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Call the Repository to create user in SQLite
+      final authRepo = ref.read(authRepositoryProvider);
+      
+      // ✅ Registration now persists to local DB
+      await authRepo.register(
+        name: name,
+        email: email,
+        password: password, 
+      );
+
+      // 2. Success Feedback
+      if (mounted) {
+        _showSnackBar('Registration successful! Please login.', isError: false);
+        context.go(AppRoutes.login);
+      }
+    } catch (e) {
+      // Handles duplicate email errors from the database
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
-  void _showSnackBar(String message) {
+  // ✅ UI FIX: Corrected SnackBar border parameter
+  void _showSnackBar(String message, {bool isError = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: Color(0xFF1A1C1E), // Dark Slate Text
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        behavior: SnackBarBehavior.floating,
+        elevation: 8,
+        // ✅ FIXED: Using 'side' instead of 'borderSide' inside RoundedRectangleBorder
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isError ? Colors.redAccent.withOpacity(0.3) : AppColors.primary.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        margin: const EdgeInsets.all(20),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 
@@ -80,7 +130,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 _buildLogo(),
                 const SizedBox(height: 32),
 
-                // Register Card
                 Container(
                   width: 420,
                   padding: const EdgeInsets.all(32),
@@ -102,7 +151,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         "Create Account",
                         textAlign: TextAlign.center,
                         style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                           color: const Color(0xFF1A1C1E),
                         ),
                       ),
@@ -117,8 +166,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 32),
 
                       _buildTextField(
+                        controller: _nameController,
+                        label: "Full Name",
+                        icon: Icons.person_outline,
+                      ),
+                      const SizedBox(height: 16),
+
+                      _buildTextField(
                         controller: _emailController,
-                        label: "Email",
+                        label: "Email Address",
                         icon: Icons.email_outlined,
                       ),
                       const SizedBox(height: 16),
@@ -144,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       TextButton(
                         onPressed: () => context.go(AppRoutes.login),
-                        child: Text(
+                        child: const Text(
                           "Already have an account? Login",
                           style: TextStyle(
                             color: AppColors.primary,
@@ -167,15 +223,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Container(
       height: 80,
       width: 80,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-          )
-        ],
       ),
       child: const Icon(
         Icons.task_alt_rounded,
@@ -194,12 +244,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return TextFormField(
       controller: controller,
       obscureText: isObscure,
-      // --- THE FIX: Force typing color to be dark grey/black ---
-      style: const TextStyle(color: Color(0xFF111827), fontSize: 16), 
+      style: const TextStyle(color: Color(0xFF1A1C1E), fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        // --- Added labelStyle to ensure the hint/label is visible grey ---
-        labelStyle: const TextStyle(color: Color(0xFF6B7280)),
+        labelStyle: const TextStyle(color: Colors.grey),
         prefixIcon: Icon(icon, color: AppColors.primary),
         filled: true,
         fillColor: const Color(0xFFF8F9FD),
@@ -209,7 +257,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.shade100),
+          borderSide: const BorderSide(color: Color(0xFFF3F4F6)),
         ),
       ),
     );

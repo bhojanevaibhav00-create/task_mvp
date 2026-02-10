@@ -1,22 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
-
 import '../../data/database/database.dart' as db;
-import '../../data/database/database.dart';
-import 'task_providers.dart';
 import 'package:task_mvp/core/providers/database_provider.dart';
+
 /// =======================================================
-/// SHARED PROVIDER: All Projects
+/// 1. SHARED PROVIDERS
 /// =======================================================
-final allProjectsProvider =
-FutureProvider.autoDispose<List<Project>>((ref) async {
+
+final allProjectsProvider = FutureProvider.autoDispose<List<db.Project>>((ref) async {
   final database = ref.watch(databaseProvider);
   return database.select(database.projects).get();
 });
 
 /// =======================================================
-/// MODEL: Member + User (UI friendly)
+/// 2. MODELS & UI JOINS
 /// =======================================================
+
 class MemberWithUser {
   final db.ProjectMember member;
   final db.User user;
@@ -25,10 +24,10 @@ class MemberWithUser {
 }
 
 /// =======================================================
-/// PROVIDER: Fetch Project Members (JOIN users + members)
+/// 3. PROJECT MEMBERS (FETCH LOGIC)
 /// =======================================================
-final projectMembersProvider =
-FutureProvider.family<List<MemberWithUser>, int>((ref, projectId) async {
+
+final projectMembersProvider = FutureProvider.family<List<MemberWithUser>, int>((ref, projectId) async {
   final database = ref.watch(databaseProvider);
 
   final query = database.select(database.projectMembers).join([
@@ -42,176 +41,99 @@ FutureProvider.family<List<MemberWithUser>, int>((ref, projectId) async {
 
   final rows = await query.get();
 
-  return rows
-      .map(
-        (row) => MemberWithUser(
+  return rows.map((row) => MemberWithUser(
       row.readTable(database.projectMembers),
       row.readTable(database.users),
-    ),
-  )
-      .toList();
+    )).toList();
 });
 
 /// =======================================================
-/// NOTIFIER: Collaboration + Assignment Logic (Sprint 8 P0)
+/// 4. STATE NOTIFIERS (MANAGEMENT & ACTIONS)
 /// =======================================================
+
+// Manages real-time UI state for member lists
+class ProjectMembersNotifier extends StateNotifier<AsyncValue<List<MemberWithUser>>> {
+  final db.AppDatabase database;
+  final int projectId;
+  final Ref ref;
+
+  ProjectMembersNotifier(this.database, this.projectId, this.ref) : super(const AsyncValue.loading()) {
+    loadMembers();
+  }
+
+  Future<void> loadMembers() async {
+    try {
+      final members = await ref.read(projectMembersProvider(projectId).future);
+      state = AsyncValue.data(members);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+}
+
+// Handles Actions: Add, Remove (with safety), and Assignment
 class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
   final db.AppDatabase database;
+  final Ref ref;
 
-  CollaborationNotifier(this.database)
-      : super(const AsyncValue.data(null));
+  CollaborationNotifier(this.database, this.ref) : super(const AsyncValue.data(null));
 
-  /// -------------------------------------------------------
-  /// 1️⃣ ADD MEMBER
-  /// -------------------------------------------------------
-  Future<void> addMember({
-    required int projectId,
-    required int userId,
-    required String role,
-  }) async {
+  Future<void> addMember(int projectId, int userId, String role) async {
     state = const AsyncValue.loading();
     try {
+      final existing = await (database.select(database.projectMembers)
+            ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
+          .getSingleOrNull();
+
+      if (existing != null) throw Exception("User is already a member.");
+
       await database.into(database.projectMembers).insert(
         db.ProjectMembersCompanion.insert(
           projectId: projectId,
           userId: userId,
           role: role,
+          joinedAt: Value(DateTime.now()),
         ),
       );
 
-      await _logActivity(
-        projectId: projectId,
-        action: 'Member Added',
-        description: 'User $userId added as $role',
-      );
-
+      await _logCollaborationActivity(projectId, 'Member Added', 'User $userId added as $role');
+      _refresh(projectId);
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      rethrow;
     }
   }
 
-  /// -------------------------------------------------------
-  /// 2️⃣ REMOVE MEMBER (LAST OWNER SAFETY)
-  /// -------------------------------------------------------
-  Future<void> removeMember({
-    required int projectId,
-    required int userId,
-    required List<MemberWithUser> allMembers,
-  }) async {
+  Future<void> removeMember(int projectId, int userId) async {
     state = const AsyncValue.loading();
     try {
-      final member =
-      allMembers.firstWhere((m) => m.member.userId == userId);
+      final members = await ref.read(projectMembersProvider(projectId).future);
+      final memberToDelete = members.firstWhere((m) => m.member.userId == userId);
+      final owners = members.where((m) => m.member.role.toLowerCase() == 'owner').toList();
 
-      final owners = allMembers
-          .where((m) => m.member.role.toLowerCase() == 'owner')
-          .toList();
-
-      if (member.member.role.toLowerCase() == 'owner' &&
-          owners.length <= 1) {
-        throw Exception(
-            'Cannot remove the last owner of the project');
+      if (memberToDelete.member.role.toLowerCase() == 'owner' && owners.length <= 1) {
+        throw Exception("Safety Error: Cannot remove the last owner.");
       }
 
       await (database.delete(database.projectMembers)
-        ..where(
-              (t) =>
-          t.projectId.equals(projectId) &
-          t.userId.equals(userId),
-        ))
+            ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
           .go();
-
-      await _logActivity(
-        projectId: projectId,
-        action: 'Member Removed',
-        description: 'User ${member.user.name} removed',
-      );
-
+      
+      await _logCollaborationActivity(projectId, 'Member Removed', 'User ${memberToDelete.user.name} removed');
+      _refresh(projectId);
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      rethrow;
     }
   }
 
-  /// -------------------------------------------------------
-  /// 3️⃣ ASSIGN TASK TO MEMBER
-  /// -------------------------------------------------------
-  Future<void> assignTask({
-    required int taskId,
-    required int userId,
-    required int projectId,
-  }) async {
-    state = const AsyncValue.loading();
-    try {
-      final task = await (database.select(database.tasks)
-        ..where((t) => t.id.equals(taskId)))
-          .getSingle();
-
-      await database.update(database.tasks).replace(
-        task.copyWith(
-          assigneeId: Value(userId),
-          projectId: Value(projectId),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
-
-      await _logActivity(
-        projectId: projectId,
-        action: 'Task Assigned',
-        description: 'Task $taskId assigned to user $userId',
-      );
-
-      state = const AsyncValue.data(null);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      rethrow;
-    }
+  // Common refresh logic for UI consistency
+  void _refresh(int projectId) {
+    ref.invalidate(projectMembersProvider(projectId));
+    ref.read(projectMembersStateProvider(projectId).notifier).loadMembers();
   }
 
-  /// -------------------------------------------------------
-  /// 4️⃣ UNASSIGN TASK
-  /// -------------------------------------------------------
-  Future<void> unassignTask({
-    required int taskId,
-    required int projectId,
-  }) async {
-    state = const AsyncValue.loading();
-    try {
-      final task = await (database.select(database.tasks)
-        ..where((t) => t.id.equals(taskId)))
-          .getSingle();
-
-      await database.update(database.tasks).replace(
-        task.copyWith(
-          assigneeId: const Value(null),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
-
-      await _logActivity(
-        projectId: projectId,
-        action: 'Task Unassigned',
-        description: 'Task $taskId unassigned',
-      );
-
-      state = const AsyncValue.data(null);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      rethrow;
-    }
-  }
-
-  /// -------------------------------------------------------
-  /// INTERNAL: ACTIVITY LOGGING
-  /// -------------------------------------------------------
-  Future<void> _logActivity({
-    required int projectId,
-    required String action,
-    required String description,
-  }) async {
+  Future<void> _logCollaborationActivity(int projectId, String action, String description) async {
     await database.into(database.activityLogs).insert(
       db.ActivityLogsCompanion.insert(
         action: action,
@@ -224,9 +146,13 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
 }
 
 /// =======================================================
-/// PROVIDER BINDING
+/// 5. FINAL PROVIDER BINDINGS
 /// =======================================================
-final collaborationActionProvider =
-StateNotifierProvider<CollaborationNotifier, AsyncValue<void>>(
-      (ref) => CollaborationNotifier(ref.watch(databaseProvider)),
-);
+
+final projectMembersStateProvider = StateNotifierProvider.family<ProjectMembersNotifier, AsyncValue<List<MemberWithUser>>, int>((ref, projectId) {
+  return ProjectMembersNotifier(ref.watch(databaseProvider), projectId, ref);
+});
+
+final collaborationActionProvider = StateNotifierProvider<CollaborationNotifier, AsyncValue<void>>((ref) {
+  return CollaborationNotifier(ref.watch(databaseProvider), ref);
+});

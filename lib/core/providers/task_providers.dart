@@ -4,21 +4,15 @@ import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/task_repository.dart';
 import 'package:task_mvp/data/repositories/notification_repository.dart';
-import 'package:task_mvp/data/repositories/collaboration_repository.dart';
 import 'package:task_mvp/core/services/reminder_service.dart';
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/core/providers/database_provider.dart';
 
 /// ======================================================
-/// DATABASE PROVIDER
+/// 1. REPOSITORY PROVIDERS
 /// ======================================================
 
-
-/// ======================================================
-/// REPOSITORY PROVIDERS
-/// ======================================================
-final notificationRepositoryProvider =
-Provider<NotificationRepository>((ref) {
+final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return NotificationRepository(db);
 });
@@ -26,13 +20,6 @@ Provider<NotificationRepository>((ref) {
 final reminderServiceProvider = Provider<ReminderService>((ref) {
   final db = ref.watch(databaseProvider);
   return ReminderService(db);
-});
-
-final collaborationRepositoryProvider =
-Provider<CollaborationRepository>((ref) {
-  final db = ref.watch(databaseProvider);
-  final notificationRepo = ref.watch(notificationRepositoryProvider);
-  return CollaborationRepository(db, notificationRepo);
 });
 
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
@@ -43,8 +30,9 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
 });
 
 /// ======================================================
-/// TASKS NOTIFIER
+/// 2. TASKS NOTIFIER (State Logic & Actions)
 /// ======================================================
+
 class TasksNotifier extends StateNotifier<List<Task>> {
   final TaskRepository _repository;
   final Ref _ref;
@@ -55,25 +43,22 @@ class TasksNotifier extends StateNotifier<List<Task>> {
 
   Future<void> loadTasks() async {
     try {
-      state = await _repository.getAllTasks();
+      final tasks = await _repository.getAllTasks();
+      state = tasks;
     } catch (_) {
       state = [];
     }
   }
 
-  /// ---------------- CREATE TASK ----------------
-  Future<void> addTask(
-      String title,
-      String description, {
-        int priority = 1,
-        DateTime? dueDate,
-        int? assigneeId,
-        int? projectId,
-      }) async {
-    final task = TasksCompanion.insert(
+  Future<void> addTask(String title, String description, {
+    int priority = 1,
+    DateTime? dueDate,
+    int? assigneeId, 
+    int? projectId,   
+  }) async {
+    final companion = TasksCompanion.insert(
       title: title,
-      description:
-      drift.Value(description.isEmpty ? null : description),
+      description: drift.Value(description.isEmpty ? null : description),
       priority: drift.Value(priority),
       status: drift.Value(TaskStatus.todo.name),
       dueDate: drift.Value(dueDate),
@@ -82,148 +67,135 @@ class TasksNotifier extends StateNotifier<List<Task>> {
       createdAt: drift.Value(DateTime.now()),
     );
 
-    final taskId = await _repository.createTask(task);
-
+    final taskId = await _repository.createTask(companion);
     if (assigneeId != null) {
-      await _logAssignment(taskId, title, projectId);
+      await _triggerCollabEvents(taskId, "Assigned: $title", projectId);
     }
-
     await loadTasks();
   }
 
-  /// ---------------- UPDATE TASK ----------------
   Future<void> updateTask(Task task) async {
-    final oldTask =
-    state.firstWhere((t) => t.id == task.id, orElse: () => task);
-
+    final oldTask = state.firstWhere((t) => t.id == task.id, orElse: () => task);
     await _repository.updateTask(task);
 
-    if (task.assigneeId != null &&
-        task.assigneeId != oldTask.assigneeId) {
-      await _logAssignment(
-        task.id,
-        task.title,
-        task.projectId,
-      );
+    if (task.assigneeId != null && task.assigneeId != oldTask.assigneeId) {
+      await _triggerCollabEvents(task.id, "New assignment: ${task.title}", task.projectId);
     }
-
     await loadTasks();
   }
 
-  /// ---------------- DELETE TASK ----------------
+  Future<void> assignTask(int taskId, int? userId) async {
+    final task = state.firstWhere((t) => t.id == taskId);
+    final updatedTask = task.copyWith(assigneeId: drift.Value(userId));
+
+    await _repository.updateTask(updatedTask);
+    await _triggerCollabEvents(taskId, userId != null ? "Task Assigned: ${task.title}" : "Task Unassigned", task.projectId);
+
+    // Invalidate streams to force UI refresh with new member data
+    _ref.invalidate(filteredTasksProvider);
+    _ref.invalidate(projectTasksProvider);
+    await loadTasks();
+  }
+
   Future<void> deleteTask(int id) async {
     await _repository.deleteTask(id);
-    await loadTasks();
+    state = state.where((t) => t.id != id).toList();
+    _ref.invalidate(tasksProvider); 
   }
 
-  /// ======================================================
-  /// ACTIVITY + NOTIFICATION (DIRECT DB — SAFE)
-  /// ======================================================
-  Future<void> _logAssignment(
-      int taskId,
-      String title,
-      int? projectId,
-      ) async {
+  Future<void> _triggerCollabEvents(int taskId, String msg, int? pId) async {
     final db = _ref.read(databaseProvider);
-
-    // Activity Log
-    await db.into(db.activityLogs).insert(
-      ActivityLogsCompanion.insert(
-        action: 'Task Assigned',
-        description:
-        drift.Value('Assigned task: $title'),
-        taskId: drift.Value(taskId),
-        projectId: drift.Value(projectId),
-        timestamp: drift.Value(DateTime.now()),
-      ),
-    );
-
-    // Notification
-    await db.into(db.notifications).insert(
-      NotificationsCompanion.insert(
-        type: 'assignment',
-        title: 'Task Assigned',
-        message: 'You were assigned: $title',
-        taskId: drift.Value(taskId),
-        projectId: drift.Value(projectId),
-        isRead: const drift.Value(false),
-      ),
-    );
+    // Log Activity
+    await db.into(db.activityLogs).insert(ActivityLogsCompanion.insert(
+      action: 'Task Assignment',
+      description: drift.Value(msg),
+      taskId: drift.Value(taskId),
+      projectId: drift.Value(pId),
+      timestamp: drift.Value(DateTime.now()),
+    ));
+    // Create Notification
+    await db.into(db.notifications).insert(NotificationsCompanion.insert(
+      type: 'assignment',
+      title: 'New Assignment',
+      message: msg,
+      taskId: drift.Value(taskId),
+      projectId: drift.Value(pId),
+      createdAt: drift.Value(DateTime.now()),
+      isRead: const drift.Value(false),
+    ));
   }
 }
 
 /// ======================================================
-/// TASK LIST PROVIDERS
+/// 3. UI & STREAM PROVIDERS
 /// ======================================================
-final tasksProvider =
-StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
-  final repo = ref.watch(taskRepositoryProvider);
-  return TasksNotifier(repo, ref);
+
+final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
+  final repository = ref.watch(taskRepositoryProvider);
+  return TasksNotifier(repository, ref); 
 });
 
-/// Project-specific tasks (USED BY ProjectDetailScreen)
-final tasksByProjectProvider =
-StreamProvider.family<List<Task>, int>((ref, projectId) {
-  final repo = ref.watch(taskRepositoryProvider);
-  return repo.watchTasks(projectId: projectId);
-});
-
-/// Filtered tasks (Task list screen)
-final filteredTasksProvider =
-StreamProvider.autoDispose<List<Task>>((ref) {
-  final repo = ref.watch(taskRepositoryProvider);
-
+/// ✅ Filtered tasks with JOINED User data
+final filteredTasksProvider = StreamProvider.autoDispose<List<TaskWithAssignee>>((ref) {
+  final repository = ref.watch(taskRepositoryProvider);
+  
   final status = ref.watch(statusFilterProvider);
   final sortBy = ref.watch(sortByProvider);
-  final overdue = ref.watch(overdueFilterProvider);
+  final dueBucket = ref.watch(dueBucketFilterProvider); 
   final priority = ref.watch(priorityFilterProvider);
   final projectId = ref.watch(projectFilterProvider);
 
-  List<String>? statuses;
-  if (status != 'all') statuses = [status];
-
+  List<String>? statusList = status != 'all' ? [status] : null;
   DateTime? fromDate;
   DateTime? toDate;
-  if (overdue) {
-    fromDate = DateTime(1970);
-    toDate = DateTime.now();
+
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+  if (dueBucket == "Today") {
+    fromDate = todayStart;
+    toDate = todayEnd;
+  } else if (dueBucket == "Overdue") {
+    fromDate = DateTime(1970); 
+    toDate = todayStart.subtract(const Duration(seconds: 1));
+  } else if (dueBucket == "Upcoming") {
+    fromDate = todayEnd.add(const Duration(seconds: 1));
+    toDate = DateTime(2100); 
   }
 
-  return repo.watchTasks(
-    statuses: statuses,
+  return repository.watchTasksWithAssignee(
+    statuses: statusList,
     priority: priority,
     projectId: projectId,
     fromDate: fromDate,
     toDate: toDate,
-    sortBy: sortBy == 'date'
-        ? 'due_date_asc'
-        : 'priority_desc',
+    sortBy: sortBy == 'priority' ? 'priority_desc' : 'due_date_asc',
   );
 });
 
-/// ======================================================
-/// USERS
-/// ======================================================
-final allUsersProvider =
-FutureProvider.autoDispose<List<User>>((ref) async {
+final projectTasksProvider = StreamProvider.family.autoDispose<List<TaskWithAssignee>, int>((ref, projectId) {
+  final repository = ref.watch(taskRepositoryProvider);
+  final sortType = ref.watch(projectSortProvider);
+
+  return repository.watchTasksWithAssignee(
+    projectId: projectId,
+    sortBy: sortType == 'priority' ? 'priority_desc' : 'due_date_asc',
+  );
+});
+
+final allUsersProvider = FutureProvider.autoDispose<List<User>>((ref) async {
   final db = ref.watch(databaseProvider);
   return db.select(db.users).get();
 });
 
 /// ======================================================
-/// FILTER STATE PROVIDERS
+/// 4. FILTER & SORT STATE
 /// ======================================================
-final statusFilterProvider =
-StateProvider<String>((ref) => 'all');
 
-final sortByProvider =
-StateProvider<String>((ref) => 'date');
-
-final overdueFilterProvider =
-StateProvider<bool>((ref) => false);
-
-final priorityFilterProvider =
-StateProvider<int?>((ref) => null);
-
-final projectFilterProvider =
-StateProvider<int?>((ref) => null);
+final statusFilterProvider = StateProvider<String>((ref) => 'all');
+final sortByProvider = StateProvider<String>((ref) => 'date');
+final dueBucketFilterProvider = StateProvider<String?>((ref) => null); 
+final priorityFilterProvider = StateProvider<int?>((ref) => null);
+final projectFilterProvider = StateProvider<int?>((ref) => null);
+final projectSortProvider = StateProvider.autoDispose<String>((ref) => 'date');
