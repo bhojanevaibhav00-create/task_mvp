@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/task_providers.dart' hide notificationRepositoryProvider;
-// ✅ FIXED: Using the specific path to your provider file
 import 'package:task_mvp/core/providers/notification_providers.dart';
+import 'package:task_mvp/core/providers/database_provider.dart';
 import '../../../../data/database/database.dart';
 import 'package:task_mvp/features/dashboard/presentation/widgets/assignee_chip.dart';
 import 'package:task_mvp/features/dashboard/presentation/widgets/assign_member_sheet.dart';
@@ -28,6 +28,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize with existing assignee if available
     assignedName = null; 
   }
 
@@ -93,8 +94,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           const SizedBox(height: 12),
 
           AssigneeChip(
-            name: assignedName,
-            showClear: true,
+            name: assignedName ?? (widget.task.assigneeId != null ? 'User ${widget.task.assigneeId}' : 'Unassigned'),
+            showClear: widget.task.assigneeId != null,
             onTap: () async {
               final result = await showModalBottomSheet(
                 context: context,
@@ -113,13 +114,49 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             },
           ),
           
+          const SizedBox(height: 32),
+
+          /// ===== TASK META INFO =====
+          _buildInfoRow('Status', widget.task.status ?? 'To Do', isDark),
+          _buildInfoRow('Priority', _getPriorityLabel(widget.task.priority), isDark),
+          _buildInfoRow('Due Date', widget.task.dueDate?.toString().split(' ')[0] ?? 'No Date', isDark),
+          
           const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  // ================= DELETE LOGIC (NO HANGING) =================
+  Widget _buildInfoRow(String label, String value, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label.toUpperCase(),
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.black26, letterSpacing: 1.1),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF1A1C1E)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getPriorityLabel(int? priority) {
+    return switch (priority) {
+      3 => 'High',
+      2 => 'Medium',
+      _ => 'Low',
+    };
+  }
+
+  // ================= DELETE LOGIC (FIXED HANG) =================
 
   void _showDeleteDialog(BuildContext context) {
     showDialog(
@@ -150,22 +187,22 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   Future<void> _handleDelete(BuildContext context) async {
     try {
-      // 1. Database Delete
       final dbRepo = ref.read(databaseProvider);
+      
+      // 1. Database Delete
       await (dbRepo.delete(dbRepo.tasks)..where((t) => t.id.equals(widget.task.id))).go();
 
-      // 2. ✅ SUCCESSFUL NOTIFICATION CALL
-      // Ensuring the repository provider is read correctly from the fixed providers file
+      // 2. Notification Entry
       await ref.read(notificationRepositoryProvider).addNotification(
         title: "Task Deleted",
         body: "The task '${widget.task.title}' was successfully removed.",
         type: "system",
       );
 
-      // 3. 🚀 NAVIGATION FIX: Pop screen BEFORE state refresh to prevent hang
+      // 3. 🚀 NAVIGATION FIX: Pop context before invalidating providers to prevent state "hang"
       if (mounted) {
         Navigator.pop(context); // Close Dialog
-        context.pop();          // Return to Dashboard
+        context.pop();          // Return to Task List
       }
 
       // 4. State Refresh

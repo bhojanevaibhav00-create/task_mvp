@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
+
 import '../../../../data/database/database.dart';
+import '../../../../core/providers/database_provider.dart';
+import '../../../../core/providers/project_providers.dart';
 import '../../../../core/providers/task_providers.dart';
-import '../../../../core/providers/collaboration_providers.dart'; // ✅ Added for allProjectsProvider
 import '../../../../core/constants/app_colors.dart';
 
 class CreateProjectScreen extends ConsumerStatefulWidget {
@@ -14,8 +16,9 @@ class CreateProjectScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -33,32 +36,41 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
       return;
     }
 
-    final db = ref.read(databaseProvider);
-    
-    // 1. Insert into Database
-    await db.into(db.projects).insert(ProjectsCompanion.insert(
-      name: name,
-      description: drift.Value(_descController.text.trim()),
-      createdAt: drift.Value(DateTime.now()),
-    ));
+    setState(() => _isSaving = true);
 
-    // 2. ✅ FIXED: Invalidate the specific provider that feeds the Dashboard & Detail screens
-    // This ensures that when you go back, the new project is already visible.
-    ref.invalidate(allProjectsProvider); 
-    ref.invalidate(tasksProvider); 
+    try {
+      final db = ref.read(databaseProvider);
+      
+      // 1. Insert into Database with description support
+      await db.into(db.projects).insert(ProjectsCompanion.insert(
+        name: name,
+        description: drift.Value(_descController.text.trim().isEmpty ? null : _descController.text.trim()),
+        createdAt: drift.Value(DateTime.now()),
+      ));
 
-    if (mounted) {
-      // Return true so the calling screen knows it needs to refresh if not using a provider
-      Navigator.pop(context, true); 
+      // 2. ✅ FIXED: Invalidate providers to refresh Dashboard & Detail screens
+      ref.invalidate(allProjectsProvider); 
+      ref.invalidate(tasksProvider); 
+
+      if (mounted) {
+        Navigator.pop(context, true); 
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error creating project: $e")),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FORCE WHITE THEME (Matches Dashboard/Login)
-    const backgroundColor = Color(0xFFF8F9FD);
-    const cardColor = Colors.white;
-    const primaryTextColor = Color(0xFF1A1C1E);
+    // ✅ ADAPTIVE PREMIUM THEME (Supports Vaishnavi's Dark Mode)
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD);
+    final cardColor = isDark ? AppColors.cardDark : Colors.white;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF1A1C1E);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -67,6 +79,9 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
           style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
         backgroundColor: AppColors.primary,
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
@@ -83,15 +98,15 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
                 letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             
-            // ✅ PREMIUM INPUTS
             _buildTextField(
               controller: _nameController,
               label: "Project Name",
               hint: "e.g. Mobile App Revamp",
               cardColor: cardColor,
               textColor: primaryTextColor,
+              isDark: isDark,
             ),
             const SizedBox(height: 20),
             
@@ -101,6 +116,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
               hint: "What is this project about?",
               cardColor: cardColor,
               textColor: primaryTextColor,
+              isDark: isDark,
               maxLines: 4,
             ),
             const SizedBox(height: 40),
@@ -109,19 +125,18 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _handleCreate,
+                onPressed: _isSaving ? null : _handleCreate,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text(
-                  "Create Project", 
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)
-                ),
+                child: _isSaving 
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text("Create Project", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -134,12 +149,13 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
     required String hint,
     required Color cardColor,
     required Color textColor,
+    required bool isDark,
     int maxLines = 1,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
+        Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black54)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -153,11 +169,11 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
             contentPadding: const EdgeInsets.all(16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.black.withOpacity(0.05)),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.black.withOpacity(0.05)),
+              borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),

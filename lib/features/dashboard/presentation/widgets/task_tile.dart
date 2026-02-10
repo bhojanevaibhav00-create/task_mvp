@@ -5,31 +5,35 @@ import 'assignee_chip.dart';
 
 class TaskTile extends StatelessWidget {
   final Task task;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   const TaskTile({
     super.key,
     required this.task,
-    this.onTap,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 6,
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔹 TITLE
+            /// TITLE
             Text(
               task.title,
               maxLines: 1,
@@ -40,11 +44,13 @@ class TaskTile extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
-            /// 🔹 ASSIGNEE BADGE
+            /// ASSIGNEE BADGE
             AssigneeChip(
-              name: task.assigneeId != null ? 'Assigned' : null,
+              name: task.assigneeId == null
+                  ? null
+                  : 'User ${task.assigneeId}', // UI-safe
               showClear: false,
             ),
           ],

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,18 +7,16 @@ import 'package:drift/drift.dart' as drift;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
-import '../../../core/providers/notification_providers.dart' hide databaseProvider;
-import '../../../core/providers/collaboration_providers.dart'; 
+import '../../../core/providers/notification_providers.dart';
+import '../../../core/providers/project_providers.dart';
+import 'package:task_mvp/core/providers/database_provider.dart';
 
 // Data Layer
-import '../../../data/models/enums.dart';
 import '../../../data/database/database.dart'; 
 import '../../../data/repositories/task_repository.dart';
 
 // UI Features
-import '../../notifications/presentation/notification_screen.dart';
 import 'settings_screen.dart';
-import 'widgets/summary_card.dart';
 import 'widgets/dashboard_empty_state.dart';
 import 'widgets/quick_add_task_sheet.dart';
 
@@ -28,25 +25,25 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 🚀 WATCHING LIVE STREAMS
+    // 🚀 WATCHING LIVE STREAMS (Sprint 8 Integrated Logic)
     final tasksAsync = ref.watch(filteredTasksProvider); 
     final projectsAsync = ref.watch(allProjectsProvider);
     final unreadCount = ref.watch(unreadNotificationCountProvider);
 
-    // ✅ PREMIUM WHITE THEME CONSTANTS
-    const backgroundColor = Color(0xFFF8F9FD); 
-    const primaryTextColor = Color(0xFF1A1C1E);
+    // ✅ PREMIUM THEME CONSTANTS
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD); 
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF1A1C1E);
 
     return Scaffold(
       backgroundColor: backgroundColor, 
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          _buildPremiumAppBar(context, unreadCount),
+          _buildPremiumAppBar(context, unreadCount, isDark),
           
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // 1. STATS OVERVIEW
@@ -57,7 +54,7 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 tasksAsync.when(
-                  data: (wrappers) => _buildStatCards(wrappers.map((w) => w.task).toList()),
+                  data: (wrappers) => _buildStatCards(wrappers.map((w) => w.task).toList(), isDark),
                   loading: () => _buildLoadingShimmer(height: 100),
                   error: (e, __) => _buildErrorWidget(e.toString()),
                 ),
@@ -83,7 +80,7 @@ class DashboardScreen extends ConsumerWidget {
                   isDark: isDark,
                 ),
                 const SizedBox(height: 16),
-                _buildQuickActionRow(context),
+                _buildQuickActionRow(context, isDark),
 
                 const SizedBox(height: 32),
                 
@@ -112,13 +109,12 @@ class DashboardScreen extends ConsumerWidget {
 
   // --- APP BAR COMPONENT ---
 
-  Widget _buildPremiumAppBar(BuildContext context, int unreadCount) {
+  Widget _buildPremiumAppBar(BuildContext context, int unreadCount, bool isDark) {
     return SliverAppBar(
       pinned: true,
       expandedHeight: 140,
       stretch: true,
       backgroundColor: AppColors.primary,
-      leadingWidth: 72, 
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
         titlePadding: const EdgeInsets.only(left: 20, bottom: 16), 
@@ -153,27 +149,27 @@ class DashboardScreen extends ConsumerWidget {
 
   // --- STATS COMPONENTS ---
 
-  Widget _buildStatCards(List<Task> tasks) {
+  Widget _buildStatCards(List<Task> tasks, bool isDark) {
     final completed = tasks.where((t) => t.status?.toLowerCase() == 'done').length;
     final pending = tasks.length - completed;
 
     return Row(
       children: [
-        _statCard('Total', tasks.length, Icons.grid_view_rounded, AppColors.primary),
+        _statCard('Total', tasks.length, Icons.grid_view_rounded, AppColors.primary, isDark),
         const SizedBox(width: 12),
-        _statCard('Pending', pending, Icons.bolt_rounded, Colors.orange),
+        _statCard('Pending', pending, Icons.bolt_rounded, Colors.orange, isDark),
         const SizedBox(width: 12),
-        _statCard('Done', completed, Icons.done_all_rounded, Colors.green),
+        _statCard('Done', completed, Icons.done_all_rounded, Colors.green, isDark),
       ],
     );
   }
 
-  Widget _statCard(String label, int count, IconData icon, Color color) {
+  Widget _statCard(String label, int count, IconData icon, Color color, bool isDark) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
@@ -197,15 +193,15 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 14),
             Text(
               '$count', 
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22, 
                 fontWeight: FontWeight.w900, 
-                color: Color(0xFF1A1C1E)
+                color: isDark ? Colors.white : const Color(0xFF1A1C1E)
               )
             ),
             Text(
               label, 
-              style: const TextStyle(fontSize: 11, color: Colors.black38, fontWeight: FontWeight.w600)
+              style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black38, fontWeight: FontWeight.w600)
             ),
           ],
         ),
@@ -221,7 +217,7 @@ class DashboardScreen extends ConsumerWidget {
       child: projects.when(
         data: (list) {
           final validProjects = list.where((p) => p.name.isNotEmpty && p.name != "General").toList();
-          if (validProjects.isEmpty) return _emptyContentCard("No projects found", Icons.folder_open_outlined);
+          if (validProjects.isEmpty) return _emptyContentCard("No projects found", Icons.folder_open_outlined, isDark);
 
           return ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -241,7 +237,7 @@ class DashboardScreen extends ConsumerWidget {
       width: 160,
       margin: const EdgeInsets.only(right: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
       ),
@@ -278,7 +274,6 @@ class DashboardScreen extends ConsumerWidget {
   // --- TASK LIST COMPONENTS ---
 
   Widget _buildTaskList(BuildContext context, List<TaskWithAssignee> wrappers, Color textColor, bool isDark) {
-    // ✅ FIXED: Using DashboardEmptyState to remove the black box
     if (wrappers.isEmpty) return const DashboardEmptyState();
     
     return Column(
@@ -293,7 +288,7 @@ class DashboardScreen extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -355,17 +350,17 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickActionRow(BuildContext context) {
+  Widget _buildQuickActionRow(BuildContext context, bool isDark) {
     return Row(
       children: [
-        Expanded(child: _actionButton(context, 'All Tasks', Icons.format_list_bulleted_rounded, AppColors.primary, AppRoutes.tasks)),
+        Expanded(child: _actionButton(context, 'All Tasks', Icons.format_list_bulleted_rounded, AppColors.primary, AppRoutes.tasks, isDark)),
         const SizedBox(width: 12),
-        Expanded(child: _actionButton(context, 'Calendar', Icons.calendar_today_rounded, Colors.orange, AppRoutes.tasks)),
+        Expanded(child: _actionButton(context, 'Calendar', Icons.calendar_today_rounded, Colors.orange, AppRoutes.tasks, isDark)),
       ],
     );
   }
 
-  Widget _actionButton(BuildContext context, String label, IconData icon, Color color, String route) {
+  Widget _actionButton(BuildContext context, String label, IconData icon, Color color, String route, bool isDark) {
     return ElevatedButton.icon(
       onPressed: () => context.push(route),
       icon: Icon(icon, size: 18),
@@ -404,11 +399,11 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _emptyContentCard(String message, IconData icon) {
+  Widget _emptyContentCard(String message, IconData icon, bool isDark) {
     return Container(
       width: 180,
       decoration: BoxDecoration(
-        color: Colors.white, 
+        color: isDark ? AppColors.cardDark : Colors.white, 
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.black.withOpacity(0.03))
       ),
@@ -444,7 +439,7 @@ class DashboardScreen extends ConsumerWidget {
       height: height,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(22),
       ),
       child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -460,19 +455,18 @@ class DashboardScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.cardDark : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: const Text("New Project", style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A1C1E))),
+        title: const Text("New Project", style: TextStyle(fontWeight: FontWeight.w900)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          // ✅ FIXED: Added visible text color for input
-          style: const TextStyle(color: Color(0xFF1A1C1E), fontWeight: FontWeight.w600),
+          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             hintText: "Enter project name",
             hintStyle: const TextStyle(color: Colors.black26),
             filled: true,
-            fillColor: const Color(0xFFF8F9FD),
+            fillColor: Colors.black.withOpacity(0.03),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
         ),

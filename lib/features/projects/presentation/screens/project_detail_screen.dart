@@ -6,13 +6,15 @@ import 'package:drift/drift.dart' as drift;
 // Core Constants & Providers
 import 'package:task_mvp/core/constants/app_colors.dart';
 import 'package:task_mvp/core/providers/task_providers.dart';
-import 'package:task_mvp/core/providers/collaboration_providers.dart'; 
-import 'package:task_mvp/features/projects/widgets/add_member_dialog.dart'; 
-import 'package:task_mvp/features/tasks/presentation/widgets/task_card.dart'; 
+import 'package:task_mvp/core/providers/collaboration_providers.dart';
+import 'package:task_mvp/core/providers/project_providers.dart';
+import 'package:task_mvp/core/providers/database_provider.dart';
+import 'package:task_mvp/features/tasks/presentation/widgets/task_card.dart';
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/models/enums.dart';
+import '../project_members_screen.dart';
 
-// ✅ NEW PROVIDER: Local state for project task sorting
+// ✅ Local state for project task sorting
 final projectSortProvider = StateProvider.autoDispose<String>((ref) => 'date');
 
 class ProjectDetailScreen extends ConsumerWidget {
@@ -24,58 +26,53 @@ class ProjectDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(allProjectsProvider);
     final db = ref.watch(databaseProvider);
-    final currentSort = ref.watch(projectSortProvider); // ✅ Listen to sort state
+    final currentSort = ref.watch(projectSortProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return projectsAsync.when(
       data: (projects) {
-        Project? project;
-        try {
-          project = projects.firstWhere((p) => p.id == projectId);
-        } catch (_) {
-          project = null;
-        }
+        final project = projects.where((p) => p.id == projectId).firstOrNull;
 
         if (project == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF8F9FD),
-            body: Center(child: Text("Project not found or was deleted")),
+          return Scaffold(
+            backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+            body: const Center(child: Text("Project not found")),
           );
         }
         
         return Scaffold(
-          backgroundColor: const Color(0xFFF8F9FD),
+          backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
           body: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // 1. PREMIUM MODERN APP BAR (Fixed Overlap)
-              _buildModernAppBar(context, ref, project),
+              // 1. MODERN APP BAR
+              _buildModernAppBar(context, ref, project, isDark),
 
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // 2. MODERN EDITABLE DESCRIPTION
-                    _buildPremiumDescription(context, ref, project),
+                    // 2. EDITABLE DESCRIPTION
+                    _buildPremiumDescription(context, ref, project, isDark),
                     const SizedBox(height: 24),
                     
-                    // 3. PROGRESS TRACKER
-                    _buildModernProgressHeader(db),
+                    // 3. PROGRESS TRACKER (Sprint 9 Requirement)
+                    _buildModernProgressHeader(db, isDark),
                     const SizedBox(height: 32),
                     
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.list_alt_rounded, color: Color(0xFF1A1C1E), size: 22),
-                            SizedBox(width: 12),
+                            Icon(Icons.list_alt_rounded, color: isDark ? Colors.white : const Color(0xFF1A1C1E), size: 22),
+                            const SizedBox(width: 12),
                             Text(
                               "Project Tasks",
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1A1C1E)),
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : const Color(0xFF1A1C1E)),
                             ),
                           ],
                         ),
-                        // ✅ SORT INDICATOR LABEL
                         Text(
                           "Sorted by ${currentSort == 'priority' ? 'Priority' : 'Date'}",
                           style: const TextStyle(fontSize: 10, color: Colors.black26, fontWeight: FontWeight.bold),
@@ -87,13 +84,12 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ),
               ),
               
-              // 4. DYNAMIC TASK LIST (With Advanced Sorting Logic)
+              // 4. DYNAMIC TASK LIST
               StreamBuilder<List<Task>>(
                 stream: (db.select(db.tasks)
                   ..where((t) => t.projectId.equals(projectId))
                   ..orderBy([
                     (t) => drift.OrderingTerm(
-                      // ✅ DYNAMIC SORTING LOGIC
                       expression: currentSort == 'priority' ? t.priority : t.dueDate,
                       mode: drift.OrderingMode.asc,
                     ),
@@ -108,7 +104,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.assignment_late_outlined, color: Colors.grey.shade300, size: 60),
+                            Icon(Icons.assignment_late_outlined, color: isDark ? Colors.white12 : Colors.grey.shade300, size: 60),
                             const SizedBox(height: 16),
                             const Text("No tasks found", style: TextStyle(color: Colors.black38)),
                           ],
@@ -149,14 +145,13 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   // --- UI COMPONENTS ---
 
-  Widget _buildModernAppBar(BuildContext context, WidgetRef ref, Project project) {
+  Widget _buildModernAppBar(BuildContext context, WidgetRef ref, Project project, bool isDark) {
     return SliverAppBar(
       expandedHeight: 140,
       pinned: true,
       elevation: 0,
       stretch: true,
       backgroundColor: AppColors.primary,
-      // ✅ FIX: Increase leadingWidth to prevent back arrow overlap
       leadingWidth: 70, 
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
@@ -164,11 +159,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         title: Text(project.name, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 18)),
         background: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF6366F1), Color(0xFF4338CA)],
-            ),
+            gradient: AppColors.primaryGradient,
           ),
         ),
       ),
@@ -178,7 +169,6 @@ class ProjectDetailScreen extends ConsumerWidget {
         onPressed: () => context.pop(),
       ),
       actions: [
-        // ✅ ADVANCED SORTING MENU
         PopupMenuButton<String>(
           icon: const Icon(Icons.sort_rounded, color: Colors.white),
           onSelected: (value) => ref.read(projectSortProvider.notifier).state = value,
@@ -188,11 +178,11 @@ class ProjectDetailScreen extends ConsumerWidget {
           ],
         ),
         IconButton(
-          icon: const Icon(Icons.group_add_rounded, color: Colors.white),
+          icon: const Icon(Icons.group_rounded, color: Colors.white),
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectMembersScreen(projectId: projectId))),
         ),
         IconButton(
-          icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white),
+          icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
           onPressed: () => _showDeleteConfirmation(context, ref),
         ),
         const SizedBox(width: 8),
@@ -200,14 +190,14 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPremiumDescription(BuildContext context, WidgetRef ref, Project project) {
+  Widget _buildPremiumDescription(BuildContext context, WidgetRef ref, Project project, bool isDark) {
     return GestureDetector(
-      onTap: () => _showEditDescriptionDialog(context, ref, project),
+      onTap: () => _showEditDescriptionDialog(context, ref, project, isDark),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(28),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 8))],
         ),
@@ -227,7 +217,7 @@ class ProjectDetailScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 15, 
                 height: 1.6, 
-                color: project.description == null ? Colors.black26 : const Color(0xFF1F2937),
+                color: project.description == null ? Colors.black26 : (isDark ? Colors.white70 : const Color(0xFF1F2937)),
               ),
             ),
           ],
@@ -236,7 +226,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildModernProgressHeader(AppDatabase db) {
+  Widget _buildModernProgressHeader(AppDatabase db, bool isDark) {
     return StreamBuilder<List<Task>>(
       stream: (db.select(db.tasks)..where((t) => t.projectId.equals(projectId))).watch(),
       builder: (context, snapshot) {
@@ -249,7 +239,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(28),
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))],
           ),
@@ -259,7 +249,7 @@ class ProjectDetailScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Completion Progress", style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF4B5563), fontSize: 13)),
+                  Text("Completion Progress", style: TextStyle(fontWeight: FontWeight.w800, color: isDark ? Colors.white70 : const Color(0xFF4B5563), fontSize: 13)),
                   Text("${(progress * 100).toInt()}%", style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 14)),
                 ],
               ),
@@ -268,7 +258,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: const Color(0xFFF3F4F6),
+                  backgroundColor: isDark ? Colors.white10 : const Color(0xFFF3F4F6),
                   color: AppColors.primary,
                   minHeight: 10,
                 ),
@@ -290,7 +280,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  // --- LOGIC FUNCTIONS ---
+  // --- LOGIC ---
 
   Future<void> _toggleTaskStatus(WidgetRef ref, Task task) async {
     final db = ref.read(databaseProvider);
@@ -302,23 +292,23 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _showEditDescriptionDialog(BuildContext context, WidgetRef ref, Project project) {
+  void _showEditDescriptionDialog(BuildContext context, WidgetRef ref, Project project, bool isDark) {
     final controller = TextEditingController(text: project.description);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text("Edit Description", style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1A1C1E))),
+        title: const Text("Edit Description", style: TextStyle(fontWeight: FontWeight.w900)),
         content: TextField(
           controller: controller,
           maxLines: 5,
           autofocus: true,
-          style: const TextStyle(color: Color(0xFF1A1C1E)),
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             hintText: "What is this project about?",
             filled: true,
-            fillColor: const Color(0xFFF8F9FD),
+            fillColor: isDark ? Colors.white10 : const Color(0xFFF8F9FD),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
         ),

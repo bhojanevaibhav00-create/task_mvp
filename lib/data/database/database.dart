@@ -1,7 +1,11 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+
 part 'database.g.dart';
 
+/// =======================
+/// TASKS
+/// =======================
 class Tasks extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text().withLength(min: 1, max: 50)();
@@ -14,12 +18,15 @@ class Tasks extends Table {
   IntColumn get priority => integer().nullable()();
   IntColumn get projectId => integer().nullable().references(Projects, #id)();
   IntColumn get tagId => integer().nullable().references(Tags, #id)();
+  IntColumn get assigneeId => integer().nullable().references(Users, #id)();
   DateTimeColumn get createdAt => dateTime().nullable().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
-  IntColumn get assigneeId => integer().nullable().references(Users, #id)();
 }
 
+/// =======================
+/// PROJECTS
+/// =======================
 class Projects extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 50)();
@@ -30,15 +37,19 @@ class Projects extends Table {
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }
 
+/// =======================
+/// USERS (Merged: Added Password & Unique Email)
+/// =======================
 class Users extends Table {
   IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text()();
-  TextColumn get email => text().unique()(); 
-  TextColumn get password => text()(); // NOT nullable
+  TextColumn get name => text().withLength(min: 1, max: 50)();
+  TextColumn get email => text().unique()(); // Enforces unique login emails
+  TextColumn get password => text()(); // Mandatory for Auth
 }
 
-
-
+/// =======================
+/// OTHER TABLES (Tags, ActivityLogs, Notifications, ProjectMembers)
+/// =======================
 class Tags extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get label => text().withLength(min: 1, max: 30)();
@@ -74,38 +85,77 @@ class ProjectMembers extends Table {
   Set<Column> get primaryKey => {projectId, userId};
 }
 
+/// =======================
+/// DATABASE CONFIG & MIGRATION
+/// =======================
 @DriftDatabase(
-  tables: [Tasks, Projects, Users, Tags, ActivityLogs, Notifications, ProjectMembers],
+  tables: [
+    Tasks,
+    Projects,
+    Users,
+    Tags,
+    ActivityLogs,
+    Notifications,
+    ProjectMembers,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  // ✅ Essential for AuthRepository & TaskRepository
   Future<int> getDatabaseVersion() async {
     final result = await customSelect('PRAGMA user_version;').getSingle();
     return result.read<int>('user_version');
   }
-  
-  // ✅ Keeping it at version 8
+
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9; // ✅ Unified version
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
+      onCreate: (m) async => await m.createAll(),
       onUpgrade: (Migrator m, int from, int to) async {
-        // ... (previous versions 2-7 omitted for brevity, keep your existing logic)
-        
+        if (from < 2) {
+          await m.createTable(projects);
+          await m.createTable(users);
+          await m.createTable(tags);
+          await m.addColumn(tasks, tasks.projectId);
+          await m.addColumn(tasks, tasks.tagId);
+        }
+        if (from < 3) {
+          await m.addColumn(projects, projects.description);
+          await m.addColumn(projects, projects.color);
+        }
+        if (from < 5) {
+          await m.addColumn(tasks, tasks.dueTime);
+          await m.addColumn(tasks, tasks.reminderAt);
+          await m.addColumn(tasks, tasks.reminderEnabled);
+        }
         if (from < 8) {
-          // ✅ ENSURE: Adding the password column to the users table if it's missing
+          // ✅ Critical: Adding password field for current users
           try {
             await m.addColumn(users, users.password);
           } catch (e) {
-            // Column might already exist in some local versions
+            // Already exists in some environments
+          }
+        }
+        if (from < 9) {
+          // Full schema synchronization for notifications and members
+          try {
+            await m.createTable(notifications);
+            await m.createTable(activityLogs);
+            await m.createTable(projectMembers);
+            await m.addColumn(tasks, tasks.assigneeId);
+          } catch (e) {
+            // Log as no-op if tables exist
           }
         }
       },
     );
   }
 
-  static QueryExecutor _openConnection() => driftDatabase(name: 'my_app_database');
+  static QueryExecutor _openConnection() {
+    return driftDatabase(name: 'my_app_database');
+  }
 }

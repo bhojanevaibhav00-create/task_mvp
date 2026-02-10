@@ -1,11 +1,11 @@
 import 'package:drift/drift.dart';
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/notification_repository.dart';
+import 'package:task_mvp/core/services/reminder_service.dart';
 import '../seed/seed_data.dart';
 import 'i_task_repository.dart';
-import 'package:task_mvp/core/services/reminder_service.dart';
 
-/// ✅ NEW: Data class to hold Task along with its Assignee details
+/// ✅ Data class to hold Task along with its Assignee details
 class TaskWithAssignee {
   final Task task;
   final User? assignee;
@@ -19,6 +19,8 @@ class TaskRepository implements ITaskRepository {
   final ReminderService _reminderService;
 
   TaskRepository(this._db, this._notificationRepo, this._reminderService);
+
+  // ================= CREATE =================
 
   @override
   Future<int> createTask(TasksCompanion task) async {
@@ -37,24 +39,29 @@ class TaskRepository implements ITaskRepository {
         projectId: task.projectId.value,
       );
 
-      // ✅ FIXED: Using simplified notification method
       await _notificationRepo.addNotification(
         type: 'task',
         title: 'Task Created',
-        body: 'Task "${task.title.value}" created',
+        message: 'Task "${task.title.value}" created',
       );
       
       if (task.assigneeId.present && task.assigneeId.value != null) {
-          await _handleAssignmentTriggers(id, task.title.value, task.assigneeId.value!, task.projectId.value);
+        await _handleAssignmentTriggers(id, task.title.value, task.assigneeId.value!, task.projectId.value);
       }
     }
     return id;
   }
 
+  // ================= READ =================
+
   @override
   Future<List<Task>> getAllTasks() => _db.select(_db.tasks).get();
 
-  /// ✅ FIXED: Join with Users table to provide assignee names to the UI
+  @override
+  Future<Task?> getTaskById(int id) {
+    return (_db.select(_db.tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
   Stream<List<TaskWithAssignee>> watchTasksWithAssignee({
     List<String>? statuses,
     int? priority,
@@ -69,25 +76,12 @@ class TaskRepository implements ITaskRepository {
       leftOuterJoin(_db.users, _db.users.id.equalsExp(_db.tasks.assigneeId)),
     ]);
 
-    if (statuses != null && statuses.isNotEmpty) {
-      query.where(_db.tasks.status.isIn(statuses));
-    }
-    
-    if (priority != null) {
-      query.where(_db.tasks.priority.equals(priority));
-    }
-    
-    if (hasDueDate != null) {
-      query.where(hasDueDate ? _db.tasks.dueDate.isNotNull() : _db.tasks.dueDate.isNull());
-    }
-
-    if (fromDate != null) {
-      query.where(_db.tasks.dueDate.isBiggerOrEqualValue(fromDate));
-    }
-    if (toDate != null) {
-      query.where(_db.tasks.dueDate.isSmallerOrEqualValue(toDate));
-    }
-    
+    // Filtering logic
+    if (statuses != null && statuses.isNotEmpty) query.where(_db.tasks.status.isIn(statuses));
+    if (priority != null) query.where(_db.tasks.priority.equals(priority));
+    if (hasDueDate != null) query.where(hasDueDate ? _db.tasks.dueDate.isNotNull() : _db.tasks.dueDate.isNull());
+    if (fromDate != null) query.where(_db.tasks.dueDate.isBiggerOrEqualValue(fromDate));
+    if (toDate != null) query.where(_db.tasks.dueDate.isSmallerOrEqualValue(toDate));
     if (tagId != null) query.where(_db.tasks.tagId.equals(tagId));
     if (projectId != null) query.where(_db.tasks.projectId.equals(projectId));
 
@@ -99,14 +93,10 @@ class TaskRepository implements ITaskRepository {
       },
     ]);
 
-    return query.watch().map((rows) {
-      return rows.map((row) {
-        return TaskWithAssignee(
-          task: row.readTable(_db.tasks),
-          assignee: row.readTableOrNull(_db.users),
-        );
-      }).toList();
-    });
+    return query.watch().map((rows) => rows.map((row) => TaskWithAssignee(
+      task: row.readTable(_db.tasks),
+      assignee: row.readTableOrNull(_db.users),
+    )).toList());
   }
 
   @override
@@ -121,26 +111,11 @@ class TaskRepository implements ITaskRepository {
     String sortBy = 'updated_at_desc',
   }) {
     final query = _db.select(_db.tasks);
-
-    if (statuses != null && statuses.isNotEmpty) {
-      query.where((t) => t.status.isIn(statuses));
-    }
-    
-    if (priority != null) {
-      query.where((t) => t.priority.equals(priority));
-    }
-    
-    if (hasDueDate != null) {
-      query.where((t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull());
-    }
-
-    if (fromDate != null) {
-      query.where((t) => t.dueDate.isBiggerOrEqualValue(fromDate));
-    }
-    if (toDate != null) {
-      query.where((t) => t.dueDate.isSmallerOrEqualValue(toDate));
-    }
-    
+    if (statuses != null && statuses.isNotEmpty) query.where((t) => t.status.isIn(statuses));
+    if (priority != null) query.where((t) => t.priority.equals(priority));
+    if (hasDueDate != null) query.where((t) => hasDueDate ? t.dueDate.isNotNull() : t.dueDate.isNull());
+    if (fromDate != null) query.where((t) => t.dueDate.isBiggerOrEqualValue(fromDate));
+    if (toDate != null) query.where((t) => t.dueDate.isSmallerOrEqualValue(toDate));
     if (tagId != null) query.where((t) => t.tagId.equals(tagId));
     if (projectId != null) query.where((t) => t.projectId.equals(projectId));
 
@@ -151,23 +126,10 @@ class TaskRepository implements ITaskRepository {
         _ => (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
       },
     ]);
-
     return query.watch();
   }
 
-  @override
-  Future<Task?> getTaskById(int id) {
-    return (_db.select(_db.tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
-  }
-
-  @override
-  Future<List<Task>> fetchUpcomingReminders(DateTime from, DateTime to) {
-    return (_db.select(_db.tasks)
-          ..where((t) => t.reminderEnabled.equals(true))
-          ..where((t) => t.reminderAt.isBetweenValues(from, to))
-          ..where((t) => t.status.isNotValue('done')))
-        .get();
-  }
+  // ================= UPDATE =================
 
   @override
   Future<bool> updateTask(Task task) async {
@@ -175,17 +137,10 @@ class TaskRepository implements ITaskRepository {
     if (old == null) return false;
 
     final isDone = task.status?.toLowerCase() == 'done';
-
-    if (isDone) {
-      await _reminderService.cancel(task.id);
-    }
-    
-    if (task.reminderEnabled == true && !isDone) {
-      await _reminderService.schedule(task);
-    }
+    if (isDone) await _reminderService.cancel(task.id);
+    if (task.reminderEnabled == true && !isDone) await _reminderService.schedule(task);
 
     final assigneeChanged = task.assigneeId != old.assigneeId;
-
     final now = DateTime.now();
     final updated = task.copyWith(
       updatedAt: Value(now),
@@ -202,34 +157,26 @@ class TaskRepository implements ITaskRepository {
           await _logActivity('unassigned', 'Task "${task.title}" unassigned', taskId: task.id, projectId: task.projectId);
         }
       }
-
       await _logActivity('edited', 'Task updated', taskId: task.id, projectId: task.projectId);
-      
-      // ✅ FIXED: Using simplified notification method
       await _notificationRepo.addNotification(
         type: 'task',
         title: 'Task Updated',
-        body: 'Task "${task.title}" updated',
+        message: 'Task "${task.title}" updated',
       );
     }
     return ok;
   }
 
   Future<void> _handleAssignmentTriggers(int taskId, String title, int assigneeId, int? projectId) async {
-    await _logActivity(
-      'assigned',
-      'Task "$title" assigned to user $assigneeId',
-      taskId: taskId,
-      projectId: projectId,
-    );
-
-    // ✅ FIXED: Using simplified notification method
+    await _logActivity('assigned', 'Task "$title" assigned to user $assigneeId', taskId: taskId, projectId: projectId);
     await _notificationRepo.addNotification(
       type: 'assignment',
       title: 'New Task Assigned',
-      body: 'You have been assigned to: $title',
+      message: 'You have been assigned to: $title',
     );
   }
+
+  // ================= DELETE =================
 
   @override
   Future<int> deleteTask(int id) async {
@@ -238,33 +185,42 @@ class TaskRepository implements ITaskRepository {
   }
 
   @override
-  Future<int> deleteAllTasks() async {
-    return _db.delete(_db.tasks).go();
-  }
+  Future<int> deleteAllTasks() => _db.delete(_db.tasks).go();
+
+  // ================= EXTRA =================
 
   @override
   Future<void> seedDatabase() => SeedData(_db).seed();
 
   @override
-  Future<int> getDatabaseVersion() => _db.getDatabaseVersion();
+  Future<List<Task>> fetchUpcomingReminders(DateTime from, DateTime to) {
+    return (_db.select(_db.tasks)
+      ..where((t) => t.reminderEnabled.equals(true))
+      ..where((t) => t.reminderAt.isBetweenValues(from, to))
+      ..where((t) => t.status.isNotValue('done')))
+      .get();
+  }
 
   @override
   Future<List<ActivityLog>> getRecentActivity() {
     return (_db.select(_db.activityLogs)
-          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)])
-          ..limit(20))
-        .get();
+      ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)])
+      ..limit(20))
+      .get();
   }
 
+  @override
+  Future<int> getDatabaseVersion() async => _db.schemaVersion;
+
+  // ================= PRIVATE =================
+
   Future<void> _logActivity(String action, String description, {int? taskId, int? projectId}) async {
-    await _db.into(_db.activityLogs).insert(
-          ActivityLogsCompanion.insert(
-            action: action,
-            description: Value(description),
-            taskId: Value(taskId),
-            projectId: Value(projectId),
-            timestamp: Value(DateTime.now()),
-          ),
-        );
+    await _db.into(_db.activityLogs).insert(ActivityLogsCompanion.insert(
+      action: action,
+      description: Value(description),
+      taskId: Value(taskId),
+      projectId: Value(projectId),
+      timestamp: Value(DateTime.now()),
+    ));
   }
 }

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column; 
 import 'package:task_mvp/core/providers/task_providers.dart';
 import 'package:task_mvp/data/database/database.dart' as db;
-
+import 'package:task_mvp/core/providers/database_provider.dart';
 class RecentActivitySection extends ConsumerWidget {
   const RecentActivitySection({super.key});
 

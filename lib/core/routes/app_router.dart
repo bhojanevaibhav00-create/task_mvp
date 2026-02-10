@@ -1,29 +1,29 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../constants/app_routes.dart';
 
-// Auth Screens
+// AUTH
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 
-// Dashboard & Tasks
+// DASHBOARD
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+
+// TASKS
 import '../../features/tasks/presentation/task_list_screen.dart';
 import '../../features/tasks/presentation/task_create_edit_screen.dart';
 
-// Notifications
-import '../../features/notifications/presentation/notification_screen.dart';
-
-// Project Screens (Sprint 7)
+// PROJECTS
 import '../../features/projects/presentation/screens/project_detail_screen.dart';
+import '../../features/projects/presentation/screens/create_project_screen.dart';
 
-// Other Screens
-import '../../features/demo/presentation/demo_screen.dart';
-import '../../features/test/presentation/test_screen.dart';
+// OTHER
+import '../../features/notifications/presentation/notification_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: AppRoutes.login,
   routes: [
-    // ================= AUTH =================
+    /// ================= AUTH =================
     GoRoute(
       path: AppRoutes.login,
       builder: (context, state) => const LoginScreen(),
@@ -33,81 +33,70 @@ final appRouter = GoRouter(
       builder: (context, state) => const RegisterScreen(),
     ),
 
-    // ================= DASHBOARD =================
+    /// ================= DASHBOARD =================
     GoRoute(
       path: AppRoutes.dashboard,
       builder: (context, state) => const DashboardScreen(),
     ),
 
-    // ================= PROJECTS (Sprint 7) =================
+    /// ================= PROJECTS =================
+    GoRoute(
+      path: AppRoutes.createProject,
+      builder: (context, state) => const CreateProjectScreen(),
+    ),
     GoRoute(
       path: '/projects/:projectId',
       builder: (context, state) {
-        final projectId = int.parse(state.pathParameters['projectId']!);
+        final projectIdStr = state.pathParameters['projectId'];
+        final projectId = int.tryParse(projectIdStr ?? '');
+        if (projectId == null) {
+          return const Scaffold(body: Center(child: Text('Invalid Project ID')));
+        }
         return ProjectDetailScreen(projectId: projectId);
       },
     ),
 
-    // ================= TASKS =================
-    
-    // 1. Task List Screen
+    /// ================= TASKS =================
+    // 1. Task List
     GoRoute(
-      path: AppRoutes.tasks, 
+      path: AppRoutes.tasks,
       builder: (context, state) => const TaskListScreen(),
     ),
 
-    // 2. Create Task Route (Handles both /new and /create)
-    // IMPORTANT: This must be defined BEFORE the dynamic :taskId route
+    // 2. Create Task (Static routes must come before dynamic /:taskId)
     GoRoute(
-      path: '/tasks/create', // ✅ Added to fix the 'create' FormatException
+      path: '/tasks/create',
       builder: (context, state) {
-        final projectIdStr = state.uri.queryParameters['projectId'];
-        return TaskCreateEditScreen(
-          projectId: projectIdStr != null ? int.tryParse(projectIdStr) : null,
-        );
+        final pId = state.uri.queryParameters['projectId'];
+        return TaskCreateEditScreen(projectId: pId != null ? int.tryParse(pId) : null);
+      },
+    ),
+    GoRoute(
+      path: '/tasks/new',
+      builder: (context, state) {
+        final pId = state.uri.queryParameters['projectId'];
+        return TaskCreateEditScreen(projectId: pId != null ? int.tryParse(pId) : null);
       },
     ),
 
+    // 3. Edit/Detail Task (Dynamic)
     GoRoute(
-      path: '/tasks/new', 
-      builder: (context, state) {
-        final projectIdStr = state.uri.queryParameters['projectId'];
-        return TaskCreateEditScreen(
-          projectId: projectIdStr != null ? int.tryParse(projectIdStr) : null,
-        );
-      },
-    ),
-
-    // 3. Edit Existing Task (Dynamic Route)
-    GoRoute(
-      path: '/tasks/:taskId', 
+      path: '/tasks/:taskId',
       builder: (context, state) {
         final taskIdStr = state.pathParameters['taskId'];
-        
-        // Safety check to ensure strings aren't parsed as integers
+        // Guard against parsing 'new' or 'create' as an ID
         if (taskIdStr == 'new' || taskIdStr == 'create') {
-           return const TaskCreateEditScreen();
+          return const TaskCreateEditScreen();
         }
-        
-        final taskId = int.parse(taskIdStr!);
-        return TaskCreateEditScreen(taskId: taskId); 
+        final taskId = int.tryParse(taskIdStr ?? '');
+        return TaskCreateEditScreen(taskId: taskId);
       },
     ),
 
-    // ================= NOTIFICATIONS =================
+    /// ================= NOTIFICATIONS =================
     GoRoute(
       path: AppRoutes.notifications,
       builder: (context, state) => const NotificationScreen(),
-    ),
-
-    // ================= DEMO / TEST =================
-    GoRoute(
-      path: AppRoutes.demo,
-      builder: (context, state) => const DemoScreen(title: 'Demo Home Page'),
-    ),
-    GoRoute(
-      path: AppRoutes.test,
-      builder: (context, state) => const TestScreen(),
     ),
   ],
 );

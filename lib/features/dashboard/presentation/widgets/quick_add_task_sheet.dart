@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
-// Ensure these paths match your project structure exactly
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/providers/task_providers.dart'; 
+import '../../../../core/providers/task_providers.dart';
+import '../../../../core/providers/project_providers.dart';
 import '../../../../data/database/database.dart';
 import '../../../../data/models/enums.dart';
+import '../../../../core/providers/database_provider.dart';
 
 class QuickAddTaskSheet extends ConsumerStatefulWidget {
   const QuickAddTaskSheet({super.key});
@@ -18,7 +19,8 @@ class QuickAddTaskSheet extends ConsumerStatefulWidget {
 class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   final _controller = TextEditingController();
   int _selectedPriority = 2; // Default: Medium (2)
-  DateTime? _selectedDate; // ✅ FIXED: Added state for Due Date
+  DateTime? _selectedDate;
+  int? _selectedProjectId;
 
   @override
   void dispose() {
@@ -28,10 +30,10 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FORCED PREMIUM WHITE THEME: Matches Dashboard style
     const backgroundColor = Colors.white;
     const inputBg = Color(0xFFF8F9FD);
     const primaryText = Color(0xFF1A1C1E);
+    final projectsAsync = ref.watch(allProjectsProvider);
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -55,6 +57,8 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
               ),
             ),
             const SizedBox(height: 24),
+            
+            // --- Title Input ---
             TextField(
               controller: _controller,
               autofocus: true,
@@ -72,14 +76,29 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
               ),
             ),
             const SizedBox(height: 24),
-            
-            // ✅ Date Selection Row
-            _buildDateSelector(primaryText),
+
+            // --- Project Picker (Vaishnavi's P0) ---
+            _buildProjectLabel(),
+            const SizedBox(height: 12),
+            projectsAsync.when(
+              data: (projects) => _buildProjectChips(projects),
+              loading: () => const LinearProgressIndicator(),
+              error: (e, _) => Text('Error: $e'),
+            ),
             const SizedBox(height: 24),
             
-            _buildPrioritySelector(primaryText),
+            // --- Date & Priority Row ---
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildDateSelector()),
+                const SizedBox(width: 16),
+                Expanded(child: _buildPrioritySelector()),
+              ],
+            ),
             const SizedBox(height: 32),
             
+            // --- Action Button ---
             SizedBox(
               width: double.infinity,
               height: 58,
@@ -103,57 +122,48 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
     );
   }
 
-  // ✅ PREMIUM DATE PICKER WIDGET
-  Widget _buildDateSelector(Color textColor) {
+  Widget _buildProjectLabel() => const Text(
+        "SELECT PROJECT", 
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black26, letterSpacing: 1.2),
+      );
+
+  Widget _buildProjectChips(List<Project> projects) {
+    if (projects.isEmpty) return const Text("No projects available", style: TextStyle(color: Colors.black26));
+    return Wrap(
+      spacing: 8,
+      children: projects.map((p) {
+        final selected = _selectedProjectId == p.id;
+        return ChoiceChip(
+          label: Text(p.name),
+          selected: selected,
+          onSelected: (val) => setState(() => _selectedProjectId = val ? p.id : null),
+          selectedColor: AppColors.primary.withOpacity(0.15),
+          labelStyle: TextStyle(
+            color: selected ? AppColors.primary : Colors.black45,
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildDateSelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "DUE DATE", 
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black26, letterSpacing: 1.2),
-        ),
+        const Text("DUE DATE", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black26, letterSpacing: 1.2)),
         const SizedBox(height: 12),
         InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime.now(),
-              lastDate: DateTime(2100),
-              builder: (context, child) => Theme(
-                data: Theme.of(context).copyWith(
-                  colorScheme: const ColorScheme.light(primary: AppColors.primary),
-                ),
-                child: child!,
-              ),
-            );
-            if (picked != null) setState(() => _selectedDate = picked);
-          },
+          onTap: _pickDate,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
-            ),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text(
-                  _selectedDate == null 
-                    ? "No date set" 
-                    : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                ),
-                if (_selectedDate != null) ...[
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => setState(() => _selectedDate = null),
-                    child: const Icon(Icons.close_rounded, size: 16, color: Colors.redAccent),
-                  ),
-                ]
+                Text(_selectedDate == null ? "Set Date" : "${_selectedDate!.day}/${_selectedDate!.month}",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               ],
             ),
           ),
@@ -162,73 +172,52 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
     );
   }
 
-  Widget _buildPrioritySelector(Color textColor) {
+  Widget _buildPrioritySelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "PRIORITY", 
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black26, letterSpacing: 1.2),
-        ),
+        const Text("PRIORITY", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black26, letterSpacing: 1.2)),
         const SizedBox(height: 12),
-        Row(
-          children: [1, 2, 3].map((p) {
-            final isSelected = _selectedPriority == p;
-            final Color priorityColor;
-            final String label;
-
-            switch (p) {
-              case 1: priorityColor = Colors.green; label = "Low"; break;
-              case 3: priorityColor = Colors.red; label = "High"; break;
-              default: priorityColor = Colors.orange; label = "Med";
-            }
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: ChoiceChip(
-                label: Text(label),
-                selected: isSelected,
-                onSelected: (val) => setState(() => _selectedPriority = p),
-                selectedColor: priorityColor.withOpacity(0.15),
-                backgroundColor: Colors.white,
-                side: BorderSide(
-                  color: isSelected ? priorityColor : Colors.black.withOpacity(0.05),
-                  width: 1.5,
-                ),
-                labelStyle: TextStyle(
-                  color: isSelected ? priorityColor : Colors.black45,
-                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                  fontSize: 13,
-                ),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            );
-          }).toList(),
+        DropdownButton<int>(
+          value: _selectedPriority,
+          isExpanded: true,
+          underline: const SizedBox(),
+          items: const [
+            DropdownMenuItem(value: 1, child: Text("Low")),
+            DropdownMenuItem(value: 2, child: Text("Med")),
+            DropdownMenuItem(value: 3, child: Text("High")),
+          ],
+          onChanged: (val) => setState(() => _selectedPriority = val!),
         ),
       ],
     );
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
   Future<void> _handleAddTask(WidgetRef ref) async {
     final title = _controller.text.trim();
     if (title.isEmpty) return;
+    
+    final db = ref.read(databaseProvider);
+    await db.into(db.tasks).insert(TasksCompanion.insert(
+      title: title,
+      priority: drift.Value(_selectedPriority),
+      dueDate: drift.Value(_selectedDate),
+      projectId: drift.Value(_selectedProjectId),
+      status: drift.Value(TaskStatus.todo.name),
+      createdAt: drift.Value(DateTime.now()),
+    ));
 
-    try {
-      final db = ref.read(databaseProvider);
-      
-      await db.into(db.tasks).insert(TasksCompanion.insert(
-        title: title,
-        priority: drift.Value(_selectedPriority),
-        dueDate: drift.Value(_selectedDate), // ✅ SAVING: Actual date now persisted
-        status: drift.Value(TaskStatus.todo.name),
-        createdAt: drift.Value(DateTime.now()),
-        updatedAt: drift.Value(DateTime.now()),
-      ));
-
-      ref.invalidate(tasksProvider);
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      debugPrint("Error adding task: $e");
-    }
+    ref.invalidate(tasksProvider);
+    if (mounted) Navigator.pop(context);
   }
 }

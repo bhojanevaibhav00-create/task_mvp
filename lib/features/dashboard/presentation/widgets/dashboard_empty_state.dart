@@ -2,24 +2,37 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class DashboardEmptyState extends StatelessWidget {
-  const DashboardEmptyState({super.key});
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback? onAction;
+
+  const DashboardEmptyState({
+    super.key,
+    this.title = 'No tasks yet',
+    this.subtitle = 'Your list is clear. Create your first task to get started on your goals.',
+    this.icon = Icons.assignment_add,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FORCED PREMIUM WHITE THEME CONSTANTS
-    const primaryTextColor = Color(0xFF1A1C1E); // Slate 900
-    const secondaryTextColor = Colors.black38;
+    // ✅ ADAPTIVE THEME CONSTANTS
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF1A1C1E);
+    final secondaryTextColor = isDark ? Colors.white70 : Colors.black38;
+    final cardColor = isDark ? AppColors.cardDark : Colors.white;
 
     return Container(
       padding: const EdgeInsets.all(32),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white, // ✅ Ensuring pure white background
+        color: cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.03)),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.02),
             blurRadius: 20,
             offset: const Offset(0, 10),
           )
@@ -32,28 +45,28 @@ class DashboardEmptyState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.05),
+              color: AppColors.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.assignment_add,
+            child: Icon(
+              icon,
               color: AppColors.primary,
               size: 32,
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'No tasks yet',
+          Text(
+            title,
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w900, // ✅ Matches Dashboard w900 headers
+              fontWeight: FontWeight.w900, // ✅ Matches Dashboard headers
               color: primaryTextColor,
               letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Your list is clear. Create your first task to get started on your goals.',
+          Text(
+            subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: secondaryTextColor,
@@ -61,28 +74,25 @@ class DashboardEmptyState extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 24),
-          
-          // Action Button matching your FAB/Main style
-          ElevatedButton(
-            onPressed: () {
-              // This can be left empty as the FAB handles the sheet, 
-              // or you can call the same _openQuickAdd logic here.
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          if (onAction != null) ...[
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: onAction,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'Add Task',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
-            child: const Text(
-              'Add Task',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
+          ],
         ],
       ),
     );

@@ -14,26 +14,31 @@ import '../widgets/add_member_dialog.dart';
 
 class ProjectMembersScreen extends ConsumerWidget {
   final int projectId;
-  const ProjectMembersScreen({super.key, required this.projectId});
+
+  const ProjectMembersScreen({
+    super.key,
+    required this.projectId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 🚀 Watching the provider for real-time member updates
     final membersAsync = ref.watch(projectMembersProvider(projectId));
-    const darkText = Color(0xFF111827); // High contrast slate dark
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final darkText = isDark ? Colors.white : const Color(0xFF111827);
 
     return Scaffold(
-      // ✅ FORCED PREMIUM WHITE THEME
-      backgroundColor: const Color(0xFFF8F9FD),
+      // ✅ ADAPTIVE PREMIUM THEME
+      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Project Members",
           style: TextStyle(fontWeight: FontWeight.w900, color: darkText),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         elevation: 0,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: darkText),
+        iconTheme: IconThemeData(color: darkText),
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
@@ -43,14 +48,14 @@ class ProjectMembersScreen extends ConsumerWidget {
       body: membersAsync.when(
         data: (List<MemberWithUser> membersList) {
           if (membersList.isEmpty) {
-            return _buildEmptyState();
+            return _buildEmptyState(isDark);
           }
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             itemCount: membersList.length,
             itemBuilder: (context, index) {
               final item = membersList[index];
-              return _buildMemberTile(context, ref, item, membersList);
+              return _buildMemberTile(context, ref, item, membersList, isDark);
             },
           );
         },
@@ -77,6 +82,7 @@ class ProjectMembersScreen extends ConsumerWidget {
     WidgetRef ref, 
     MemberWithUser item, 
     List<MemberWithUser> allMembers,
+    bool isDark,
   ) {
     final member = item.member;
     final user = item.user;
@@ -88,7 +94,7 @@ class ProjectMembersScreen extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -114,7 +120,11 @@ class ProjectMembersScreen extends ConsumerWidget {
         ),
         title: Text(
           user.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF111827)),
+          style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            fontSize: 16, 
+            color: isDark ? Colors.white : const Color(0xFF111827)
+          ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -125,7 +135,7 @@ class ProjectMembersScreen extends ConsumerWidget {
         trailing: IconButton(
           icon: Icon(
             Icons.person_remove_rounded,
-            color: isLastOwner ? Colors.grey.shade200 : Colors.redAccent.withOpacity(0.7),
+            color: isLastOwner ? Colors.grey.shade400 : Colors.redAccent.withOpacity(0.7),
           ),
           onPressed: () {
             if (isLastOwner) {
@@ -162,19 +172,22 @@ class ProjectMembersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isDark) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.group_outlined, size: 80, color: Colors.grey.shade200),
+          Icon(Icons.group_outlined, size: 80, color: isDark ? Colors.white12 : Colors.grey.shade200),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "Team is Empty", 
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.grey),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey),
           ),
           const SizedBox(height: 8),
-          const Text("Invite members to collaborate.", style: TextStyle(color: Colors.black26)),
+          Text(
+            "Invite members to collaborate.", 
+            style: TextStyle(color: isDark ? Colors.white24 : Colors.black26),
+          ),
         ],
       ),
     );
@@ -184,7 +197,7 @@ class ProjectMembersScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.cardDark : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text("Remove Member?", style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text("Are you sure you want to remove ${item.user.name} from this project?"),
@@ -197,6 +210,7 @@ class ProjectMembersScreen extends ConsumerWidget {
                 item.member.userId, 
                 allMembers,
               );
+              // Refreshing the provider to update the UI
               ref.invalidate(projectMembersProvider(projectId));
               if (context.mounted) Navigator.pop(context);
             },
