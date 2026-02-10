@@ -2,13 +2,23 @@
 
 ---
 
+## Demo Script Flow (current)
+
+- **Login**: Enter user ID and password.
+- **Dashboard**: View overview stats. In "Recent Tasks", tap the filter icon and apply a filter by **Status** and **Priority**.
+- **Add Task**: Use the quick action, fill in the details (Title, Priority, Due Date), and save.
+- **My Tasks**: Navigate to the "My Tasks" screen and use the search bar to find the newly created task.
+- **Notifications**: Tap the bell icon to view alerts for the new task.
+
+---
+
 ## Migration & Upgrade Safety
 
 ### 1. Schema Versioning Strategy
 
 The database schema is versioned using the `schemaVersion` getter in `AppDatabase` (`lib/data/database/database.dart`).
 
-- **Current Version**: 8
+- **Current Version**: 10
 - **Rule**: Every time a table structure changes (new column, new table), increment this version number by 1.
 
 ### 2. Handling Upgrades (Migration Strategy)
@@ -18,9 +28,10 @@ We use Drift's `MigrationStrategy` to handle upgrades safely without data loss.
 - **Logic**: The `onUpgrade` callback receives the `from` (old) and `to` (new) version.
 - **Implementation**: We check the `from` version and apply changes incrementally.
   ```dart
-  if (from < 8) {
-    // Apply changes introduced in version 8
-    // Example: await m.addColumn(tasks, tasks.newColumn);
+  if (from < 10) {
+    // Apply changes introduced in version 10
+    // Example: Create unique index for tags
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_label_nocase ON tags(label COLLATE NOCASE);');
   }
   ```
 - **Version 8 Update**:
@@ -56,7 +67,7 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `reminderAt`: DateTime (Nullable)
 - `reminderEnabled`: Boolean (Default: False)
 - `priority`: Integer (Nullable) - 1 (Low), 2 (Medium), 3 (High)
-- `projectId`: Integer (Nullable) - Foreign Key to Projects
+- `projectId`: Integer (Nullable) - Foreign Key to Projects (Cascade Delete)
 - `tagId`: Integer (Nullable) - Foreign Key to Tags
 - `createdAt`: DateTime (Default: Now)
 - `updatedAt`: DateTime (Nullable)
@@ -81,7 +92,7 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 **4. Tags**
 
 - `id`: Integer (Primary Key, Auto Increment)
-- `label`: Text (1-30 chars)
+- `label`: Text (1-30 chars, Unique Case-Insensitive)
 - `colorHex`: Integer
 
 **5. ActivityLogs**
@@ -89,8 +100,8 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `id`: Integer (Primary Key, Auto Increment)
 - `action`: Text (e.g., 'created', 'completed')
 - `description`: Text (Nullable)
-- `taskId`: Integer (Nullable)
-- `projectId`: Integer (Nullable)
+- `taskId`: Integer (Nullable) - Foreign Key to Tasks (Cascade Delete)
+- `projectId`: Integer (Nullable) - Foreign Key to Projects (Cascade Delete)
 - `timestamp`: DateTime (Default: Now)
 
 **6. Notifications**
@@ -99,15 +110,15 @@ The application uses `drift` for the local SQLite database. Below is the schema 
 - `type`: Text (e.g., 'reminder', 'system')
 - `title`: Text
 - `message`: Text
-- `taskId`: Integer (Nullable) - Foreign Key to Tasks
-- `projectId`: Integer (Nullable) - Foreign Key to Projects
+- `taskId`: Integer (Nullable) - Foreign Key to Tasks (Cascade Delete)
+- `projectId`: Integer (Nullable) - Foreign Key to Projects (Cascade Delete)
 - `createdAt`: DateTime (Default: Now)
 - `isRead`: Boolean (Default: False)
 
 **7. ProjectMembers**
 
-- `projectId`: Integer (Foreign Key to Projects)
-- `userId`: Integer (Foreign Key to Users)
+- `projectId`: Integer (Foreign Key to Projects, Cascade Delete)
+- `userId`: Integer (Foreign Key to Users, Cascade Delete)
 - `role`: Text (e.g., 'admin', 'member')
 - `joinedAt`: DateTime (Default: Now)
 - Primary Key: (projectId, userId)
@@ -151,6 +162,24 @@ Manages project membership, task assignments, and user collaboration safety.
   - **`getUserById`**: Fetches user details.
   - **`searchUsers`**: Finds users by name for invitations.
 
+### AnalyticsRepository (`lib/data/repositories/analytics_repository.dart`)
+
+Provides data for the "Insights" screen to visualize productivity.
+
+- **`getDashboardStats`**: Aggregates high-level metrics:
+  - Overdue count, Completion rate, Weekly created vs completed.
+- **`getMemberStats`**: Calculates per-user performance:
+  - Tasks assigned vs completed.
+  - Supports filtering by project.
+
+### ExportRepository (`lib/data/repositories/export_repository.dart`)
+
+Handles data export and sharing.
+
+- **`exportProjectTasks(projectId)`**:
+  - Generates a CSV file containing task details (Title, Status, Priority, Due Date, Assignee).
+  - Uses `share_plus` to prompt the user to save or share the file locally.
+
 ---
 
 ### Run Code Generation
@@ -175,6 +204,7 @@ lib/data/
 │   ├── project_model.dart
 │   ├── tag_model.dart
 │   ├── task_extensions.dart
+│   ├── analytics_models.dart
 │   ├── task_filters.dart
 │   ├── task_model.dart
 │   └── user_model.dart
@@ -183,9 +213,11 @@ lib/data/
 │   ├── i_task_repository.dart
 │   ├── project_repository.dart
 │   ├── collaboration_repository.dart
+│   ├── analytics_repository.dart
+│   ├── export_repository.dart
 │   └── task_repository.dart
 ├── seed/
-│   └── seed_data.dart
+    └── seed_data.dart
 ```
 
 ---
@@ -249,6 +281,82 @@ The repository pattern is used to abstract the data source (Drift Database).
 
 ---
 
+## Helper Methods & Utilities Reference
+
+This section provides a comprehensive guide to the helper methods and utilities available in the project, categorized by their domain. These methods abstract complex logic, ensuring the UI remains clean and declarative.
+
+### 1. Repository Helpers (Data Aggregation)
+
+These methods perform complex database queries or aggregations to prepare data for the UI.
+
+#### `ProjectRepository.watchProjectStatistics`
+
+- **Location**: `lib/data/repositories/project_repository.dart`
+- **Usage**: `StreamBuilder(stream: projectRepo.watchProjectStatistics(), ...)`
+- **Purpose**: Real-time dashboard metrics.
+- **Logic**: Joins `Projects` and `Tasks`. Calculates:
+  - `progress`: (Completed Tasks / Total Tasks).
+  - `overdueTasks`: Tasks where `dueDate < now` AND `status != done`.
+  - `upcomingTasks`: Tasks where `dueDate > now`.
+
+#### `CollaborationRepository.listAvailableUsersNotInProject`
+
+- **Location**: `lib/data/repositories/collaboration_repository.dart`
+- **Usage**: Populating the "Add Member" dialog.
+- **Purpose**: Prevents duplicate memberships.
+- **Logic**: `SELECT * FROM users WHERE id NOT IN (SELECT userId FROM project_members WHERE projectId = ?)`.
+
+#### `TaskRepository.getRecentActivity`
+
+- **Location**: `lib/data/repositories/task_repository.dart`
+- **Usage**: Home screen "Recent Activity" feed.
+- **Purpose**: Audit trail visualization.
+- **Logic**: Returns the latest 20 `ActivityLogs` entries, sorted by time descending.
+
+#### `CollaborationRepository.searchUsers`
+
+- **Location**: `lib/data/repositories/collaboration_repository.dart`
+- **Usage**: User search autocomplete.
+- **Logic**: SQL `LIKE %query%` on the user name field.
+
+### 2. Domain Logic Helpers (Extensions & Filters)
+
+These helpers reside in the `models` folder and handle business rules.
+
+#### `TaskFilters.apply`
+
+- **Location**: `lib/data/models/task_filters.dart`
+- **Usage**: `final visibleTasks = TaskFilters.apply(allTasks, query: 'bug', status: ...);`
+- **Purpose**: Centralized filtering logic for search bars and sidebars.
+- **Logic**:
+  - Checks text match in `title` or `description`.
+  - Checks date ranges (e.g., `isToday`, `isOverdue`).
+  - Filters by `Priority` and `Tag`.
+
+#### `TaskStatus.next` (Extension)
+
+- **Location**: `lib/data/models/task_extensions.dart`
+- **Usage**: `task.status.next()` inside a button callback.
+- **Purpose**: Enforces the workflow state machine.
+- **Logic**: `todo` → `inProgress` → `review` → `done`.
+
+#### `TaskStatus.label` / `ProjectRole.label` (Extension)
+
+- **Location**: `lib/data/models/task_extensions.dart` / `project_role.dart`
+- **Usage**: `Text(task.status.label)`
+- **Purpose**: Converts internal enum names (camelCase) to user-friendly display strings (Title Case).
+
+### 3. Development Helpers
+
+#### `SeedData.seed`
+
+- **Location**: `lib/data/seed/seed_data.dart`
+- **Usage**: Triggered by "Seed Database" button in Settings/DevTools.
+- **Purpose**: Rapidly populates the app with realistic test data.
+- **Logic**: Idempotent insert (checks for existence before adding) to prevent duplicates.
+
+---
+
 ## Testing & Validation Notes
 
 ### Edge Case Validation
@@ -287,24 +395,28 @@ We used the `SeedData` utility (`lib/data/seed/seed_data.dart`) to generate a co
 
 ---
 
-## Recent Updates (v8)
+## Recent Updates (v10)
 
-### Database Migration & Integrity
+### Productivity Analytics
 
-- **Migration Path Validated**:
-  - Conducted a full review of the database migration path from the initial version up to the current version 8.
-  - Corrected a critical bug in the migration script for the `ActivityLogs` table that would have caused errors for users upgrading from versions prior to 7.
+- Added `AnalyticsRepository` to fetch insights.
+- Implemented "Insights" screen with:
+  - Overdue task counts.
+  - Weekly completion trends.
+  - Team performance metrics.
 
-- **Schema Version Bumped to 8**:
-  - The database schema version has been incremented to `8`.
-  - This acts as a maintenance release to ensure schema integrity and consistency for all users, preventing potential crashes related to inconsistent database states during development.
+### Data Integrity Hardening (v10)
 
-- **Documentation Updated**:
-  - The `README.md` has been updated to reflect the new version and the corrected migration logic.
-  - The "Developer Clean Reset" steps have been re-validated and remain the recommended approach for resolving local development schema issues.
+- **Schema Version Bumped to 10**:
+  - **Tags**: Enforced case-insensitive uniqueness on tag labels to prevent duplicates (e.g., "Bug" vs "bug").
+  - **Cascading Deletes**: Configured foreign keys to automatically clean up related data when a project or task is deleted.
+    - Deleting a **Project** now deletes its Tasks, Members, Activity Logs, and Notifications.
+    - Deleting a **Task** now deletes its Activity Logs and Notifications.
+  - **Migration**: Added a manual index creation step for existing databases to enforce the tag uniqueness constraint.
 
-- **Collaboration Enhancements**:
-  - Added helper methods to `CollaborationRepository` to support UI workflows:
-    - `listAvailableUsersNotInProject(projectId)`: Efficiently filters users not yet in a project.
-    - `getUserById(userId)`: Fetches individual user details.
-    - `searchUsers(query)`: Allows searching users by name for invitations.
+### Export Feature
+
+- **CSV Export**: Added ability to export project tasks to CSV.
+- **Fields Included**: Title, Status, Priority, Due Date, Assignee, Created/Updated timestamps.
+
+---

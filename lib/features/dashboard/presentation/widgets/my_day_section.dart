@@ -4,15 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/database/database.dart' as db;
 // Ensure this path matches your file structure
 import '../../../../core/providers/task_providers.dart';
+import '../../../../data/repositories/task_repository.dart'; // ✅ Added for TaskWithAssignee type
 
 class MyDaySection extends ConsumerWidget {
   const MyDaySection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 🚀 FIXED: Changed 'tasksProvider' to 'filteredTasksProvider'
-    // 'filteredTasksProvider' is a StreamProvider which returns AsyncValue
-    final AsyncValue<List<db.Task>> tasksAsync = ref.watch(filteredTasksProvider);
+    // 🚀 FIXED: Type changed from List<db.Task> to List<TaskWithAssignee>
+    final AsyncValue<List<TaskWithAssignee>> tasksAsync = ref.watch(filteredTasksProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -27,16 +27,16 @@ class MyDaySection extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         
-        // 🚀 Now .when() will work perfectly because filteredTasksProvider is a Stream
         tasksAsync.when(
-          data: (tasks) {
+          data: (wrappers) {
             final now = DateTime.now();
             final today = DateTime(now.year, now.month, now.day);
             
-            // Filter: Task is due today or before today (overdue)
-            final todayTasks = tasks.where((task) {
-              if (task.dueDate == null) return false;
-              return task.dueDate!.isBefore(today.add(const Duration(days: 1)));
+            // ✅ Logic updated to access task inside the wrapper
+            final todayTasks = wrappers.where((w) {
+              if (w.task.dueDate == null) return false;
+              // Today or Overdue
+              return w.task.dueDate!.isBefore(today.add(const Duration(days: 1)));
             }).toList();
 
             if (todayTasks.isEmpty) {
@@ -48,10 +48,15 @@ class MyDaySection extends ConsumerWidget {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: todayTasks.length,
               itemBuilder: (context, index) {
-                final task = todayTasks[index];
-                final isOverdue = task.dueDate != null && task.dueDate!.isBefore(today);
+                final wrapper = todayTasks[index];
+                final isOverdue = wrapper.task.dueDate != null && wrapper.task.dueDate!.isBefore(today);
                 
-                return _TaskTile(task: task, isOverdue: isOverdue);
+                // ✅ Pass both the task and the member name for a better UI
+                return _TaskTile(
+                  task: wrapper.task, 
+                  assigneeName: wrapper.assignee?.name,
+                  isOverdue: isOverdue,
+                );
               },
             );
           },
@@ -90,9 +95,10 @@ class MyDaySection extends ConsumerWidget {
 
 class _TaskTile extends StatelessWidget {
   final db.Task task;
+  final String? assigneeName; // ✅ Added assignee name
   final bool isOverdue;
 
-  const _TaskTile({required this.task, required this.isOverdue});
+  const _TaskTile({required this.task, this.assigneeName, required this.isOverdue});
 
   @override
   Widget build(BuildContext context) {
@@ -122,9 +128,20 @@ class _TaskTile extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              task.title,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+                // ✅ Show assignee name if it exists
+                if (assigneeName != null)
+                  Text(
+                    "Assigned to: $assigneeName",
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                  ),
+              ],
             ),
           ),
           if (isOverdue)

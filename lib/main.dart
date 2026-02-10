@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart'; 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
@@ -6,47 +6,63 @@ import 'app.dart';
 import 'core/providers/task_providers.dart';
 import 'data/database/database.dart' as db;
 import 'package:task_mvp/core/providers/database_provider.dart';
-// 🚀 पायरी १: नवीन टेस्ट युजर्स ॲड करण्यासाठी 'Seed' फंक्शन अपडेट करा
+
+// 🚀 Database Seeding logic (Sprint 8 Integrated)
 Future<void> seedProjectData(db.AppDatabase database) async {
   try {
     final existingUsers = await database.select(database.users).get();
-    
-    // जर डेटाबेस रिकामा असेल, तरच डेटा ॲड करा
+
     if (existingUsers.isEmpty) {
-      // १. स्वतःला (Vaibhav) मुख्य युजर म्हणून ॲड करा
-      final userId = await database.into(database.users).insert(
-        db.UsersCompanion.insert(
-          name: 'Vaibhav Bhojane', 
-          email: const drift.Value('vaibhav@jbbtechnologies.com'),
-        ),
-      );
+      await database.transaction(() async {
 
-      // २. प्रोजेक्ट आणि ओनरशिप सेट करा
-      await database.into(database.projectMembers).insert(
-        db.ProjectMembersCompanion.insert(
-          projectId: 1,
-          userId: userId,
-          role: 'Owner',
-        ),
-      );
+        // ✅ Insert User 1 (Admin)
+        final userId = await database.into(database.users).insert(
+          db.UsersCompanion.insert(
+            name: 'Vaibhav Bhojane',
+            email: 'vaibhav@jbbtechnologies.com',
+            password: 'password123',
+          ),
+        );
 
-      // ३. आजच्या कामासाठी 'Ajinkya' आणि 'Vaishnavi' ला टेस्ट युजर्स म्हणून ॲड करा
-      // यामुळे 'Add Member' डायलॉगमध्ये ही नावे दिसू लागतील
-      await database.into(database.users).insert(
-        db.UsersCompanion.insert(
-          name: 'Ajinkya Ghode', 
-          email: const drift.Value('ajinkya@test.com'),
-        ),
-      );
+        // ✅ Ensure Default Project exists
+        await database.into(database.projects).insert(
+          db.ProjectsCompanion.insert(
+            id: const drift.Value(1),
+            name: 'General Project',
+            color: const drift.Value(0xFF2196F3),
+          ),
+          mode: drift.InsertMode.insertOrIgnore,
+        );
 
-      await database.into(database.users).insert(
-        db.UsersCompanion.insert(
-          name: 'Vaishnavi Mogal', 
-          email: const drift.Value('vaishnavi@test.com'),
-        ),
-      );
+        // ✅ Add Owner relationship
+        await database.into(database.projectMembers).insert(
+          db.ProjectMembersCompanion.insert(
+            projectId: 1,
+            userId: userId,
+            role: 'Owner',
+          ),
+        );
 
-      debugPrint("✅ Database Seeded with Vaibhav, Ajinkya, and Vaishnavi");
+        // ✅ Insert Team User 2
+        await database.into(database.users).insert(
+          db.UsersCompanion.insert(
+            name: 'Ajinkya Ghode',
+            email: 'ajinkya@test.com',
+            password: 'password123',
+          ),
+        );
+
+        // ✅ Insert Team User 3
+        await database.into(database.users).insert(
+          db.UsersCompanion.insert(
+            name: 'Vaishnavi Mogal',
+            email: 'vaishnavi@test.com',
+            password: 'password123',
+          ),
+        );
+      });
+
+      debugPrint("✅ Database Seeded Successfully with Team Users");
     }
   } catch (e) {
     debugPrint("❌ Seed Error: $e");
@@ -59,19 +75,25 @@ void main() {
 
 class AppBootstrap extends ConsumerStatefulWidget {
   const AppBootstrap({super.key});
+
   @override
   ConsumerState<AppBootstrap> createState() => _AppBootstrapState();
 }
 
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
+
   @override
   void initState() {
     super.initState();
-    // 🚀 पायरी २: ॲप सुरू होताना डेटाबेस सीडिंग सुरू करा
+
+    // ⚡ Execute initialization after first frame to prevent blocking UI
     Future.microtask(() async {
       final database = ref.read(databaseProvider);
-      await seedProjectData(database); 
 
+      // Run database migration/seed
+      await seedProjectData(database);
+
+      // Initialize Reminder Services
       final reminder = ref.read(reminderServiceProvider);
       await reminder.init();
       await reminder.requestPermission();
@@ -80,5 +102,7 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   }
 
   @override
-  Widget build(BuildContext context) => const MyApp();
+  Widget build(BuildContext context) {
+    return const MyApp();
+  }
 }

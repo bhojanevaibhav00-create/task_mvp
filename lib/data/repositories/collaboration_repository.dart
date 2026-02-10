@@ -18,69 +18,92 @@ class CollaborationRepository {
 
   CollaborationRepository(this._db, this._notificationRepo);
 
+  /// Fetches raw project member records for a specific project.
   Future<List<ProjectMember>> getProjectMembers(int projectId) async {
-    return (_db.select(
-      _db.projectMembers,
-    )..where((t) => t.projectId.equals(projectId))).get();
+    return (_db.select(_db.projectMembers)
+      ..where((t) => t.projectId.equals(projectId))).get();
   }
 
+  /// Ensures no user is added twice and triggers a notification.
   Future<void> addMember(
     int projectId,
     int userId, {
     ProjectRole role = ProjectRole.member,
   }) async {
-    await _db
-        .into(_db.projectMembers)
-        .insert(
+    // 1. Manual Check to prevent duplicate entries
+    final existing = await (_db.select(_db.projectMembers)
+          ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
+        .getSingleOrNull();
+
+    if (existing != null) return;
+
+    // 2. Insert new member
+    await _db.into(_db.projectMembers).insert(
           ProjectMembersCompanion.insert(
             projectId: projectId,
             userId: userId,
             role: role.name,
             joinedAt: Value(DateTime.now()),
           ),
-          mode: InsertMode.insertOrReplace,
+          mode: InsertMode.insertOrIgnore,
         );
 
+    // 3. Trigger Activity Log
     await _logActivity(
       'member_added',
       'Member $userId added to project as ${role.label}',
       projectId: projectId,
     );
+
+    // 4. ✅ ALIGNED: Uses 'message' and passes projectId context
+    await _notificationRepo.addNotification(
+      type: 'project',
+      title: 'Added to Project',
+      message: 'You have been added to a new project as ${role.label}',
+      projectId: projectId,
+    );
   }
 
-  /// Removes a member from a project.
-  Future<void> removeMember(int projectId, int userId) async {
-    final member =
-        await (_db.select(_db.projectMembers)..where(
-              (t) => t.projectId.equals(projectId) & t.userId.equals(userId),
-            ))
-            .getSingleOrNull();
+  /// Prevents the last owner from being removed.
+  Future<void> removeMember(int projectId, int userId, List<dynamic> allMembers) async {
+    final member = await (_db.select(_db.projectMembers)
+          ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
+        .getSingleOrNull();
 
     if (member == null) return;
 
-    // Constraint: Cannot remove the last owner
-    if (member.role == ProjectRole.owner.name) {
+    // 1. Enforce Role Safety
+    if (member.role.toLowerCase() == 'owner') {
       final ownersCount = await _countOwners(projectId);
       if (ownersCount <= 1) {
         throw Exception(
-          'Cannot remove the only owner of the project. Assign another owner first.',
+          'Role Safety Error: Cannot remove the only owner of the project.',
         );
       }
     }
 
-    await (_db.delete(_db.projectMembers)..where(
-          (t) => t.projectId.equals(projectId) & t.userId.equals(userId),
-        ))
+    // 2. Perform deletion
+    await (_db.delete(_db.projectMembers)
+          ..where((t) => t.projectId.equals(projectId) & t.userId.equals(userId)))
         .go();
 
+    // 3. Trigger Activity Log
     await _logActivity(
       'member_removed',
       'Member $userId removed from project',
       projectId: projectId,
     );
+
+    // 4. ✅ ALIGNED: Uses 'message'
+    await _notificationRepo.addNotification(
+      type: 'project',
+      title: 'Project Membership Updated',
+      message: 'A member has been removed from the project.',
+      projectId: projectId,
+    );
   }
 
-  /// Lists all members associated with a specific project, including user details.
+  /// Relational JOIN to fetch user names alongside membership data.
   Future<List<ProjectMemberWithUser>> listProjectMembers(int projectId) async {
     final query = _db.select(_db.projectMembers).join([
       innerJoin(_db.users, _db.users.id.equalsExp(_db.projectMembers.userId)),
@@ -95,11 +118,11 @@ class CollaborationRepository {
     }).toList();
   }
 
-  /// Assigns a task to a specific user.
+  /// Assigns a task to a user and notifies them.
   Future<void> assignTask(int taskId, int userId) async {
-    final task = await (_db.select(
-      _db.tasks,
-    )..where((t) => t.id.equals(taskId))).getSingleOrNull();
+    final task = await (_db.select(_db.tasks)
+      ..where((t) => t.id.equals(taskId))).getSingleOrNull();
+    
     if (task == null) return;
 
     await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
@@ -113,49 +136,21 @@ class CollaborationRepository {
       projectId: task.projectId,
     );
 
+    // ✅ ALIGNED: Pass taskId for direct navigation
     await _notificationRepo.addNotification(
-      NotificationsCompanion.insert(
-        type: 'assignment',
-        title: 'Task Assigned',
-        message: 'Task "${task.title}" assigned to user $userId',
-        taskId: Value(taskId),
-        projectId: Value(task.projectId),
-      ),
+      type: 'assignment',
+      title: 'Task Assigned',
+      message: 'Task "${task.title}" has been assigned to you.',
+      taskId: taskId,
+      projectId: task.projectId,
     );
   }
 
-  Future<void> updateMemberRole(
-    int projectId,
-    int userId,
-    ProjectRole newRole,
-  ) async {
-    // Constraint: Cannot downgrade the last owner
-    if (newRole != ProjectRole.owner) {
-      final member =
-          await (_db.select(_db.projectMembers)..where(
-                (t) => t.projectId.equals(projectId) & t.userId.equals(userId),
-              ))
-              .getSingleOrNull();
-
-      if (member != null && member.role == ProjectRole.owner.name) {
-        final ownersCount = await _countOwners(projectId);
-        if (ownersCount <= 1) {
-          throw Exception('Cannot downgrade the only owner of the project.');
-        }
-      }
-    }
-
-    await (_db.update(_db.projectMembers)..where(
-          (t) => t.projectId.equals(projectId) & t.userId.equals(userId),
-        ))
-        .write(ProjectMembersCompanion(role: Value(newRole.name)));
-  }
-
-  /// Unassigns a task.
+  /// Unassigns a task and removed the link.
   Future<void> unassignTask(int taskId) async {
-    final task = await (_db.select(
-      _db.tasks,
-    )..where((t) => t.id.equals(taskId))).getSingleOrNull();
+    final task = await (_db.select(_db.tasks)
+      ..where((t) => t.id.equals(taskId))).getSingleOrNull();
+    
     if (task == null) return;
 
     await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
@@ -169,18 +164,17 @@ class CollaborationRepository {
       projectId: task.projectId,
     );
 
+    // ✅ ALIGNED: Pass taskId
     await _notificationRepo.addNotification(
-      NotificationsCompanion.insert(
-        type: 'assignment',
-        title: 'Task Unassigned',
-        message: 'Task "${task.title}" unassigned',
-        taskId: Value(taskId),
-        projectId: Value(task.projectId),
-      ),
+      type: 'assignment',
+      title: 'Task Unassigned',
+      message: 'Task "${task.title}" is no longer assigned to you.',
+      taskId: taskId,
+      projectId: task.projectId,
     );
   }
 
-  /// Lists users who are NOT currently members of the specified project.
+  /// For the "Add Member" dropdown logic.
   Future<List<User>> listAvailableUsersNotInProject(int projectId) {
     final membersSubquery = _db.selectOnly(_db.projectMembers)
       ..addColumns([_db.projectMembers.userId])
@@ -191,27 +185,19 @@ class CollaborationRepository {
         .get();
   }
 
-  /// Fetches a single user by ID.
-  Future<User?> getUserById(int userId) {
-    return (_db.select(_db.users)..where((u) => u.id.equals(userId))).getSingleOrNull();
-  }
-
-  /// Searches for users by name.
-  Future<List<User>> searchUsers(String query) {
-    return (_db.select(_db.users)..where((u) => u.name.contains(query))).get();
-  }
-
   // --- Private Helpers ---
+
   Future<int> _countOwners(int projectId) async {
     final countExp = _db.projectMembers.userId.count();
     final query = _db.selectOnly(_db.projectMembers)
       ..addColumns([countExp])
       ..where(
         _db.projectMembers.projectId.equals(projectId) &
-            _db.projectMembers.role.equals(ProjectRole.owner.name),
+            _db.projectMembers.role.equals('owner'),
       );
 
-    return await query.map((row) => row.read(countExp)).getSingle() ?? 0;
+    final result = await query.map((row) => row.read(countExp)).getSingle();
+    return result ?? 0;
   }
 
   Future<void> _logActivity(
@@ -220,9 +206,7 @@ class CollaborationRepository {
     int? taskId,
     int? projectId,
   }) async {
-    await _db
-        .into(_db.activityLogs)
-        .insert(
+    await _db.into(_db.activityLogs).insert(
           ActivityLogsCompanion.insert(
             action: action,
             description: Value(description),

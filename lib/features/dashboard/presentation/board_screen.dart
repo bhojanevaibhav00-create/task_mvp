@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/database/database.dart' as db;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/task_providers.dart';
+import '../../../../data/repositories/task_repository.dart'; // Added for TaskWithAssignee
 import 'package:task_mvp/features/dashboard/presentation/widgets/board_column.dart';
 
 class BoardScreen extends ConsumerWidget {
@@ -13,7 +14,7 @@ class BoardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 🚀 Watching the live filtered tasks from provider
+    // 🚀 Watching the live filtered tasks from provider (now TaskWithAssignee)
     final tasksAsync = ref.watch(filteredTasksProvider);
 
     return Scaffold(
@@ -26,14 +27,18 @@ class BoardScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
       ),
       body: tasksAsync.when(
-        data: (allTasks) {
-          // Filter tasks belonging to this project and specific status
-          // Note: Backend uses 'todo', 'inProgress', 'done' as Strings
-          final List<db.Task> projectTasks = allTasks.where((t) => t.projectId == project.id).toList();
+        data: (List<TaskWithAssignee> taskWrappers) {
+          // 1. Filter tasks belonging to this specific project
+          final List<db.Task> projectTasks = taskWrappers
+              .where((w) => w.task.projectId == project.id)
+              .map((w) => w.task)
+              .toList();
 
-          final todoTasks = projectTasks.where((t) => t.status == 'todo').toList();
-          final inProgressTasks = projectTasks.where((t) => t.status == 'inProgress').toList();
-          final doneTasks = projectTasks.where((t) => t.status == 'done').toList();
+          // 2. Filter tasks by specific status
+          // Standardized check to match Enum/Database values
+          final todoTasks = projectTasks.where((t) => t.status?.toLowerCase() == 'todo').toList();
+          final inProgressTasks = projectTasks.where((t) => t.status?.toLowerCase() == 'inprogress' || t.status?.toLowerCase() == 'inprogress').toList();
+          final doneTasks = projectTasks.where((t) => t.status?.toLowerCase() == 'done').toList();
 
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -86,7 +91,7 @@ class BoardScreen extends ConsumerWidget {
           Flexible(
             child: BoardColumn(
               title: title, 
-              tasks: tasks, // 🚀 Error gone: Both use db.Task now
+              tasks: tasks, 
             ),
           ),
           const SizedBox(height: 12),
