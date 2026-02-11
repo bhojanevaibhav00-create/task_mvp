@@ -8,10 +8,10 @@ import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 import '../../../core/providers/project_providers.dart';
 
-import '../../tasks/presentation/task_list_screen.dart';
 import 'widgets/dashboard_empty_state.dart';
 import 'widgets/quick_add_task_sheet.dart';
-import 'package:task_mvp/features/dashboard/presentation/settings_screen.dart';
+import 'settings_screen.dart'; // ✅ SETTINGS IMPORT
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -102,11 +102,14 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       actions: [
+        // 🔔 Notifications
         Stack(
           children: [
             IconButton(
-              icon: const Icon(Icons.notifications_none, color: Colors.white),
-              onPressed: () => context.push(AppRoutes.notifications),
+              icon: const Icon(Icons.notifications_none,
+                  color: Colors.white),
+              onPressed: () =>
+                  context.push(AppRoutes.notifications),
             ),
             if (unread > 0)
               Positioned(
@@ -124,6 +127,20 @@ class DashboardScreen extends ConsumerWidget {
               ),
           ],
         ),
+
+        // ⚙️ SETTINGS BUTTON (WORKING)
+        IconButton(
+          icon: const Icon(Icons.settings, color: Colors.white),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SettingsScreen(),
+              ),
+            );
+          },
+        ),
+
         const SizedBox(width: 8),
       ],
     );
@@ -145,13 +162,14 @@ class DashboardScreen extends ConsumerWidget {
   Widget _statsRow(int done, int pending, int total) {
     return Row(
       children: [
-        _statCard('Total', total, Icons.grid_view, AppColors.primaryGradient),
+        _statCard('Total', total, Icons.grid_view,
+            AppColors.primaryGradient),
         const SizedBox(width: 12),
-        _statCard(
-            'Pending', pending, Icons.bolt, AppColors.upcomingGradient),
+        _statCard('Pending', pending, Icons.bolt,
+            AppColors.upcomingGradient),
         const SizedBox(width: 12),
-        _statCard(
-            'Done', done, Icons.done_all, AppColors.completedGradient),
+        _statCard('Done', done, Icons.done_all,
+            AppColors.completedGradient),
       ],
     );
   }
@@ -187,8 +205,8 @@ class DashboardScreen extends ConsumerWidget {
             ),
             Text(
               label,
-              style:
-              const TextStyle(color: Colors.white70, fontSize: 12),
+              style: const TextStyle(
+                  color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
@@ -205,19 +223,13 @@ class DashboardScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           gradient: AppColors.primaryGradient,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, 6),
-            ),
-          ],
         ),
         child: const Center(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.add_circle_outline, color: Colors.white),
+              Icon(Icons.add_circle_outline,
+                  color: Colors.white),
               SizedBox(width: 8),
               Text(
                 'Create New Project',
@@ -242,11 +254,13 @@ class DashboardScreen extends ConsumerWidget {
     return SizedBox(
       height: 140,
       child: projects.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () =>
+        const Center(child: CircularProgressIndicator()),
         error: (e, _) => Text(e.toString()),
         data: (list) {
           if (list.isEmpty) {
-            return const Center(child: Text('No projects yet'));
+            return const Center(
+                child: Text('No projects yet'));
           }
           return ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -258,23 +272,19 @@ class DashboardScreen extends ConsumerWidget {
                     context.push('/projects/${project.id}'),
                 child: Container(
                   width: 170,
-                  margin: const EdgeInsets.only(right: 16),
+                  margin:
+                  const EdgeInsets.only(right: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppColors.cardDark
                         : Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 12,
-                        offset: Offset(0, 6),
-                      ),
-                    ],
+                    borderRadius:
+                    BorderRadius.circular(22),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                    CrossAxisAlignment.start,
                     children: [
                       const Icon(Icons.folder,
                           color: AppColors.primary),
@@ -282,9 +292,11 @@ class DashboardScreen extends ConsumerWidget {
                       Text(
                         project.name,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        overflow:
+                        TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w700),
+                            fontWeight:
+                            FontWeight.w700),
                       ),
                     ],
                   ),
@@ -338,17 +350,21 @@ class DashboardScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:
+          MainAxisAlignment.center,
           children: [
             Icon(icon,
                 size: 18,
-                color: primary ? Colors.white : AppColors.primary),
+                color: primary
+                    ? Colors.white
+                    : AppColors.primary),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color:
-                primary ? Colors.white : AppColors.primary,
+                color: primary
+                    ? Colors.white
+                    : AppColors.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -360,21 +376,26 @@ class DashboardScreen extends ConsumerWidget {
 
   // ================= RECENT TASKS =================
   Widget _recentTasks(List tasks, bool isDark) {
-    if (tasks.isEmpty) return const DashboardEmptyState();
+    if (tasks.isEmpty)
+      return const DashboardEmptyState();
 
     return Column(
       children: tasks.take(5).map((t) {
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin:
+          const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color:
+            isDark ? AppColors.cardDark : Colors.white,
+            borderRadius:
+            BorderRadius.circular(16),
           ),
           child: ListTile(
             title: Text(
               t.title,
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              overflow:
+              TextOverflow.ellipsis,
             ),
           ),
         );
