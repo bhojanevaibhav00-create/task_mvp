@@ -9,13 +9,8 @@ import '../../../core/providers/notification_providers.dart';
 import '../../../core/providers/project_providers.dart';
 
 import 'widgets/dashboard_empty_state.dart';
-<<<<<<< HEAD
 import 'package:task_mvp/features/dashboard/presentation/settings_screen.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/quick_add_task_sheet.dart';
-=======
-import 'widgets/quick_add_task_sheet.dart';
-import 'settings_screen.dart'; // ✅ SETTINGS IMPORT
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -69,7 +64,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 32),
                   _sectionHeader('Recent Tasks', Icons.history_rounded, isDark),
                   const SizedBox(height: 16),
-                  _recentTasks(tasks, isDark, context),
+                  _recentTasks(tasks, isDark),
                 ],
               ),
             ),
@@ -107,7 +102,6 @@ class DashboardScreen extends ConsumerWidget {
                 gradient: AppColors.primaryGradient,
               ),
             ),
-            // Subtle decorative circles for a premium feel
             Positioned(
               top: -50,
               right: -50,
@@ -117,14 +111,11 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       actions: [
-<<<<<<< HEAD
-        // Notification Center
         _appBarAction(
           icon: Icons.notifications_none_rounded,
           count: unread,
           onTap: () => context.push(AppRoutes.notifications),
         ),
-        // Settings Gear
         _appBarAction(
           icon: Icons.settings_outlined,
           onTap: () => Navigator.push(
@@ -133,48 +124,6 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 12),
-=======
-        // 🔔 Notifications
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_none,
-                  color: Colors.white),
-              onPressed: () =>
-                  context.push(AppRoutes.notifications),
-            ),
-            if (unread > 0)
-              Positioned(
-                right: 8,
-                top: 10,
-                child: CircleAvatar(
-                  radius: 8,
-                  backgroundColor: Colors.red,
-                  child: Text(
-                    unread.toString(),
-                    style: const TextStyle(
-                        fontSize: 10, color: Colors.white),
-                  ),
-                ),
-              ),
-          ],
-        ),
-
-        // ⚙️ SETTINGS BUTTON (WORKING)
-        IconButton(
-          icon: const Icon(Icons.settings, color: Colors.white),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const SettingsScreen(),
-              ),
-            );
-          },
-        ),
-
-        const SizedBox(width: 8),
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
       ],
     );
   }
@@ -229,22 +178,11 @@ class DashboardScreen extends ConsumerWidget {
   Widget _statsRow(int done, int pending, int total) {
     return Row(
       children: [
-<<<<<<< HEAD
         _statCard('Total', total, Icons.grid_view_rounded, AppColors.primaryGradient),
         const SizedBox(width: 12),
         _statCard('Pending', pending, Icons.auto_awesome_rounded, AppColors.upcomingGradient),
         const SizedBox(width: 12),
         _statCard('Done', done, Icons.task_alt_rounded, AppColors.completedGradient),
-=======
-        _statCard('Total', total, Icons.grid_view,
-            AppColors.primaryGradient),
-        const SizedBox(width: 12),
-        _statCard('Pending', pending, Icons.bolt,
-            AppColors.upcomingGradient),
-        const SizedBox(width: 12),
-        _statCard('Done', done, Icons.done_all,
-            AppColors.completedGradient),
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
       ],
     );
   }
@@ -279,12 +217,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             Text(
               label,
-<<<<<<< HEAD
               style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.w600),
-=======
-              style: const TextStyle(
-                  color: Colors.white70, fontSize: 12),
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
             ),
           ],
         ),
@@ -302,7 +235,6 @@ class DashboardScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           gradient: AppColors.primaryGradient,
           borderRadius: BorderRadius.circular(16),
-<<<<<<< HEAD
           boxShadow: [
             BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
           ],
@@ -317,25 +249,6 @@ class DashboardScreen extends ConsumerWidget {
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
-=======
-        ),
-        child: const Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_circle_outline,
-                  color: Colors.white),
-              SizedBox(width: 8),
-              Text(
-                'Create New Project',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
         ),
       ),
     );
@@ -346,7 +259,6 @@ class DashboardScreen extends ConsumerWidget {
     return SizedBox(
       height: 150,
       child: projects.when(
-<<<<<<< HEAD
         loading: () => const Center(child: CircularProgressIndicator.adaptive()),
         error: (e, _) => Center(child: Text('Error loading projects', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54))),
         data: (list) {
@@ -360,15 +272,6 @@ class DashboardScreen extends ConsumerWidget {
               ),
               child: Text('No active projects', style: TextStyle(color: isDark ? Colors.white38 : Colors.black38)),
             );
-=======
-        loading: () =>
-        const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Text(e.toString()),
-        data: (list) {
-          if (list.isEmpty) {
-            return const Center(
-                child: Text('No projects yet'));
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
           }
           return ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -376,7 +279,6 @@ class DashboardScreen extends ConsumerWidget {
             itemCount: list.length,
             itemBuilder: (_, i) {
               final project = list[i];
-<<<<<<< HEAD
               return Container(
                 width: 160,
                 margin: const EdgeInsets.only(right: 16, bottom: 8),
@@ -410,40 +312,6 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-=======
-              return GestureDetector(
-                onTap: () =>
-                    context.push('/projects/${project.id}'),
-                child: Container(
-                  width: 170,
-                  margin:
-                  const EdgeInsets.only(right: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.cardDark
-                        : Colors.white,
-                    borderRadius:
-                    BorderRadius.circular(22),
-                  ),
-                  child: Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.folder,
-                          color: AppColors.primary),
-                      const Spacer(),
-                      Text(
-                        project.name,
-                        maxLines: 1,
-                        overflow:
-                        TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight:
-                            FontWeight.w700),
-                      ),
-                    ],
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
                   ),
                 ),
               );
@@ -469,7 +337,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-<<<<<<< HEAD
   Widget _actionButton(String label, IconData icon, VoidCallback onTap, bool isDark, {bool primary = false}) {
     return Material(
       color: Colors.transparent,
@@ -490,41 +357,6 @@ class DashboardScreen extends ConsumerWidget {
               Text(
                 label,
                 style: TextStyle(color: primary ? Colors.white : AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
-=======
-  Widget _actionButton(
-      String label,
-      IconData icon,
-      VoidCallback onTap, {
-        bool primary = false,
-      }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: primary
-              ? AppColors.primary
-              : AppColors.primary.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisAlignment:
-          MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 18,
-                color: primary
-                    ? Colors.white
-                    : AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: primary
-                    ? Colors.white
-                    : AppColors.primary,
-                fontWeight: FontWeight.w700,
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
               ),
             ],
           ),
@@ -534,33 +366,19 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ================= RECENT TASKS =================
-<<<<<<< HEAD
-  Widget _recentTasks(List tasks, bool isDark, BuildContext context) {
-    if (tasks.isEmpty) return const DashboardEmptyState();
-=======
   Widget _recentTasks(List tasks, bool isDark) {
-    if (tasks.isEmpty)
-      return const DashboardEmptyState();
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
+    if (tasks.isEmpty) return const DashboardEmptyState();
 
     return Column(
       children: tasks.take(5).map((t) {
         return Container(
-          margin:
-          const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-<<<<<<< HEAD
             color: isDark ? AppColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(color: isDark ? Colors.black26 : Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4)),
             ],
-=======
-            color:
-            isDark ? AppColors.cardDark : Colors.white,
-            borderRadius:
-            BorderRadius.circular(16),
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
           ),
           child: ListTile(
             onTap: () {}, // Logic for task detail
@@ -573,13 +391,8 @@ class DashboardScreen extends ConsumerWidget {
             title: Text(
               t.title,
               maxLines: 1,
-<<<<<<< HEAD
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
-=======
-              overflow:
-              TextOverflow.ellipsis,
->>>>>>> 219799ecf1156f97ed28eaa00ec97e8d92ed5bf8
             ),
             subtitle: Text('In Progress', style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38)),
             trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white24 : Colors.black26),
