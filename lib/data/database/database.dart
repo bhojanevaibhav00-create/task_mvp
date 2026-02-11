@@ -217,6 +217,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   static QueryExecutor _openConnection() {
-    return driftDatabase(name: 'my_app_database');
+    return driftDatabase(name: 'my_app_database_v2');
   }
 }
