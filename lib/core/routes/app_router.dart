@@ -80,18 +80,6 @@ final appRouter = GoRouter(
     ),
 
     // 3. Edit/Detail Task (Dynamic)
-    GoRoute(
-      path: '/tasks/:taskId',
-      builder: (context, state) {
-        final taskIdStr = state.pathParameters['taskId'];
-        // Guard against parsing 'new' or 'create' as an ID
-        if (taskIdStr == 'new' || taskIdStr == 'create') {
-          return const TaskCreateEditScreen();
-        }
-        final taskId = int.tryParse(taskIdStr ?? '');
-        return TaskCreateEditScreen(taskId: taskId);
-      },
-    ),
 
     /// ================= NOTIFICATIONS =================
     GoRoute(

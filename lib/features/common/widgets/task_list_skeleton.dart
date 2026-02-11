@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
 
 class TaskListSkeleton extends StatelessWidget {
   const TaskListSkeleton({super.key});
@@ -7,13 +6,14 @@ class TaskListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
+      padding: const EdgeInsets.all(20),
       itemCount: 6,
       itemBuilder: (_, __) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        height: 72,
+        height: 70,
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppColors.chipBackground,
-          borderRadius: BorderRadius.circular(14),
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
     );
