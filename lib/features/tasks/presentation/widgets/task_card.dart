@@ -21,15 +21,23 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ REGRESSION FIX: Explicitly forcing White Theme for consistency
+    // 💡 DETERMINING THEME STATE
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDone = task.status == TaskStatus.done.name;
+
+    // 💡 DYNAMIC COLORS
+    final cardBg = isDark ? AppColors.cardDark : Colors.white;
+    final titleColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subtitleColor = isDark ? Colors.white38 : Colors.black38;
+    final borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.transparent;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(20), 
-        boxShadow: [
+        border: Border.all(color: borderColor),
+        boxShadow: isDark ? [] : [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
             blurRadius: 15,
@@ -55,7 +63,7 @@ class TaskCard extends StatelessWidget {
                       child: Row(
                         children: [
                           // 2. STATUS TOGGLE
-                          _buildCheckbox(isDone),
+                          _buildCheckbox(isDone, isDark),
                           const SizedBox(width: 16),
 
                           // 3. TASK INFO
@@ -69,34 +77,34 @@ class TaskCard extends StatelessWidget {
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                     color: isDone 
-                                        ? Colors.black26 
-                                        : const Color(0xFF111827), 
+                                        ? (isDark ? Colors.white24 : Colors.black26)
+                                        : titleColor, 
                                     decoration: isDone ? TextDecoration.lineThrough : null,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    // ✅ FIXED: DUE DATE VISIBILITY (Sprint 7)
                                     if (task.dueDate != null) ...[
                                       Icon(
                                         Icons.calendar_today_rounded, 
                                         size: 10, 
-                                        color: isDone ? Colors.black12 : AppColors.primary.withOpacity(0.5)
+                                        color: isDone 
+                                            ? (isDark ? Colors.white12 : Colors.black12) 
+                                            : AppColors.primary.withOpacity(0.5)
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
                                         "${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}",
                                         style: TextStyle(
                                           fontSize: 11, 
-                                          color: isDone ? Colors.black12 : Colors.black38, 
+                                          color: isDone ? (isDark ? Colors.white10 : Colors.black12) : subtitleColor, 
                                           fontWeight: FontWeight.w600
                                         ),
                                       ),
                                       const SizedBox(width: 12),
                                     ],
                                     
-                                    // DESCRIPTION PREVIEW
                                     if (task.description != null && task.description!.isNotEmpty)
                                       Expanded(
                                         child: Text(
@@ -105,7 +113,7 @@ class TaskCard extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontSize: 11,
-                                            color: isDone ? Colors.black12 : Colors.black38,
+                                            color: isDone ? (isDark ? Colors.white10 : Colors.black12) : subtitleColor,
                                             height: 1.2,
                                           ),
                                         ),
@@ -116,9 +124,9 @@ class TaskCard extends StatelessWidget {
                             ),
                           ),
 
-                          // 4. ASSIGNEE AVATAR (Enterprise Detail)
+                          // 4. ASSIGNEE AVATAR
                           if (task.assigneeId != null)
-                            _buildAssigneeAvatar(),
+                            _buildAssigneeAvatar(isDark),
 
                           // 5. DELETE ACTION
                           if (onDelete != null)
@@ -158,7 +166,7 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCheckbox(bool isDone) {
+  Widget _buildCheckbox(bool isDone, bool isDark) {
     return GestureDetector(
       onTap: onToggleDone,
       child: AnimatedContainer(
@@ -169,7 +177,7 @@ class TaskCard extends StatelessWidget {
           color: isDone ? Colors.green : Colors.transparent,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isDone ? Colors.green : Colors.grey.shade300,
+            color: isDone ? Colors.green : (isDark ? Colors.white24 : Colors.grey.shade300),
             width: 2,
           ),
         ),
@@ -180,7 +188,7 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAssigneeAvatar() {
+  Widget _buildAssigneeAvatar(bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Tooltip(
@@ -190,7 +198,7 @@ class TaskCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 12,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundColor: AppColors.primary.withOpacity(isDark ? 0.2 : 0.1),
               child: assigneeName != null && assigneeName!.isNotEmpty
                   ? Text(
                       assigneeName![0].toUpperCase(),
@@ -206,8 +214,8 @@ class TaskCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
-                  assigneeName!.split(' ').first, // Show only first name for space
-                  style: const TextStyle(fontSize: 8, color: Colors.black38),
+                  assigneeName!.split(' ').first,
+                  style: TextStyle(fontSize: 8, color: isDark ? Colors.white38 : Colors.black38),
                 ),
               ),
           ],

@@ -10,8 +10,9 @@ import '../../../core/providers/project_providers.dart';
 
 import '../../tasks/presentation/task_list_screen.dart';
 import 'widgets/dashboard_empty_state.dart';
-import 'widgets/quick_add_task_sheet.dart';
 import 'package:task_mvp/features/dashboard/presentation/settings_screen.dart';
+import 'package:task_mvp/features/tasks/presentation/widgets/quick_add_task_sheet.dart';
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -27,49 +28,44 @@ class DashboardScreen extends ConsumerWidget {
     final pending = tasks.where((t) => t.status != 'done').length;
 
     return Scaffold(
-      backgroundColor:
-      isDark ? AppColors.scaffoldDark : const Color(0xFFF6F7FB),
-
+      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FE),
       floatingActionButton: FloatingActionButton.extended(
+        elevation: 4,
+        highlightElevation: 8,
         backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label:
-        const Text('Quick Add', style: TextStyle(color: Colors.white)),
+        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+        label: const Text(
+          'Quick Add',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        ),
         onPressed: () => _openQuickAdd(context),
       ),
-
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          _premiumAppBar(context, unread),
-
+          _premiumAppBar(context, unread, isDark),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
             sliver: SliverList(
               delegate: SliverChildListDelegate(
                 [
-                  _sectionTitle('Overview', isDark),
+                  _sectionHeader('Overview', Icons.analytics_outlined, isDark),
                   const SizedBox(height: 16),
                   _statsRow(completed, pending, tasks.length),
-
                   const SizedBox(height: 32),
-                  _sectionTitle('Projects', isDark),
+                  _sectionHeader('Projects', Icons.folder_special_outlined, isDark),
                   const SizedBox(height: 12),
-
                   _createProjectButton(context),
-
                   const SizedBox(height: 16),
                   _projects(projectsAsync, isDark, context),
-
                   const SizedBox(height: 32),
-                  _sectionTitle('Quick Actions', isDark),
+                  _sectionHeader('Quick Actions', Icons.bolt_rounded, isDark),
                   const SizedBox(height: 16),
-                  _quickActions(context),
-
+                  _quickActions(context, isDark),
                   const SizedBox(height: 32),
-                  _sectionTitle('Recent Tasks', isDark),
+                  _sectionHeader('Recent Tasks', Icons.history_rounded, isDark),
                   const SizedBox(height: 16),
-                  _recentTasks(tasks, isDark),
+                  _recentTasks(tasks, isDark, context),
                 ],
               ),
             ),
@@ -80,64 +76,105 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ================= PREMIUM APP BAR =================
-  Widget _premiumAppBar(BuildContext context, int unread) {
+  Widget _premiumAppBar(BuildContext context, int unread, bool isDark) {
     return SliverAppBar(
       pinned: true,
-      expandedHeight: 150,
+      expandedHeight: 160,
+      stretch: true,
       backgroundColor: AppColors.primary,
+      elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+        stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 18),
         title: const Text(
           'My Workspace',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w900,
             color: Colors.white,
+            letterSpacing: -0.5,
           ),
         ),
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: AppColors.primaryGradient,
-          ),
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+              ),
+            ),
+            // Subtle decorative circles for a premium feel
+            Positioned(
+              top: -50,
+              right: -50,
+              child: CircleAvatar(radius: 100, backgroundColor: Colors.white.withOpacity(0.05)),
+            ),
+          ],
         ),
       ),
       actions: [
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_none, color: Colors.white),
-              onPressed: () => context.push(AppRoutes.notifications),
-            ),
-            if (unread > 0)
-              Positioned(
-                right: 8,
-                top: 10,
-                child: CircleAvatar(
-                  radius: 8,
-                  backgroundColor: Colors.red,
-                  child: Text(
-                    unread.toString(),
-                    style: const TextStyle(
-                        fontSize: 10, color: Colors.white),
-                  ),
-                ),
-              ),
-          ],
+        // Notification Center
+        _appBarAction(
+          icon: Icons.notifications_none_rounded,
+          count: unread,
+          onTap: () => context.push(AppRoutes.notifications),
         ),
-        const SizedBox(width: 8),
+        // Settings Gear
+        _appBarAction(
+          icon: Icons.settings_outlined,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SettingsScreen()),
+          ),
+        ),
+        const SizedBox(width: 12),
       ],
     );
   }
 
-  // ================= SECTION TITLE =================
-  Widget _sectionTitle(String title, bool isDark) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w800,
-        color: isDark ? Colors.white : Colors.black87,
-      ),
+  Widget _appBarAction({required IconData icon, int count = 0, required VoidCallback onTap}) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: Icon(icon, color: Colors.white, size: 26),
+          onPressed: onTap,
+        ),
+        if (count > 0)
+          Positioned(
+            right: 8,
+            top: 12,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              child: Text(
+                count > 9 ? '9+' : count.toString(),
+                style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ================= SECTION HEADER =================
+  Widget _sectionHeader(String title, IconData icon, bool isDark) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primary.withOpacity(0.8)),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : Colors.black87,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ],
     );
   }
 
@@ -145,50 +182,46 @@ class DashboardScreen extends ConsumerWidget {
   Widget _statsRow(int done, int pending, int total) {
     return Row(
       children: [
-        _statCard('Total', total, Icons.grid_view, AppColors.primaryGradient),
+        _statCard('Total', total, Icons.grid_view_rounded, AppColors.primaryGradient),
         const SizedBox(width: 12),
-        _statCard(
-            'Pending', pending, Icons.bolt, AppColors.upcomingGradient),
+        _statCard('Pending', pending, Icons.auto_awesome_rounded, AppColors.upcomingGradient),
         const SizedBox(width: 12),
-        _statCard(
-            'Done', done, Icons.done_all, AppColors.completedGradient),
+        _statCard('Done', done, Icons.task_alt_rounded, AppColors.completedGradient),
       ],
     );
   }
 
-  Widget _statCard(
-      String label, int value, IconData icon, Gradient gradient) {
+  Widget _statCard(String label, int value, IconData icon, Gradient gradient) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: gradient,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: const [
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
             BoxShadow(
-              color: Colors.black12,
-              blurRadius: 12,
-              offset: Offset(0, 6),
+              color: gradient.colors.first.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: Colors.white),
-            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.white, size: 18),
+            ),
+            const SizedBox(height: 12),
             Text(
               value.toString(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
             ),
             Text(
               label,
-              style:
-              const TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -198,95 +231,91 @@ class DashboardScreen extends ConsumerWidget {
 
   // ================= CREATE PROJECT =================
   Widget _createProjectButton(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: () => context.push(AppRoutes.createProject),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 52,
+        height: 56,
         decoration: BoxDecoration(
           gradient: AppColors.primaryGradient,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, 6),
-            ),
+          boxShadow: [
+            BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
           ],
         ),
-        child: const Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_circle_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Text(
-                'Create New Project',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_rounded, color: Colors.white),
+            SizedBox(width: 8),
+            Text(
+              'New Project',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
         ),
       ),
     );
   }
 
   // ================= PROJECTS =================
-  Widget _projects(
-      AsyncValue projects,
-      bool isDark,
-      BuildContext context,
-      ) {
+  Widget _projects(AsyncValue projects, bool isDark, BuildContext context) {
     return SizedBox(
-      height: 140,
+      height: 150,
       child: projects.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Text(e.toString()),
+        loading: () => const Center(child: CircularProgressIndicator.adaptive()),
+        error: (e, _) => Center(child: Text('Error loading projects', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54))),
         data: (list) {
           if (list.isEmpty) {
-            return const Center(child: Text('No projects yet'));
+            return Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text('No active projects', style: TextStyle(color: isDark ? Colors.white38 : Colors.black38)),
+            );
           }
           return ListView.builder(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             itemCount: list.length,
             itemBuilder: (_, i) {
               final project = list[i];
-              return GestureDetector(
-                onTap: () =>
-                    context.push('/projects/${project.id}'),
-                child: Container(
-                  width: 170,
-                  margin: const EdgeInsets.only(right: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.cardDark
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 12,
-                        offset: Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.folder,
-                          color: AppColors.primary),
-                      const Spacer(),
-                      Text(
-                        project.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700),
-                      ),
-                    ],
+              return Container(
+                width: 160,
+                margin: const EdgeInsets.only(right: 16, bottom: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                  boxShadow: [
+                    BoxShadow(color: isDark ? Colors.black45 : Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => context.push('/projects/${project.id}'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.folder_rounded, color: AppColors.primary, size: 28),
+                        const Spacer(),
+                        Text(
+                          project.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: isDark ? Colors.white : Colors.black87),
+                        ),
+                        Text(
+                          'View Details',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary.withOpacity(0.7)),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -298,68 +327,50 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ================= QUICK ACTIONS =================
-  Widget _quickActions(BuildContext context) {
+  Widget _quickActions(BuildContext context, bool isDark) {
     return Row(
       children: [
         Expanded(
-          child: _actionButton(
-            'View Tasks',
-            Icons.view_list,
-                () => context.push(AppRoutes.tasks),
-            primary: true,
-          ),
+          child: _actionButton('Task List', Icons.list_alt_rounded, () => context.push(AppRoutes.tasks), isDark, primary: true),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _actionButton(
-            'Calendar',
-            Icons.calendar_month,
-                () {},
-          ),
+          child: _actionButton('Schedule', Icons.calendar_today_rounded, () {}, isDark),
         ),
       ],
     );
   }
 
-  Widget _actionButton(
-      String label,
-      IconData icon,
-      VoidCallback onTap, {
-        bool primary = false,
-      }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: primary
-              ? AppColors.primary
-              : AppColors.primary.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 18,
-                color: primary ? Colors.white : AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color:
-                primary ? Colors.white : AppColors.primary,
-                fontWeight: FontWeight.w700,
+  Widget _actionButton(String label, IconData icon, VoidCallback onTap, bool isDark, {bool primary = false}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: primary ? AppColors.primary : (isDark ? Colors.white.withOpacity(0.08) : AppColors.primary.withOpacity(0.08)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 20, color: primary ? Colors.white : AppColors.primary),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: TextStyle(color: primary ? Colors.white : AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   // ================= RECENT TASKS =================
-  Widget _recentTasks(List tasks, bool isDark) {
+  Widget _recentTasks(List tasks, bool isDark, BuildContext context) {
     if (tasks.isEmpty) return const DashboardEmptyState();
 
     return Column(
@@ -368,14 +379,27 @@ class DashboardScreen extends ConsumerWidget {
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardDark : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(color: isDark ? Colors.black26 : Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4)),
+            ],
           ),
           child: ListTile(
+            onTap: () {}, // Logic for task detail
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.check_circle_outline_rounded, color: AppColors.primary, size: 22),
+            ),
             title: Text(
               t.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
             ),
+            subtitle: Text('In Progress', style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38)),
+            trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white24 : Colors.black26),
           ),
         );
       }).toList(),
@@ -386,6 +410,7 @@ class DashboardScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (_) => const QuickAddTaskSheet(),
     );
   }

@@ -33,7 +33,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     super.dispose();
   }
 
-  // ✅ MERGED: Uses standard Navigator but maintains loadTasks logic
   void _openCreateTask() {
     Navigator.push(
       context,
@@ -58,6 +57,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      // Dynamic background color to prevent white flashes
       backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -65,9 +65,15 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
           _buildSliverAppBar(isDark),
           _buildSearchHeader(isDark),
           filteredTasksAsync.when(
-            // ✅ VAISHNAVI: Uses the specialized Skeleton
             loading: () => const SliverFillRemaining(child: TaskListSkeleton()),
-            error: (e, _) => SliverFillRemaining(child: Center(child: Text('Error: $e'))),
+            error: (e, _) => SliverFillRemaining(
+              child: Center(
+                child: Text(
+                  'Error: $e',
+                  style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+                ),
+              ),
+            ),
             data: (dynamic tasksData) {
               final List tasks = tasksData is List ? tasksData : [];
               
@@ -80,7 +86,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               if (visibleTasks.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
-                  // ✅ VAISHNAVI: Uses the specialized Empty State
                   child: TaskListEmptyState(onAddTask: _openCreateTask),
                 );
               }
@@ -132,8 +137,13 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-        title: const Text('My Tasks', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-        background: Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
+        title: const Text(
+          'My Tasks', 
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        background: Container(
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        ),
       ),
       actions: [
         _buildNotificationIcon(ref),
@@ -161,9 +171,16 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.inputBackgroundDark : Colors.white,
+            // Changed hardcoded Colors.white to cardDark
+            color: isDark ? AppColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black26 : Colors.black.withOpacity(0.05), 
+                blurRadius: 15, 
+                offset: const Offset(0, 5),
+              )
+            ],
           ),
           child: TextField(
             controller: _searchController,
@@ -171,8 +188,8 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             style: TextStyle(color: isDark ? Colors.white : const Color(0xFF111827), fontSize: 15),
             decoration: InputDecoration(
               hintText: 'Search your tasks...',
-              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF6B7280)),
+              hintStyle: TextStyle(color: isDark ? Colors.white38 : const Color(0xFF9CA3AF)),
+              prefixIcon: Icon(Icons.search_rounded, color: isDark ? Colors.white38 : const Color(0xFF6B7280)),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 15),
               filled: true,
@@ -199,7 +216,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-              child: Text(unreadCount.toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+              child: Text(
+                unreadCount.toString(), 
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
       ],

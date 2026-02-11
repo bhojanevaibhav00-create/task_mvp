@@ -1,49 +1,122 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static final _inputBorder = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(14),
+  AppTheme._();
+
+  /// Shared Input Border
+  static final OutlineInputBorder _inputBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(16),
     borderSide: BorderSide.none,
   );
 
+  /// ======================================================
+  /// LIGHT THEME
+  /// ======================================================
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
-    brightness: Brightness.light,
-    colorScheme: const ColorScheme.light(
-      primary: AppColors.primary,
-      surface: AppColors.scaffoldLight,
+    visualDensity: VisualDensity.adaptivePlatformDensity,
+
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: Brightness.light,
     ),
-    scaffoldBackgroundColor: AppColors.scaffoldLight,
-    textTheme: const TextTheme(
-      bodyLarge: TextStyle(fontSize: 16, color: Color(0xFF111827)), // Dark text for light mode
+
+    scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+
+    /// ⭐ Inter Font Applied Globally
+    textTheme: GoogleFonts.interTextTheme(
+      ThemeData.light().textTheme,
     ),
+
+    cardTheme: CardThemeData(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+      ),
+    ),
+
+    dialogTheme: DialogThemeData(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+      ),
+    ),
+
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFFF3F4F6),
-      labelStyle: const TextStyle(color: Color(0xFF6B7280)),
-      hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+      fillColor: const Color(0xFFF1F5F9),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
       border: _inputBorder,
+      enabledBorder: _inputBorder,
+      focusedBorder: _inputBorder.copyWith(
+        borderSide: const BorderSide(
+          color: AppColors.primary,
+          width: 1.6,
+        ),
+      ),
     ),
   );
 
+  /// ======================================================
+  /// DARK THEME
+  /// ======================================================
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
+    visualDensity: VisualDensity.adaptivePlatformDensity,
     brightness: Brightness.dark,
-    colorScheme: const ColorScheme.dark(
-      primary: AppColors.primary,
-      surface: AppColors.scaffoldDark,
+
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: Brightness.dark,
     ),
-    scaffoldBackgroundColor: AppColors.scaffoldDark,
-    textTheme: const TextTheme(
-      bodyLarge: TextStyle(fontSize: 16, color: Colors.white), // White text for dark mode
+
+    scaffoldBackgroundColor: const Color(0xFF0B1220),
+
+    /// ⭐ Inter Font Applied Globally
+    textTheme: GoogleFonts.interTextTheme(
+      ThemeData.dark().textTheme,
     ),
+
+    cardTheme: CardThemeData(
+      elevation: 3,
+      shadowColor: Colors.black54,
+      color: const Color(0xFF111827),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+      ),
+    ),
+
+    dialogTheme: DialogThemeData(
+      backgroundColor: const Color(0xFF111827),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+      ),
+    ),
+
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
-      labelStyle: const TextStyle(color: Colors.white70),
-      hintStyle: const TextStyle(color: Colors.white60),
+      fillColor: const Color(0xFF1E293B),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
+      ),
+      hintStyle: const TextStyle(color: Colors.white38),
       border: _inputBorder,
+      enabledBorder: _inputBorder,
+      focusedBorder: _inputBorder.copyWith(
+        borderSide: const BorderSide(
+          color: AppColors.primary,
+          width: 1.6,
+        ),
+      ),
     ),
   );
 }

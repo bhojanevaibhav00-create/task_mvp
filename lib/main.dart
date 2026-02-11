@@ -4,17 +4,17 @@ import 'package:drift/drift.dart' as drift;
 
 import 'app.dart';
 import 'core/providers/task_providers.dart';
+import 'core/providers/theme_provider.dart'; 
 import 'data/database/database.dart' as db;
 import 'package:task_mvp/core/providers/database_provider.dart';
 
-// 🚀 Database Seeding logic (Sprint 8 Integrated)
+// 🚀 Database Seeding logic
 Future<void> seedProjectData(db.AppDatabase database) async {
   try {
     final existingUsers = await database.select(database.users).get();
 
     if (existingUsers.isEmpty) {
       await database.transaction(() async {
-
         // ✅ Insert User 1 (Admin)
         final userId = await database.into(database.users).insert(
           db.UsersCompanion.insert(
@@ -43,7 +43,7 @@ Future<void> seedProjectData(db.AppDatabase database) async {
           ),
         );
 
-        // ✅ Insert Team User 2
+        // ✅ Team Users
         await database.into(database.users).insert(
           db.UsersCompanion.insert(
             name: 'Ajinkya Ghode',
@@ -52,7 +52,6 @@ Future<void> seedProjectData(db.AppDatabase database) async {
           ),
         );
 
-        // ✅ Insert Team User 3
         await database.into(database.users).insert(
           db.UsersCompanion.insert(
             name: 'Vaishnavi Mogal',
@@ -61,8 +60,7 @@ Future<void> seedProjectData(db.AppDatabase database) async {
           ),
         );
       });
-
-      debugPrint("✅ Database Seeded Successfully with Team Users");
+      debugPrint("✅ Database Seeded Successfully");
     }
   } catch (e) {
     debugPrint("❌ Seed Error: $e");
@@ -70,6 +68,7 @@ Future<void> seedProjectData(db.AppDatabase database) async {
 }
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: AppBootstrap()));
 }
 
@@ -81,19 +80,13 @@ class AppBootstrap extends ConsumerStatefulWidget {
 }
 
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
-
   @override
   void initState() {
     super.initState();
-
-    // ⚡ Execute initialization after first frame to prevent blocking UI
     Future.microtask(() async {
       final database = ref.read(databaseProvider);
-
-      // Run database migration/seed
       await seedProjectData(database);
 
-      // Initialize Reminder Services
       final reminder = ref.read(reminderServiceProvider);
       await reminder.init();
       await reminder.requestPermission();
@@ -103,6 +96,9 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    return const MyApp();
+    // Watch the themeMode to trigger the top-level rebuild
+    final themeMode = ref.watch(themeModeProvider);
+
+    return MyApp(themeMode: themeMode); // ✅ Parameter name fixed
   }
 }

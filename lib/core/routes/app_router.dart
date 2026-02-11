@@ -9,6 +9,7 @@ import '../../features/auth/presentation/register_screen.dart';
 // DASHBOARD
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 
+
 // TASKS
 import '../../features/tasks/presentation/task_list_screen.dart';
 import '../../features/tasks/presentation/task_create_edit_screen.dart';
@@ -17,9 +18,12 @@ import '../../features/tasks/presentation/task_create_edit_screen.dart';
 import '../../features/projects/presentation/screens/project_detail_screen.dart';
 import '../../features/projects/presentation/screens/create_project_screen.dart';
 
+// DATA
+import '../../data/database/database.dart'; // ✅ For Task type casting
+
 // OTHER
 import '../../features/notifications/presentation/notification_screen.dart';
-
+import 'package:task_mvp/features/tasks/presentation/task_detail_screen.dart';
 final appRouter = GoRouter(
   initialLocation: AppRoutes.login,
   routes: [
@@ -79,7 +83,25 @@ final appRouter = GoRouter(
       },
     ),
 
-    // 3. Edit/Detail Task (Dynamic)
+    // 3. ✅ FIXED: Dynamic Task Route (Handles /tasks/1, /tasks/2, etc.)
+    GoRoute(
+      path: '/tasks/:taskId',
+      builder: (context, state) {
+        final taskIdStr = state.pathParameters['taskId'];
+        
+        // If we passed the full task object via 'extra', use it.
+        // Otherwise, the TaskDetailScreen should be updated to fetch by ID.
+        if (state.extra is Task) {
+          return TaskDetailScreen(task: state.extra as Task);
+        }
+
+        // Fallback: If no object is passed (deep link), handle error or fetch.
+        return Scaffold(
+          appBar: AppBar(title: const Text("Error")),
+          body: const Center(child: Text("Task data missing. Navigate using 'extra: task'")),
+        );
+      },
+    ),
 
     /// ================= NOTIFICATIONS =================
     GoRoute(

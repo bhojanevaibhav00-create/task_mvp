@@ -16,69 +16,86 @@ class TaskDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF111827);
 
     return Scaffold(
-      backgroundColor:
-      isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
+      backgroundColor: isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
       appBar: AppBar(
-        title: const Text('Task Details'),
+        elevation: 0,
+        backgroundColor: isDark ? AppColors.scaffoldDark : Colors.white,
+        iconTheme: IconThemeData(color: primaryTextColor),
+        title: Text(
+          'Task Details',
+          style: TextStyle(color: primaryTextColor, fontWeight: FontWeight.bold),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// ===== TITLE =====
             Text(
               task.title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: primaryTextColor,
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             /// ===== DESCRIPTION =====
             if (task.description != null && task.description!.isNotEmpty)
-              Text(
-                task.description!,
-                style: TextStyle(
-                  color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+              Container(
+                padding: const EdgeInsets.all(16),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : Colors.grey.shade200,
+                  ),
+                ),
+                child: Text(
+                  task.description!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.5,
+                    color: isDark ? Colors.white70 : Colors.grey.shade700,
+                  ),
                 ),
               ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
             /// ===== ASSIGNEE =====
-            const Text(
-              'Assigned To',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-
+            _sectionHeader('ASSIGNED TO', isDark),
+            const SizedBox(height: 12),
             AssigneeChip(
-              /// ✅ FIXED — NEVER NULL
               name: task.assigneeId != null
                   ? 'User ${task.assigneeId}'
                   : 'Unassigned',
               showClear: false,
-              onTap: () {
-                // later: open AssignMemberSheet
-              },
+              onTap: () {},
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-            /// ===== META =====
-            _infoRow('Status', task.status ?? '-'),
-            _infoRow('Priority', task.priority.toString()),
+            /// ===== META INFORMATION =====
+            _sectionHeader('INFORMATION', isDark),
+            const SizedBox(height: 16),
+
+            _infoRow('Status', task.status ?? 'Pending', isDark),
+            
+            /// ✅ THE FIX: Force conversion to String and handle potential nulls
+            _infoRow('Priority', _getPriorityLabel(task.priority), isDark),
+            
             _infoRow(
               'Project',
-              task.projectId != null ? task.projectId.toString() : '-',
+              task.projectId != null ? 'Project #${task.projectId}' : 'General',
+              isDark,
             ),
           ],
         ),
@@ -86,21 +103,54 @@ class TaskDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  /// ✅ Logic to handle 'int' or 'int?' safely
+  String _getPriorityLabel(dynamic priority) {
+    if (priority == null) return "Low";
+    
+    // Convert to int if it's currently a different type
+    final pValue = int.tryParse(priority.toString()) ?? 1;
+    
+    if (pValue >= 3) return "🔥 High";
+    if (pValue == 2) return "⚡ Medium";
+    return "🍃 Low";
+  }
+
+  Widget _sectionHeader(String title, bool isDark) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.5,
+        color: isDark ? Colors.white38 : Colors.grey.shade500,
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           SizedBox(
-            width: 90,
+            width: 100,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : Colors.grey.shade600,
               ),
             ),
           ),
-          Text(value),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+          ),
         ],
       ),
     );

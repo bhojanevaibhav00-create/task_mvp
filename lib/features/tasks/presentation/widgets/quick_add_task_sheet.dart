@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/core/providers/database_provider.dart';
 
-// Ensure these paths match your project structure exactly
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/task_providers.dart'; 
 import '../../../../data/database/database.dart';
@@ -19,7 +18,7 @@ class QuickAddTaskSheet extends ConsumerStatefulWidget {
 class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
   final _controller = TextEditingController();
   int _selectedPriority = 2; // Default: Medium (2)
-  DateTime? _selectedDate; // ✅ FIXED: Added state for Due Date
+  DateTime? _selectedDate; 
 
   @override
   void dispose() {
@@ -29,24 +28,30 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FORCED PREMIUM WHITE THEME: Matches Dashboard style
-    const backgroundColor = Colors.white;
-    const inputBg = Color(0xFFF8F9FD);
-    const primaryText = Color(0xFF1A1C1E);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Dynamic Colors based on Theme
+    final backgroundColor = isDark ? AppColors.cardDark : Colors.white;
+    final inputBg = isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8F9FD);
+    final primaryText = isDark ? Colors.white : const Color(0xFF1A1C1E);
+    final secondaryText = isDark ? Colors.white38 : Colors.black26;
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         padding: const EdgeInsets.all(28),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: isDark ? null : [
+            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5))
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Quick Add Task",
               style: TextStyle(
                 fontSize: 22, 
@@ -59,10 +64,10 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             TextField(
               controller: _controller,
               autofocus: true,
-              style: const TextStyle(color: primaryText, fontWeight: FontWeight.w600),
+              style: TextStyle(color: primaryText, fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 hintText: "What needs to be done?",
-                hintStyle: const TextStyle(color: Colors.black26),
+                hintStyle: TextStyle(color: secondaryText),
                 filled: true,
                 fillColor: inputBg,
                 border: OutlineInputBorder(
@@ -74,11 +79,10 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
             ),
             const SizedBox(height: 24),
             
-            // ✅ Date Selection Row
-            _buildDateSelector(primaryText),
+            _buildDateSelector(primaryText, secondaryText, isDark),
             const SizedBox(height: 24),
             
-            _buildPrioritySelector(primaryText),
+            _buildPrioritySelector(primaryText, secondaryText, isDark),
             const SizedBox(height: 32),
             
             SizedBox(
@@ -104,14 +108,13 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
     );
   }
 
-  // ✅ PREMIUM DATE PICKER WIDGET
-  Widget _buildDateSelector(Color textColor) {
+  Widget _buildDateSelector(Color textColor, Color subTextColor, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "DUE DATE", 
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black26, letterSpacing: 1.2),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subTextColor, letterSpacing: 1.2),
         ),
         const SizedBox(height: 12),
         InkWell(
@@ -124,7 +127,9 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
               lastDate: DateTime(2100),
               builder: (context, child) => Theme(
                 data: Theme.of(context).copyWith(
-                  colorScheme: const ColorScheme.light(primary: AppColors.primary),
+                  colorScheme: isDark 
+                    ? const ColorScheme.dark(primary: AppColors.primary, surface: AppColors.cardDark)
+                    : const ColorScheme.light(primary: AppColors.primary),
                 ),
                 child: child!,
               ),
@@ -134,7 +139,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -146,7 +151,10 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                   _selectedDate == null 
                     ? "No date set" 
                     : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    color: isDark ? Colors.white70 : const Color(0xFF475569)
+                  ),
                 ),
                 if (_selectedDate != null) ...[
                   const SizedBox(width: 8),
@@ -163,13 +171,13 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
     );
   }
 
-  Widget _buildPrioritySelector(Color textColor) {
+  Widget _buildPrioritySelector(Color textColor, Color subTextColor, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "PRIORITY", 
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black26, letterSpacing: 1.2),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: subTextColor, letterSpacing: 1.2),
         ),
         const SizedBox(height: 12),
         Row(
@@ -190,14 +198,14 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
                 label: Text(label),
                 selected: isSelected,
                 onSelected: (val) => setState(() => _selectedPriority = p),
-                selectedColor: priorityColor.withOpacity(0.15),
-                backgroundColor: Colors.white,
+                selectedColor: priorityColor.withOpacity(0.2),
+                backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
                 side: BorderSide(
-                  color: isSelected ? priorityColor : Colors.black.withOpacity(0.05),
+                  color: isSelected ? priorityColor : (isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
                   width: 1.5,
                 ),
                 labelStyle: TextStyle(
-                  color: isSelected ? priorityColor : Colors.black45,
+                  color: isSelected ? priorityColor : (isDark ? Colors.white38 : Colors.black45),
                   fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
                   fontSize: 13,
                 ),
@@ -220,7 +228,7 @@ class _QuickAddTaskSheetState extends ConsumerState<QuickAddTaskSheet> {
       await db.into(db.tasks).insert(TasksCompanion.insert(
         title: title,
         priority: drift.Value(_selectedPriority),
-        dueDate: drift.Value(_selectedDate), // ✅ SAVING: Actual date now persisted
+        dueDate: drift.Value(_selectedDate),
         status: drift.Value(TaskStatus.todo.name),
         createdAt: drift.Value(DateTime.now()),
         updatedAt: drift.Value(DateTime.now()),

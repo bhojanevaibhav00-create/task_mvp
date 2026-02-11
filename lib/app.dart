@@ -6,19 +6,28 @@ import 'core/routes/app_router.dart';
 import 'core/providers/theme_provider.dart';
 
 class MyApp extends ConsumerWidget {
-  const MyApp({super.key});
+  final ThemeMode themeMode;
+
+  const MyApp({
+    super.key, 
+    required this.themeMode,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
+    // We watch the provider to stay in sync with the Settings toggle
+    final currentTheme = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Task MVP',
       debugShowCheckedModeBanner: false,
 
+      // Apply the themes from your AppTheme file
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode, // 🔴 THIS ENABLES SWITCHING
+      
+      // ✅ CRITICAL: Using the watched themeMode
+      themeMode: currentTheme, 
 
       routerConfig: appRouter,
     );

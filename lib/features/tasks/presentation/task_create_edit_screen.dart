@@ -52,8 +52,10 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.task != null;
-    
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF6F7FB),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -65,30 +67,29 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8F9FD),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                 ),
                 child: Form(
                   key: _formKey,
                   child: ListView(
                     physics: const BouncingScrollPhysics(),
                     children: [
-                      _buildSectionLabel("TASK DETAILS"),
-                      _buildInputGroup(),
+                      _buildSectionLabel("TASK DETAILS", isDark),
+                      _buildInputGroup(isDark),
                       const SizedBox(height: 24),
                       
-                      // Sprint 7 Assignment UI
-                      _buildSectionLabel("ASSIGN TO"),
-                      _buildAssigneeSelector(),
+                      _buildSectionLabel("ASSIGN TO", isDark),
+                      _buildAssigneeSelector(isDark),
                       const SizedBox(height: 24),
 
-                      _buildSectionLabel("PRIORITY"),
-                      _buildPrioritySelector(),
+                      _buildSectionLabel("PRIORITY", isDark),
+                      _buildPrioritySelector(isDark),
                       const SizedBox(height: 24),
                       
-                      _buildSectionLabel("SETTINGS"),
-                      _buildSettingsGroup(),
+                      _buildSectionLabel("SETTINGS", isDark),
+                      _buildSettingsGroup(isDark),
                       const SizedBox(height: 100), 
                     ],
                   ),
@@ -114,10 +115,9 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     );
   }
 
-  // Assignee Dropdown with Null-Safety fix
-  Widget _buildAssigneeSelector() {
+  Widget _buildAssigneeSelector(bool isDark) {
     final pid = widget.projectId ?? widget.task?.projectId;
-    if (pid == null) return const Text("Select a project first to assign members");
+    if (pid == null) return Text("Select a project first", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54));
 
     final membersAsync = ref.watch(projectMembersProvider(pid));
 
@@ -125,20 +125,22 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
       data: (members) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<int?>( 
             isExpanded: true,
+            dropdownColor: isDark ? AppColors.cardDark : Colors.white,
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
             value: _selectedAssigneeId,
-            hint: const Text("Select Assignee"),
+            hint: Text("Select Assignee", style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
             items: [
-              const DropdownMenuItem<int?>(value: null, child: Text("Unassigned")),
+              DropdownMenuItem<int?>(value: null, child: Text("Unassigned", style: TextStyle(color: isDark ? Colors.white : Colors.black87))),
               ...members.map((m) => DropdownMenuItem<int?>(
                 value: m.member.userId,
-                child: Text(m.user.name),
+                child: Text(m.user.name, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
               )),
             ],
             onChanged: (val) => setState(() => _selectedAssigneeId = val),
@@ -180,7 +182,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     );
   }
 
-  Widget _buildSectionLabel(String text) {
+  Widget _buildSectionLabel(String text, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
@@ -189,18 +191,18 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
           fontSize: 12,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.2,
-          color: Colors.grey.shade500,
+          color: isDark ? Colors.white38 : Colors.grey.shade500,
         ),
       ),
     );
   }
 
-  Widget _buildInputGroup() {
-    const darkText = Color(0xFF111827);
+  Widget _buildInputGroup(bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
       ),
@@ -208,22 +210,22 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
         children: [
           TextFormField(
             controller: _titleCtrl,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkText),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
             decoration: InputDecoration(
               hintText: 'Task Title', 
-              hintStyle: TextStyle(color: Colors.grey.shade400),
+              hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400),
               border: InputBorder.none
             ),
             validator: (v) => (v == null || v.isEmpty) ? 'Title required' : null,
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: isDark ? Colors.white10 : Colors.grey.shade200),
           TextFormField(
             controller: _descCtrl,
             maxLines: 3,
-            style: const TextStyle(fontSize: 16, color: darkText),
+            style: TextStyle(fontSize: 16, color: textColor),
             decoration: InputDecoration(
               hintText: 'Add details...', 
-              hintStyle: TextStyle(color: Colors.grey.shade400),
+              hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400),
               border: InputBorder.none
             ),
           ),
@@ -232,24 +234,24 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     );
   }
 
-  Widget _buildPrioritySelector() {
+  Widget _buildPrioritySelector(bool isDark) {
     return Row(
       children: [
-        _priorityButton(1, "Low", Colors.green),
+        _priorityButton(1, "Low", Colors.green, isDark),
         const SizedBox(width: 8),
-        _priorityButton(2, "Med", Colors.orange),
+        _priorityButton(2, "Med", Colors.orange, isDark),
         const SizedBox(width: 8),
-        _priorityButton(3, "High", Colors.red),
+        _priorityButton(3, "High", Colors.red, isDark),
       ],
     );
   }
 
-  Widget _buildSettingsGroup() {
-    const darkText = Color(0xFF111827);
+  Widget _buildSettingsGroup(bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
       ),
@@ -257,17 +259,21 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
         children: [
           ListTile(
             leading: const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
-            title: const Text("Due Date", style: TextStyle(fontWeight: FontWeight.w600, color: darkText)),
-            subtitle: Text(dueDate == null ? "Not set" : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}"),
+            title: Text("Due Date", style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+            subtitle: Text(
+              dueDate == null ? "Not set" : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
+              style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+            ),
             trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
             onTap: _pickDueDate,
           ),
-          const Divider(height: 1, indent: 60),
+          Divider(height: 1, indent: 60, color: isDark ? Colors.white10 : Colors.grey.shade200),
           Theme(
             data: Theme.of(context).copyWith(
-              listTileTheme: const ListTileThemeData(
+              listTileTheme: ListTileThemeData(
                 iconColor: AppColors.primary,
-                titleTextStyle: TextStyle(fontWeight: FontWeight.w600, color: darkText, fontSize: 16),
+                titleTextStyle: TextStyle(fontWeight: FontWeight.w600, color: textColor, fontSize: 16),
+                subtitleTextStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
               ),
             ),
             child: ReminderSection(
@@ -287,7 +293,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     );
   }
 
-  Widget _priorityButton(int value, String label, Color color) {
+  Widget _priorityButton(int value, String label, Color color, bool isDark) {
     final isSelected = _priority == value;
     return Expanded(
       child: GestureDetector(
@@ -296,14 +302,14 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? color : Colors.white,
+            color: isSelected ? color : (isDark ? Colors.white.withOpacity(0.05) : Colors.white),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isSelected ? color : Colors.grey.shade200),
+            border: Border.all(color: isSelected ? color : (isDark ? Colors.white10 : Colors.grey.shade200)),
           ),
           child: Center(
             child: Text(
               label,
-              style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold),
+              style: TextStyle(color: isSelected ? Colors.white : (isDark ? Colors.white38 : Colors.grey.shade600), fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -315,6 +321,7 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.cardDark : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text("Delete Task?"),
         content: const Text("Are you sure you want to remove this task? This cannot be undone."),
@@ -370,4 +377,4 @@ class _TaskCreateEditScreenState extends ConsumerState<TaskCreateEditScreen> {
     }
     if (mounted) Navigator.pop(context, true);
   }
-} // 393 lines approximately with spacing restored
+}
