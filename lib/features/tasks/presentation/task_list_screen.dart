@@ -58,7 +58,9 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
     return Scaffold(
       // Dynamic background color to prevent white flashes
-      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+      backgroundColor: isDark
+          ? AppColors.scaffoldDark
+          : const Color(0xFFF8F9FD),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -70,17 +72,23 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               child: Center(
                 child: Text(
                   'Error: $e',
-                  style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
                 ),
               ),
             ),
             data: (dynamic tasksData) {
               final List tasks = tasksData is List ? tasksData : [];
-              
+
               final visibleTasks = tasks.where((t) {
-                final task = t as db.Task;
-                return task.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                       (task.description ?? '').toLowerCase().contains(_searchQuery.toLowerCase());
+                final db.Task task = t is db.Task ? t : (t as dynamic).task;
+                return task.title.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ||
+                    (task.description ?? '').toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    );
               }).toList();
 
               if (visibleTasks.isEmpty) {
@@ -93,26 +101,30 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
               return SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final db.Task task = visibleTasks[index] as db.Task;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: TaskCard(
-                          task: task,
-                          onTap: () => _openEditTask(task),
-                          onToggleDone: () {
-                            final isDone = task.status == TaskStatus.done.name;
-                            final newStatus = isDone ? TaskStatus.todo.name : TaskStatus.done.name;
-                            ref.read(tasksProvider.notifier).updateTask(
-                                  task.copyWith(status: drift.Value(newStatus)),
-                                );
-                          },
-                        ),
-                      );
-                    },
-                    childCount: visibleTasks.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final item = visibleTasks[index];
+                    final db.Task task = item is db.Task
+                        ? item
+                        : (item as dynamic).task;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: TaskCard(
+                        task: task,
+                        onTap: () => _openEditTask(task),
+                        onToggleDone: () {
+                          final isDone = task.status == TaskStatus.done.name;
+                          final newStatus = isDone
+                              ? TaskStatus.todo.name
+                              : TaskStatus.done.name;
+                          ref
+                              .read(tasksProvider.notifier)
+                              .updateTask(
+                                task.copyWith(status: drift.Value(newStatus)),
+                              );
+                        },
+                      ),
+                    );
+                  }, childCount: visibleTasks.length),
                 ),
               );
             },
@@ -121,7 +133,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateTask,
-        label: const Text('Add Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text(
+          'Add Task',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         backgroundColor: AppColors.primary,
         elevation: 6,
@@ -138,8 +153,12 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
         title: const Text(
-          'My Tasks', 
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+          'My Tasks',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         background: Container(
           decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
@@ -176,20 +195,28 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black26 : Colors.black.withOpacity(0.05), 
-                blurRadius: 15, 
+                color: isDark ? Colors.black26 : Colors.black.withOpacity(0.05),
+                blurRadius: 15,
                 offset: const Offset(0, 5),
-              )
+              ),
             ],
           ),
           child: TextField(
             controller: _searchController,
             onChanged: (v) => setState(() => _searchQuery = v),
-            style: TextStyle(color: isDark ? Colors.white : const Color(0xFF111827), fontSize: 15),
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF111827),
+              fontSize: 15,
+            ),
             decoration: InputDecoration(
               hintText: 'Search your tasks...',
-              hintStyle: TextStyle(color: isDark ? Colors.white38 : const Color(0xFF9CA3AF)),
-              prefixIcon: Icon(Icons.search_rounded, color: isDark ? Colors.white38 : const Color(0xFF6B7280)),
+              hintStyle: TextStyle(
+                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+              ),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                color: isDark ? Colors.white38 : const Color(0xFF6B7280),
+              ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 15),
               filled: true,
@@ -207,18 +234,32 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       alignment: Alignment.center,
       children: [
         IconButton(
-          icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationScreen())),
+          icon: const Icon(
+            Icons.notifications_none_rounded,
+            color: Colors.white,
+            size: 28,
+          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const NotificationScreen())),
         ),
         if (unreadCount > 0)
           Positioned(
-            right: 8, top: 10,
+            right: 8,
+            top: 10,
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
               child: Text(
-                unreadCount.toString(), 
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                unreadCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

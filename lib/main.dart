@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
 import 'app.dart';
 import 'core/providers/task_providers.dart';
-import 'core/providers/theme_provider.dart'; 
+import 'core/providers/theme_provider.dart';
 import 'data/database/database.dart' as db;
 import 'package:task_mvp/core/providers/database_provider.dart';
 
@@ -16,49 +16,59 @@ Future<void> seedProjectData(db.AppDatabase database) async {
     if (existingUsers.isEmpty) {
       await database.transaction(() async {
         // ✅ Insert User 1 (Admin)
-        final userId = await database.into(database.users).insert(
-          db.UsersCompanion.insert(
-            name: 'Vaibhav Bhojane',
-            email: 'vaibhav@jbbtechnologies.com',
-            password: 'password123',
-          ),
-        );
+        final userId = await database
+            .into(database.users)
+            .insert(
+              db.UsersCompanion.insert(
+                name: 'Vaibhav Bhojane',
+                email: 'vaibhav@jbbtechnologies.com',
+                password: 'password123',
+              ),
+            );
 
         // ✅ Ensure Default Project exists
-        await database.into(database.projects).insert(
-          db.ProjectsCompanion.insert(
-            id: const drift.Value(1),
-            name: 'General Project',
-            color: const drift.Value(0xFF2196F3),
-          ),
-          mode: drift.InsertMode.insertOrIgnore,
-        );
+        await database
+            .into(database.projects)
+            .insert(
+              db.ProjectsCompanion.insert(
+                id: const drift.Value(1),
+                name: 'General Project',
+                color: const drift.Value(0xFF2196F3),
+              ),
+              mode: drift.InsertMode.insertOrIgnore,
+            );
 
         // ✅ Add Owner relationship
-        await database.into(database.projectMembers).insert(
-          db.ProjectMembersCompanion.insert(
-            projectId: 1,
-            userId: userId,
-            role: 'Owner',
-          ),
-        );
+        await database
+            .into(database.projectMembers)
+            .insert(
+              db.ProjectMembersCompanion.insert(
+                projectId: 1,
+                userId: userId,
+                role: 'Owner',
+              ),
+            );
 
         // ✅ Team Users
-        await database.into(database.users).insert(
-          db.UsersCompanion.insert(
-            name: 'Ajinkya Ghode',
-            email: 'ajinkya@test.com',
-            password: 'password123',
-          ),
-        );
+        await database
+            .into(database.users)
+            .insert(
+              db.UsersCompanion.insert(
+                name: 'Ajinkya Ghode',
+                email: 'ajinkya@test.com',
+                password: 'password123',
+              ),
+            );
 
-        await database.into(database.users).insert(
-          db.UsersCompanion.insert(
-            name: 'Vaishnavi Mogal',
-            email: 'vaishnavi@test.com',
-            password: 'password123',
-          ),
-        );
+        await database
+            .into(database.users)
+            .insert(
+              db.UsersCompanion.insert(
+                name: 'Vaishnavi Mogal',
+                email: 'vaishnavi@test.com',
+                password: 'password123',
+              ),
+            );
       });
       debugPrint("✅ Database Seeded Successfully");
     }
