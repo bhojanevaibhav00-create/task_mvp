@@ -168,16 +168,51 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         _buildNotificationIcon(ref),
         IconButton(
           icon: const Icon(Icons.filter_list, color: Colors.white),
-          onPressed: () => openFilterBottomSheet(
-            context: context,
-            allTags: const [],
-            statusFilters: {},
-            priorityFilters: {},
-            tagFilters: {},
-            dueBucket: null,
-            sort: null,
-            onApply: (_, __, ___, ____, _____) {},
-          ),
+          onPressed: () {
+            final status = ref.read(statusFilterProvider);
+            final priority = ref.read(priorityFilterProvider);
+            final dueBucket = ref.read(dueBucketFilterProvider);
+            final sort = ref.read(sortByProvider);
+
+            // Safe mapping for Status
+            final Set<TaskStatus> initialStatus = status != 'all'
+                ? TaskStatus.values.where((e) => e.name == status).toSet()
+                : {};
+
+            // Safe mapping for Priority (DB 1-based -> Enum 0-based)
+            final Set<Priority> initialPriority =
+                (priority != null &&
+                    priority > 0 &&
+                    priority <= Priority.values.length)
+                ? {Priority.values[priority - 1]}
+                : {};
+
+            openFilterBottomSheet(
+              context: context,
+              allTags: const [],
+              statusFilters: initialStatus,
+              priorityFilters: initialPriority,
+              tagFilters: {},
+              dueBucket: dueBucket,
+              sort: sort,
+              onApply: (statuses, priorities, tags, bucket, newSort) {
+                ref
+                    .read(statusFilterProvider.notifier)
+                    .state = statuses.isNotEmpty
+                    ? (statuses.first as TaskStatus).name
+                    : 'all';
+                ref
+                    .read(priorityFilterProvider.notifier)
+                    .state = priorities.isNotEmpty
+                    ? (priorities.first as Priority).index + 1
+                    : null;
+                ref.read(dueBucketFilterProvider.notifier).state = bucket;
+                if (newSort != null) {
+                  ref.read(sortByProvider.notifier).state = newSort;
+                }
+              },
+            );
+          },
         ),
         const SizedBox(width: 8),
       ],

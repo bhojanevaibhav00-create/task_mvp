@@ -241,7 +241,11 @@ final filteredTasksProvider =
         projectId: projectId,
         fromDate: fromDate,
         toDate: toDate,
-        sortBy: sortBy == 'priority' ? 'priority_desc' : 'due_date_asc',
+        sortBy: switch (sortBy) {
+          'priority' => 'priority_desc',
+          'date' => 'due_date_asc',
+          _ => 'updated_at_desc',
+        },
       );
     });
 
@@ -252,7 +256,11 @@ final projectTasksProvider = StreamProvider.family
 
       return repository.watchTasksWithAssignee(
         projectId: projectId,
-        sortBy: sortType == 'priority' ? 'priority_desc' : 'due_date_asc',
+        sortBy: switch (sortType) {
+          'priority' => 'priority_desc',
+          'date' => 'due_date_asc',
+          _ => 'updated_at_desc',
+        },
       );
     });
 
