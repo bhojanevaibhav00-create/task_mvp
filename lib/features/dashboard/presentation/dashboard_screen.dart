@@ -17,6 +17,7 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watches the providers to ensure the UI rebuilds on any data change
     final tasks = ref.watch(tasksProvider);
     final unread = ref.watch(unreadNotificationCountProvider);
     final projectsAsync = ref.watch(allProjectsProvider);
@@ -56,6 +57,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   _createProjectButton(context),
                   const SizedBox(height: 16),
+                  // ✅ The reactive projects list
                   _projects(projectsAsync, isDark, context),
                   const SizedBox(height: 32),
                   _sectionHeader('Quick Actions', Icons.bolt_rounded, isDark),
@@ -254,7 +256,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ================= PROJECTS =================
+  // ================= PROJECTS (REACTIVE) =================
   Widget _projects(AsyncValue projects, bool isDark, BuildContext context) {
     return SizedBox(
       height: 150,
