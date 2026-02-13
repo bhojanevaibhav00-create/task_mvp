@@ -80,6 +80,7 @@ class Users extends Table {
   TextColumn get name => text().withLength(min: 1, max: 50)();
   TextColumn get email => text().unique()(); 
   TextColumn get password => text()(); 
+  TextColumn get bio => text().nullable()(); // ✅ Added for Profile Screen
 }
 
 /// =======================
@@ -147,8 +148,8 @@ class ProjectMembers extends Table {
 @DriftDatabase(
   tables: [
     Tasks,
-    Subtasks, // ✅ Added for Sprint 9
-    Comments, // ✅ Added for Sprint 9
+    Subtasks,
+    Comments,
     Projects,
     Users,
     Tags,
@@ -166,14 +167,13 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 11; // ✅ Incremented for new tables
+  int get schemaVersion => 12; // ✅ Incremented for Users.bio column
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (m) async => await m.createAll(),
       onUpgrade: (Migrator m, int from, int to) async {
-        // Previous Migrations (1-10)
         if (from < 2) {
           await m.createTable(projects);
           await m.createTable(users);
@@ -206,11 +206,14 @@ class AppDatabase extends _$AppDatabase {
             'CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_label_nocase ON tags(label COLLATE NOCASE);',
           );
         }
-        
-        // ✅ Sprint 9 Migration (10 to 11)
         if (from < 11) {
           await m.createTable(subtasks);
           await m.createTable(comments);
+        }
+        
+        // ✅ Version 12: Add Bio to Users for Profile Support
+        if (from < 12) {
+          await m.addColumn(users, users.bio);
         }
       },
     );

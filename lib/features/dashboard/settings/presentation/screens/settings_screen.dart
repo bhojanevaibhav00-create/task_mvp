@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../core/providers/theme_provider.dart';
+import 'package:task_mvp/core/constants/app_colors.dart';
+import 'package:task_mvp/core/theme/app_text_styles.dart';
+import 'package:task_mvp/core/providers/theme_provider.dart';
+
+// ✅ Import your new screens here
+import 'profile_screen.dart';
+import 'change_password_screen.dart';
 
 // Notifications toggle (UI only)
 final notificationsProvider = StateProvider<bool>((ref) => true);
@@ -13,9 +17,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 💡 KEY FIX: Determine visual brightness to sync the switch on app start
     final isVisualDark = Theme.of(context).brightness == Brightness.dark;
-    final themeMode = ref.watch(themeModeProvider);
     final notificationsEnabled = ref.watch(notificationsProvider);
 
     return Scaffold(
@@ -40,23 +42,17 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           _sectionTitle('General'),
 
-          // 🌙 DARK MODE SWITCH - UPDATED FOR STARTUP SYNC
           _settingTile(
             icon: isVisualDark ? Icons.dark_mode : Icons.light_mode,
             label: 'Dark Mode',
             isDark: isVisualDark,
             trailing: Switch(
-              // ✅ Sync with visual state so it's ON if the app is dark at startup
               value: isVisualDark, 
-              onChanged: (_) {
-                // Uses the robust toggle logic from your ThemeNotifier
-                ref.read(themeModeProvider.notifier).toggleTheme();
-              },
+              onChanged: (_) => ref.read(themeModeProvider.notifier).toggleTheme(),
               activeColor: AppColors.primary,
             ),
           ),
 
-          // 🔔 NOTIFICATIONS
           _settingTile(
             icon: Icons.notifications,
             label: 'Notifications',
@@ -71,17 +67,26 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           _sectionTitle('Account'),
 
+          // ✅ Profile is now clickable and points to the new Premium Screen
           _settingTile(
-            icon: Icons.person,
+            icon: Icons.person_outline_rounded,
             label: 'Profile',
             isDark: isVisualDark,
-            onTap: () => _push(context, const ProfileScreen()),
+            onTap: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (_) => const ProfileScreen())
+            ),
           ),
+          
+          // ✅ Change Password is now clickable and points to the new Security Screen
           _settingTile(
-            icon: Icons.lock,
+            icon: Icons.lock_outline_rounded,
             label: 'Change Password',
             isDark: isVisualDark,
-            onTap: () => _push(context, const ChangePasswordScreen()),
+            onTap: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (_) => const ChangePasswordScreen())
+            ),
           ),
 
           const SizedBox(height: 24),
@@ -94,13 +99,13 @@ class SettingsScreen extends ConsumerWidget {
             trailing: Text(
               '1.0.0',
               style: AppTextStyles.body.copyWith(
-                color: isVisualDark ? Colors.white70 : Colors.black54,
+                color: isVisualDark ? Colors.white38 : Colors.black26,
               ),
             ),
           ),
 
           _settingTile(
-            icon: Icons.logout,
+            icon: Icons.logout_rounded,
             label: 'Logout',
             isDark: isVisualDark,
             onTap: () => _showLogoutDialog(context, isVisualDark),
@@ -117,7 +122,7 @@ class SettingsScreen extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(4, 12, 0, 8),
       child: Text(
         title.toUpperCase(),
-        style: AppTextStyles.body.copyWith(
+        style: TextStyle(
           fontWeight: FontWeight.w900,
           fontSize: 12,
           color: AppColors.primary,
@@ -157,7 +162,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
         title: Text(
           label,
-          style: AppTextStyles.body.copyWith(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.white : Colors.black87,
           ),
@@ -167,10 +172,6 @@ class SettingsScreen extends ConsumerWidget {
                 color: isDark ? Colors.white38 : Colors.black26),
       ),
     );
-  }
-
-  void _push(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
   void _showLogoutDialog(BuildContext context, bool isDark) {
@@ -200,17 +201,4 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-// ===== PLACEHOLDERS =====
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Profile')));
-}
-
-class ChangePasswordScreen extends StatelessWidget {
-  const ChangePasswordScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Change Password')));
 }

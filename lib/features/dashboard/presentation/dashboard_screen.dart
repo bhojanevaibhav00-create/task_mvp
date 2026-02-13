@@ -7,10 +7,11 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 import '../../../core/providers/project_providers.dart';
+import 'package:task_mvp/data/database/database.dart'; // ✅ Import for Task type
 
 import 'widgets/dashboard_empty_state.dart';
-import 'package:task_mvp/features/dashboard/presentation/settings_screen.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/quick_add_task_sheet.dart';
+import 'package:task_mvp/features/dashboard/settings/presentation/screens/settings_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -66,7 +67,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 32),
                   _sectionHeader('Recent Tasks', Icons.history_rounded, isDark),
                   const SizedBox(height: 16),
-                  _recentTasks(tasks, isDark),
+                  _recentTasks(context, tasks, isDark), // ✅ Added context parameter
                 ],
               ),
             ),
@@ -368,7 +369,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ================= RECENT TASKS =================
-  Widget _recentTasks(List tasks, bool isDark) {
+  Widget _recentTasks(BuildContext context, List<Task> tasks, bool isDark) {
     if (tasks.isEmpty) return const DashboardEmptyState();
 
     return Column(
@@ -383,7 +384,7 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
           child: ListTile(
-            onTap: () {}, // Logic for task detail
+            onTap: () => context.push('/tasks/${t.id}'), // ✅ FIXED: Navigation to task detail
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             leading: Container(
               padding: const EdgeInsets.all(8),
@@ -396,7 +397,10 @@ class DashboardScreen extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
             ),
-            subtitle: Text('In Progress', style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38)),
+            subtitle: Text(
+              t.status ?? 'In Progress', 
+              style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38)
+            ),
             trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white24 : Colors.black26),
           ),
         );
