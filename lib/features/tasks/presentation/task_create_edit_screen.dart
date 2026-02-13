@@ -54,11 +54,10 @@ class _TaskCreateEditScreenState
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.task != null;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF6F7FB),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -70,32 +69,32 @@ class _TaskCreateEditScreenState
             _buildCustomAppBar(isEdit),
             Expanded(
               child: Container(
-                width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  color: theme.colorScheme.surface,
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(32)),
                 ),
                 child: Form(
                   key: _formKey,
                   child: ListView(
                     physics: const BouncingScrollPhysics(),
                     children: [
-                      _sectionLabel('TASK DETAILS', isDark),
-                      _inputGroup(isDark, textColor),
-                      const SizedBox(height: 24),
-                      
-                      _sectionLabel('ASSIGN TO', isDark),
-                      _assigneeSelector(isDark),
+                      _sectionLabel('TASK DETAILS'),
+                      _inputGroup(),
                       const SizedBox(height: 24),
 
-                      _sectionLabel('PRIORITY', isDark),
-                      _prioritySelector(isDark),
+                      _sectionLabel('ASSIGN TO'),
+                      _assigneeSelector(),
                       const SizedBox(height: 24),
-                      
-                      _sectionLabel('SETTINGS', isDark),
-                      _settingsGroup(isDark, textColor),
-                      const SizedBox(height: 120), 
+
+                      _sectionLabel('PRIORITY'),
+                      _prioritySelector(),
+                      const SizedBox(height: 24),
+
+                      _sectionLabel('SETTINGS'),
+                      _settingsGroup(),
+                      const SizedBox(height: 120),
                     ],
                   ),
                 ),
@@ -104,36 +103,22 @@ class _TaskCreateEditScreenState
           ],
         ),
       ),
-
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButtonLocation:
+      FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
-        elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         icon: const Icon(Icons.check, color: Colors.white),
         label: const Text(
           'Save Task',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold),
         ),
         onPressed: _saveTask,
       ),
     );
   }
 
-  // ================= HELPERS =================
-
-  Widget _sectionLabel(String t, bool isDark) => Padding(
-    padding: const EdgeInsets.only(left: 4, bottom: 8),
-    child: Text(
-      t,
-      style: TextStyle(
-        fontSize: 12,
-        letterSpacing: 1.2,
-        fontWeight: FontWeight.w800,
-        color: isDark ? Colors.white38 : Colors.grey.shade500,
-      ),
-    ),
-  );
+  // ================= UI =================
 
   Widget _buildCustomAppBar(bool isEdit) {
     return SafeArea(
@@ -142,7 +127,8 @@ class _TaskCreateEditScreenState
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+              icon:
+              const Icon(Icons.arrow_back_ios_new, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
             const Spacer(),
@@ -157,7 +143,8 @@ class _TaskCreateEditScreenState
             const Spacer(),
             if (isEdit)
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.white),
+                icon: const Icon(Icons.delete_outline,
+                    color: Colors.white),
                 onPressed: () => _confirmDelete(context),
               )
             else
@@ -168,34 +155,50 @@ class _TaskCreateEditScreenState
     );
   }
 
-  Widget _inputGroup(bool isDark, Color textColor) {
+  Widget _sectionLabel(String text) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        text,
+        style: theme.textTheme.labelSmall?.copyWith(
+          letterSpacing: 1.2,
+          fontWeight: FontWeight.w800,
+          color:
+          theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+        ),
+      ),
+    );
+  }
+
+  Widget _inputGroup() {
+    final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
           TextFormField(
             controller: _titleCtrl,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
-            decoration: InputDecoration(
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(
               hintText: 'Task title',
-              hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400),
               border: InputBorder.none,
             ),
-            validator: (v) => v == null || v.isEmpty ? 'Title required' : null,
+            validator: (v) =>
+            v == null || v.isEmpty ? 'Title required' : null,
           ),
-          Divider(height: 24, color: isDark ? Colors.white10 : Colors.grey.shade200),
+          const Divider(height: 24),
           TextFormField(
             controller: _descCtrl,
             maxLines: 3,
-            style: TextStyle(fontSize: 16, color: textColor),
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               hintText: 'Add details...',
-              hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400),
               border: InputBorder.none,
             ),
           ),
@@ -204,71 +207,81 @@ class _TaskCreateEditScreenState
     );
   }
 
-  Widget _assigneeSelector(bool isDark) {
+  Widget _assigneeSelector() {
     final pid = widget.projectId ?? widget.task?.projectId;
-    if (pid == null) return Text("Select a project first", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54));
+    if (pid == null) return const SizedBox();
 
     final membersAsync = ref.watch(projectMembersProvider(pid));
 
     return membersAsync.when(
       loading: () => const LinearProgressIndicator(),
-      error: (_, __) => const Text('Failed to load members'),
+      error: (_, __) =>
+      const Text('Failed to load members'),
       data: (members) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<int?>(
             isExpanded: true,
-            dropdownColor: isDark ? AppColors.cardDark : Colors.white,
-            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
             value: _selectedAssigneeId,
-            hint: Text('Select assignee', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
+            hint: const Text('Select assignee'),
             items: [
-              DropdownMenuItem<int?>(value: null, child: Text('Unassigned', style: TextStyle(color: isDark ? Colors.white : Colors.black87))),
+              const DropdownMenuItem<int?>(
+                  value: null, child: Text('Unassigned')),
               ...members.map((m) => DropdownMenuItem<int?>(
                 value: m.member.userId,
-                child: Text(m.user.name, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+                child: Text(m.user.name),
               )),
             ],
-            onChanged: (v) => setState(() => _selectedAssigneeId = v),
+            onChanged: (v) =>
+                setState(() => _selectedAssigneeId = v),
           ),
         ),
       ),
     );
   }
 
-  Widget _prioritySelector(bool isDark) {
+  Widget _prioritySelector() {
     return Row(
       children: [
-        _priorityBtn(1, 'Low', Colors.green, isDark),
+        _priorityBtn(1, 'Low', Colors.green),
         const SizedBox(width: 8),
-        _priorityBtn(2, 'Med', Colors.orange, isDark),
+        _priorityBtn(2, 'Med', Colors.orange),
         const SizedBox(width: 8),
-        _priorityBtn(3, 'High', Colors.red, isDark),
+        _priorityBtn(3, 'High', Colors.red),
       ],
     );
   }
 
-  Widget _priorityBtn(int value, String label, Color color, bool isDark) {
+  Widget _priorityBtn(int value, String label, Color color) {
     final selected = _priority == value;
+    final theme = Theme.of(context);
+
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _priority = value),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? color : (isDark ? Colors.white.withOpacity(0.05) : Colors.transparent),
+            color: selected
+                ? color
+                : theme.colorScheme.surfaceVariant,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: selected ? color : (isDark ? Colors.white10 : Colors.grey)),
+            border: Border.all(
+              color:
+              selected ? color : theme.dividerColor,
+            ),
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : (isDark ? Colors.white38 : Colors.grey),
+                color: selected
+                    ? Colors.white
+                    : theme.textTheme.bodyMedium?.color,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -278,56 +291,51 @@ class _TaskCreateEditScreenState
     );
   }
 
-  Widget _settingsGroup(bool isDark, Color textColor) {
+  Widget _settingsGroup() {
+    final theme = Theme.of(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         children: [
           ListTile(
-            leading: const Icon(Icons.calendar_today, color: AppColors.primary),
-            title: Text('Due Date', style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+            leading:
+            const Icon(Icons.calendar_today, color: AppColors.primary),
+            title: const Text('Due Date'),
             subtitle: Text(
-              dueDate == null ? 'Not set' : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
-              style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+              dueDate == null
+                  ? 'Not set'
+                  : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
             ),
-            trailing: Icon(Icons.chevron_right, color: isDark ? Colors.white24 : Colors.grey),
+            trailing: const Icon(Icons.chevron_right),
             onTap: _pickDueDate,
           ),
-          Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey.shade200),
-          Theme(
-            data: Theme.of(context).copyWith(
-              listTileTheme: ListTileThemeData(
-                iconColor: AppColors.primary,
-                titleTextStyle: TextStyle(fontWeight: FontWeight.w600, color: textColor, fontSize: 16),
-                subtitleTextStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
-              ),
-            ),
-            child: ReminderSection(
-              initialEnabled: reminderEnabled,
-              initialTime: reminderAt,
-              onChanged: (e, t) => setState(() => {reminderEnabled = e, reminderAt = t}),
-            ),
+          const Divider(height: 1),
+          ReminderSection(
+            initialEnabled: reminderEnabled,
+            initialTime: reminderAt,
+            onChanged: (e, t) =>
+                setState(() => {reminderEnabled = e, reminderAt = t}),
           ),
         ],
       ),
     );
   }
 
-  // ================= ACTIONS =================
+  // ================= LOGIC =================
 
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
+
     final notifier = ref.read(tasksProvider.notifier);
-    final title = _titleCtrl.text.trim();
-    final description = _descCtrl.text.trim();
 
     if (widget.task == null) {
       await notifier.addTask(
-        title,
-        description,
+        _titleCtrl.text.trim(),
+        _descCtrl.text.trim(),
         priority: _priority,
         dueDate: dueDate,
         assigneeId: _selectedAssigneeId,
@@ -336,8 +344,8 @@ class _TaskCreateEditScreenState
     } else {
       await notifier.updateTask(
         widget.task!.copyWith(
-          title: title,
-          description: drift.Value(description),
+          title: _titleCtrl.text.trim(),
+          description: drift.Value(_descCtrl.text.trim()),
           priority: drift.Value(_priority),
           dueDate: drift.Value(dueDate),
           reminderEnabled: reminderEnabled,
@@ -354,22 +362,28 @@ class _TaskCreateEditScreenState
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.cardDark : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24)),
         title: const Text('Delete Task?'),
-        content: const Text('Are you sure you want to remove this task? This cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to remove this task?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete',
+                  style: TextStyle(color: Colors.red))),
         ],
       ),
     );
 
     if (ok == true && widget.task != null) {
-      await ref.read(tasksProvider.notifier).deleteTask(widget.task!.id);
+      await ref
+          .read(tasksProvider.notifier)
+          .deleteTask(widget.task!.id);
       if (mounted) Navigator.pop(context, true);
     }
   }
