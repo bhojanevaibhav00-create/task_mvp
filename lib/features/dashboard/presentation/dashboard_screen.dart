@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:task_mvp/data/database/database.dart' as db;
+import 'package:task_mvp/features/tasks/presentation/task_detail_screen.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
@@ -494,87 +496,133 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ================= RECENT TASKS =================
-  Widget _recentTasks(
-    BuildContext context,
-    WidgetRef ref,
-    List<Task> tasks,
-    bool isDark,
-  ) {
-    if (tasks.isEmpty) return const DashboardEmptyState();
+ /// ✅ Helper function to build the interactive checkbox icon
+Widget _buildTaskLeading(WidgetRef ref, db.Task t, bool isDone) {
+  return InkWell(
+    onTap: () {
+      final newStatus = isDone
+          ? TaskStatus.todo.name
+          : TaskStatus.done.name;
+      ref
+          .read(tasksProvider.notifier)
+          .updateTask(t.copyWith(status: drift.Value(newStatus)));
+    },
+    child: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isDone
+            ? Colors.green.withOpacity(0.1)
+            : AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
+        color: isDone ? Colors.green : AppColors.primary,
+        size: 22,
+      ),
+    ),
+  );
+}
 
-    return Column(
-      children: tasks.take(5).map((t) {
-        final isDone = t.status == TaskStatus.done.name;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: isDark ? Colors.black26 : Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+/// ✅ Helper function to open Detail Screen instead of Edit
+void _openTaskDetail(BuildContext context, db.Task task) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => TaskDetailScreen(task: task),
+    ),
+  );
+}
+
+Widget _recentTasks(
+  BuildContext context,
+  WidgetRef ref,
+  List<db.Task> tasks,
+  bool isDark,
+) {
+  if (tasks.isEmpty) return const DashboardEmptyState();
+
+  return Column(
+    children: tasks.take(5).map((t) {
+      final isDone = t.status == TaskStatus.done.name;
+      
+      // ✅ Sprint 9 Task 1B: Watch subtasks for progress calculation
+      final subtasksAsync = ref.watch(subtasksProvider(t.id));
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black26 : Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ListTile(
+          // ✅ Sprint 9 UX Upgrade: Navigate to Detail Screen
+          onTap: () => _openTaskDetail(context, t), 
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: _buildTaskLeading(ref, t, isDone), // ✅ FIXED: Function now defined
+          title: Text(
+            t.title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+              decoration: isDone ? TextDecoration.lineThrough : null,
+            ),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text(
+                t.status ?? 'In Progress',
+                style: TextStyle(
+                  fontSize: 12, 
+                  color: isDark ? Colors.white38 : Colors.black38
+                ),
+              ),
+              
+              // ✅ Sprint 9 Task 1B: Mini Progress Bar
+              subtasksAsync.when(
+                data: (list) {
+                  if (list.isEmpty) return const SizedBox.shrink();
+                  final completed = list.where((s) => s.isCompleted).length;
+                  final progress = completed / list.length;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 4,
+                        backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          progress == 1.0 ? Colors.green : AppColors.primary
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
               ),
             ],
           ),
-          child: ListTile(
-            onTap: () => _openEditTask(context, ref, t),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 4,
-            ),
-            leading: InkWell(
-              onTap: () {
-                final newStatus = isDone
-                    ? TaskStatus.todo.name
-                    : TaskStatus.done.name;
-                ref
-                    .read(tasksProvider.notifier)
-                    .updateTask(t.copyWith(status: drift.Value(newStatus)));
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDone
-                      ? Colors.green.withOpacity(0.1)
-                      : AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  color: isDone ? Colors.green : AppColors.primary,
-                  size: 22,
-                ),
-              ),
-            ),
-            title: Text(
-              t.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-            subtitle: Text(
-              t.status ?? 'In Progress',
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.white38 : Colors.black38,
-              ),
-            ),
-            trailing: Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: isDark ? Colors.white24 : Colors.black26,
-            ),
+          trailing: const Icon(
+            Icons.arrow_forward_ios_rounded, 
+            size: 14, 
+            color: Colors.grey
           ),
-        );
-      }).toList(),
-    );
-  }
+        ),
+      );
+    }).toList(),
+  );
+}
 
   void _openQuickAdd(BuildContext context) {
     showModalBottomSheet(

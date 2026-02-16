@@ -39,10 +39,11 @@ class _CommentInputState extends ConsumerState<CommentInput> {
         child: CompositedTransformFollower(
           link: _layerLink,
           showWhenUnlinked: false,
-          offset: const Offset(0, -160), // Positions list above the input
+          offset: const Offset(0, -160), 
           child: Material(
             elevation: 8,
             borderRadius: BorderRadius.circular(12),
+            shadowColor: Colors.black26,
             child: Container(
               height: 150,
               decoration: BoxDecoration(
@@ -60,7 +61,8 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                         dense: true,
                         leading: CircleAvatar(
                           radius: 12, 
-                          child: Text(user.name[0].toUpperCase(), style: const TextStyle(fontSize: 10)),
+                          backgroundColor: Colors.blueAccent.withOpacity(0.1),
+                          child: Text(user.name[0].toUpperCase(), style: const TextStyle(fontSize: 10, color: Colors.blueAccent)),
                         ),
                         title: Text(user.name, style: const TextStyle(fontSize: 13)),
                         onTap: () => _addMention(user.name),
@@ -77,17 +79,19 @@ class _CommentInputState extends ConsumerState<CommentInput> {
   }
 
   void _hideOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
+    if (_overlayEntry != null) {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+    }
   }
 
   void _onTextChanged(String text) {
-    if (text.endsWith('@')) {
+    // Basic logic: trigger if last char is '@'
+    if (text.isNotEmpty && text.endsWith('@')) {
       setState(() => _isMentioning = true);
-      // Fetch users (You can filter this by project members if preferred)
       final members = ref.read(allUsersProvider).value ?? [];
       _showOverlay(members);
-    } else if (_isMentioning && (!text.contains('@') || text.endsWith(' '))) {
+    } else if (_isMentioning && (text.isEmpty || text.endsWith(' ') || !text.contains('@'))) {
       setState(() => _isMentioning = false);
       _hideOverlay();
     }
@@ -95,7 +99,6 @@ class _CommentInputState extends ConsumerState<CommentInput> {
 
   void _addMention(String name) {
     final text = _controller.text;
-    // Replace the trailing '@' with the mention
     final newText = text.substring(0, text.length - 1) + "@$name ";
     _controller.text = newText;
     _controller.selection = TextSelection.fromPosition(
@@ -109,11 +112,8 @@ class _CommentInputState extends ConsumerState<CommentInput> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    // ✅ NEW LOGIC: Save to Repository
     try {
-      // Assuming a default user ID for the current session (e.g., 1)
-      // In a real app, you'd get this from an AuthProvider
-      const currentUserId = 1; 
+      const currentUserId = 1; // Default for Local MVP
 
       await ref.read(commentRepositoryProvider).addComment(
         taskId: widget.taskId,
@@ -128,9 +128,6 @@ class _CommentInputState extends ConsumerState<CommentInput> {
       
       if (mounted) {
         FocusScope.of(context).unfocus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Comment added"), duration: Duration(seconds: 1)),
-        );
       }
     } catch (e) {
       debugPrint("Comment Submit Error: $e");
@@ -148,6 +145,7 @@ class _CommentInputState extends ConsumerState<CommentInput> {
         decoration: BoxDecoration(
           color: isDark ? Colors.white10 : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
         ),
         child: Row(
           children: [
@@ -156,10 +154,10 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                 controller: _controller,
                 onChanged: _onTextChanged,
                 maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
+                style: TextStyle(fontSize: 14, color: isDark ? Colors.white : Colors.black87),
                 decoration: const InputDecoration(
                   hintText: "Write a comment... use @",
-                  hintStyle: TextStyle(fontSize: 14),
+                  hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(vertical: 12),

@@ -5,7 +5,7 @@ import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/repositories/task_repository.dart';
 import 'package:task_mvp/data/repositories/notification_repository.dart';
 import 'package:task_mvp/data/repositories/subtask_repository.dart';
-import 'package:task_mvp/data/repositories/comment_repository.dart'; // ✅ Sprint 9 New
+import 'package:task_mvp/data/repositories/comment_repository.dart'; 
 import 'package:task_mvp/core/services/reminder_service.dart';
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/core/providers/database_provider.dart';
@@ -36,7 +36,6 @@ final subtaskRepositoryProvider = Provider<SubtaskRepository>((ref) {
   return SubtaskRepository(db);
 });
 
-// ✅ New Repository Provider for Sprint 9 Collaboration
 final commentRepositoryProvider = Provider<CommentRepository>((ref) {
   final db = ref.watch(databaseProvider);
   final notificationRepo = ref.watch(notificationRepositoryProvider);
@@ -135,9 +134,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
   Future<void> _triggerCollabEvents(int taskId, String msg, int? pId) async {
     try {
       final db = _ref.read(databaseProvider);
-      await db
-          .into(db.activityLogs)
-          .insert(
+      await db.into(db.activityLogs).insert(
             ActivityLogsCompanion.insert(
               action: 'Task Assignment',
               description: drift.Value(msg),
@@ -146,9 +143,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
               timestamp: drift.Value(DateTime.now()),
             ),
           );
-      await db
-          .into(db.notifications)
-          .insert(
+      await db.into(db.notifications).insert(
             NotificationsCompanion.insert(
               type: 'assignment',
               title: 'New Assignment',
@@ -160,7 +155,7 @@ class TasksNotifier extends StateNotifier<List<Task>> {
             ),
           );
     } catch (e) {
-      // Prevent crash if FK constraint fails or DB is locked
+      // Prevent crash if FK constraint fails
     }
   }
 }
@@ -169,32 +164,22 @@ class TasksNotifier extends StateNotifier<List<Task>> {
 /// 3. SPRINT 9: SUBTASKS, PROGRESS & COLLABORATION
 /// ======================================================
 
-// ✅ Watch subtasks for real-time checklist updates
-final subtasksStreamProvider = StreamProvider.family<List<Subtask>, int>((
-  ref,
-  taskId,
-) {
+// ✅ RE-IMPLEMENTED: Ensure correct naming to match UI screens
+final subtasksProvider = StreamProvider.family<List<Subtask>, int>((ref, taskId) {
   final repo = ref.watch(subtaskRepositoryProvider);
   return repo.watchSubtasks(taskId);
 });
 
-// ✅ Accurate Project Progress calculation
-final projectProgressProvider = FutureProvider.family<double, int>((
-  ref,
-  projectId,
-) async {
-  final repo = ref.watch(subtaskRepositoryProvider);
-  ref.watch(tasksProvider);
-  return await repo.getProjectProgress(projectId);
-});
-
-// ✅ SPRINT 9 P0: Real-time Comment Stream with User Data
-final taskCommentsProvider = StreamProvider.family<List<CommentWithUser>, int>((
-  ref,
-  taskId,
-) {
+final commentsProvider = StreamProvider.family<List<CommentWithUser>, int>((ref, taskId) {
   final repo = ref.watch(commentRepositoryProvider);
   return repo.watchComments(taskId);
+});
+
+final projectProgressProvider = FutureProvider.family<double, int>((ref, projectId) async {
+  final repo = ref.watch(subtaskRepositoryProvider);
+  // Ensure we rebuild when tasks change
+  ref.watch(tasksProvider); 
+  return await repo.getProjectProgress(projectId);
 });
 
 /// ======================================================
@@ -206,63 +191,61 @@ final tasksProvider = StateNotifierProvider<TasksNotifier, List<Task>>((ref) {
   return TasksNotifier(repository, ref);
 });
 
-final filteredTasksProvider =
-    StreamProvider.autoDispose<List<TaskWithAssignee>>((ref) {
-      final repository = ref.watch(taskRepositoryProvider);
+final filteredTasksProvider = StreamProvider.autoDispose<List<TaskWithAssignee>>((ref) {
+  final repository = ref.watch(taskRepositoryProvider);
 
-      final status = ref.watch(statusFilterProvider);
-      final sortBy = ref.watch(sortByProvider);
-      final dueBucket = ref.watch(dueBucketFilterProvider);
-      final priority = ref.watch(priorityFilterProvider);
-      final projectId = ref.watch(projectFilterProvider);
+  final status = ref.watch(statusFilterProvider);
+  final sortBy = ref.watch(sortByProvider);
+  final dueBucket = ref.watch(dueBucketFilterProvider);
+  final priority = ref.watch(priorityFilterProvider);
+  final projectId = ref.watch(projectFilterProvider);
 
-      List<String>? statusList = status != 'all' ? [status] : null;
-      DateTime? fromDate;
-      DateTime? toDate;
+  List<String>? statusList = status != 'all' ? [status] : null;
+  DateTime? fromDate;
+  DateTime? toDate;
 
-      final now = DateTime.now();
-      final todayStart = DateTime(now.year, now.month, now.day);
-      final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
-      if (dueBucket == "Today") {
-        fromDate = todayStart;
-        toDate = todayEnd;
-      } else if (dueBucket == "Overdue") {
-        fromDate = DateTime(1970);
-        toDate = todayStart.subtract(const Duration(seconds: 1));
-      } else if (dueBucket == "Upcoming") {
-        fromDate = todayEnd.add(const Duration(seconds: 1));
-        toDate = DateTime(2100);
-      }
+  if (dueBucket == "Today") {
+    fromDate = todayStart;
+    toDate = todayEnd;
+  } else if (dueBucket == "Overdue") {
+    fromDate = DateTime(1970);
+    toDate = todayStart.subtract(const Duration(seconds: 1));
+  } else if (dueBucket == "Upcoming") {
+    fromDate = todayEnd.add(const Duration(seconds: 1));
+    toDate = DateTime(2100);
+  }
 
-      return repository.watchTasksWithAssignee(
-        statuses: statusList,
-        priority: priority,
-        projectId: projectId,
-        fromDate: fromDate,
-        toDate: toDate,
-        sortBy: switch (sortBy) {
-          'priority' => 'priority_desc',
-          'date' => 'due_date_asc',
-          _ => 'updated_at_desc',
-        },
-      );
-    });
+  return repository.watchTasksWithAssignee(
+    statuses: statusList,
+    priority: priority,
+    projectId: projectId,
+    fromDate: fromDate,
+    toDate: toDate,
+    sortBy: switch (sortBy) {
+      'priority' => 'priority_desc',
+      'date' => 'due_date_asc',
+      _ => 'updated_at_desc',
+    },
+  );
+});
 
-final projectTasksProvider = StreamProvider.family
-    .autoDispose<List<TaskWithAssignee>, int>((ref, projectId) {
-      final repository = ref.watch(taskRepositoryProvider);
-      final sortType = ref.watch(projectSortProvider);
+final projectTasksProvider = StreamProvider.family.autoDispose<List<TaskWithAssignee>, int>((ref, projectId) {
+  final repository = ref.watch(taskRepositoryProvider);
+  final sortType = ref.watch(projectSortProvider);
 
-      return repository.watchTasksWithAssignee(
-        projectId: projectId,
-        sortBy: switch (sortType) {
-          'priority' => 'priority_desc',
-          'date' => 'due_date_asc',
-          _ => 'updated_at_desc',
-        },
-      );
-    });
+  return repository.watchTasksWithAssignee(
+    projectId: projectId,
+    sortBy: switch (sortType) {
+      'priority' => 'priority_desc',
+      'date' => 'due_date_asc',
+      _ => 'updated_at_desc',
+    },
+  );
+});
 
 final allUsersProvider = FutureProvider.autoDispose<List<User>>((ref) async {
   final db = ref.watch(databaseProvider);

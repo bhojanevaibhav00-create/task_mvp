@@ -4,11 +4,12 @@ import '../../../../data/repositories/comment_repository.dart';
 import 'package:intl/intl.dart';
 
 class CommentTile extends StatelessWidget {
-  final CommentWithUser commentData;
+  // ✅ Renamed to 'comment' to match TaskDetailScreen usage
+  final CommentWithUser comment;
 
   const CommentTile({
     super.key,
-    required this.commentData,
+    required this.comment,
   });
 
   @override
@@ -16,7 +17,7 @@ class CommentTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     // Formatting the timestamp for readability
-    final timeStr = DateFormat('MMM d, h:mm a').format(commentData.comment.createdAt);
+    final timeStr = DateFormat('MMM d, h:mm a').format(comment.comment.createdAt);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -28,7 +29,7 @@ class CommentTile extends StatelessWidget {
             radius: 16,
             backgroundColor: Colors.blue.withOpacity(0.1),
             child: Text(
-              commentData.user.name[0].toUpperCase(),
+              comment.user.name[0].toUpperCase(),
               style: const TextStyle(
                 fontSize: 12, 
                 fontWeight: FontWeight.bold, 
@@ -47,7 +48,7 @@ class CommentTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      commentData.user.name,
+                      comment.user.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -78,11 +79,10 @@ class CommentTile extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    commentData.comment.content,
+                    comment.comment.content,
                     style: TextStyle(
                       fontSize: 14,
                       height: 1.4,
-                      // ✅ FIXED: Changed .blackDE to Colors.black87
                       color: isDark ? Colors.white70 : Colors.black87,
                     ),
                   ),

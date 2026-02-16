@@ -4,7 +4,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:task_mvp/data/database/database.dart';
 
 // Core Constants & Providers
-import '../../../../core/constants/app_colors.dart';
+
 import 'package:task_mvp/core/providers/database_provider.dart';
 import 'package:task_mvp/core/constants/app_colors.dart';
 
@@ -12,12 +12,13 @@ class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
 
   @override
-  ConsumerState<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  ConsumerState<ChangePasswordScreen> createState() =>
+      _ChangePasswordScreenState();
 }
 
 class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final _currentController = TextEditingController();
   final _newController = TextEditingController();
@@ -46,7 +47,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
     try {
       // 1. Fetch current user (Assuming ID 1 for local app)
-      final user = await (db.select(db.users)..where((u) => u.id.equals(1))).getSingleOrNull();
+      final user = await (db.select(
+        db.users,
+      )..where((u) => u.id.equals(1))).getSingleOrNull();
 
       // 2. Verify current password
       if (user == null || user.password != _currentController.text) {
@@ -78,7 +81,10 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -89,7 +95,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD);
+    final backgroundColor = isDark
+        ? AppColors.scaffoldDark
+        : const Color(0xFFF8F9FD);
     final cardColor = isDark ? AppColors.cardDark : Colors.white;
 
     return Scaffold(
@@ -98,14 +106,17 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, 
-                color: isDark ? Colors.white : Colors.black87, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: isDark ? Colors.white : Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "Security",
           style: TextStyle(
-            fontWeight: FontWeight.bold, 
+            fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : Colors.black87,
           ),
         ),
@@ -120,19 +131,21 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             children: [
               _buildSecurityHeader(),
               const SizedBox(height: 32),
-              
+
               _buildLabel("Current Password", isDark),
               const SizedBox(height: 10),
               _buildPasswordField(
                 controller: _currentController,
                 hint: "Enter current password",
                 obscure: _obscureCurrent,
-                onToggle: () => setState(() => _obscureCurrent = !_obscureCurrent),
+                onToggle: () =>
+                    setState(() => _obscureCurrent = !_obscureCurrent),
                 cardColor: cardColor,
                 isDark: isDark,
-                validator: (val) => (val == null || val.isEmpty) ? "Required" : null,
+                validator: (val) =>
+                    (val == null || val.isEmpty) ? "Required" : null,
               ),
-              
+
               const SizedBox(height: 24),
               _buildLabel("New Password", isDark),
               const SizedBox(height: 10),
@@ -143,9 +156,11 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 onToggle: () => setState(() => _obscureNew = !_obscureNew),
                 cardColor: cardColor,
                 isDark: isDark,
-                validator: (val) => (val != null && val.length < 8) ? "Password too short" : null,
+                validator: (val) => (val != null && val.length < 8)
+                    ? "Password too short"
+                    : null,
               ),
-              
+
               const SizedBox(height: 24),
               _buildLabel("Confirm New Password", isDark),
               const SizedBox(height: 10),
@@ -153,14 +168,17 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 controller: _confirmController,
                 hint: "Repeat new password",
                 obscure: _obscureConfirm,
-                onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                onToggle: () =>
+                    setState(() => _obscureConfirm = !_obscureConfirm),
                 cardColor: cardColor,
                 isDark: isDark,
-                validator: (val) => val != _newController.text ? "Passwords do not match" : null,
+                validator: (val) => val != _newController.text
+                    ? "Passwords do not match"
+                    : null,
               ),
-              
+
               const SizedBox(height: 48),
-              
+
               // Update Button
               SizedBox(
                 width: double.infinity,
@@ -170,12 +188,27 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                     elevation: 0,
                   ),
-                  child: _isSaving 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text("Update Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: _isSaving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          "Update Password",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -204,9 +237,18 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Security Status", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                Text("Keep your account safe by using a strong, unique password.", 
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
+                Text(
+                  "Security Status",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  "Keep your account safe by using a strong, unique password.",
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -216,7 +258,14 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   }
 
   Widget _buildLabel(String text, bool isDark) {
-    return Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black54));
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        color: isDark ? Colors.white70 : Colors.black54,
+      ),
+    );
   }
 
   Widget _buildPasswordField({
@@ -235,25 +284,44 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       style: TextStyle(color: isDark ? Colors.white : Colors.black87),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.black26, fontSize: 14),
+        hintStyle: TextStyle(
+          color: isDark ? Colors.white24 : Colors.black26,
+          fontSize: 14,
+        ),
         filled: true,
         fillColor: cardColor,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
         suffixIcon: IconButton(
-          icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, 
-                color: AppColors.primary.withOpacity(0.5), size: 20),
+          icon: Icon(
+            obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            color: AppColors.primary.withOpacity(0.5),
+            size: 20,
+          ),
           onPressed: onToggle,
         ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16), 
-          borderSide: BorderSide(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: isDark
+                ? Colors.white.withOpacity(0.05)
+                : Colors.black.withOpacity(0.05),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16), 
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Colors.redAccent)),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent),
+        ),
       ),
     );
   }

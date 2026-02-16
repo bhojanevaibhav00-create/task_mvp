@@ -11,6 +11,7 @@ import '../../../data/models/enums.dart';
 
 import '../../notifications/presentation/notification_screen.dart';
 import 'task_create_edit_screen.dart';
+import 'task_detail_screen.dart'; // ✅ IMPORTED TaskDetailScreen
 import 'widgets/task_card.dart';
 import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
 import 'package:task_mvp/features/common/widgets/task_list_empty_state.dart';
@@ -42,12 +43,14 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     });
   }
 
-  void _openEditTask(db.Task task) {
+  /// ✅ FIXED: Logic now opens the Detail Screen for collaboration (Task 1A)
+  void _openTaskDetail(db.Task task) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => TaskCreateEditScreen(task: task)),
-    ).then((changed) {
-      if (changed == true) ref.read(tasksProvider.notifier).loadTasks();
+      MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
+    ).then((_) {
+      // Refresh list in case status changed inside details
+      ref.read(tasksProvider.notifier).loadTasks();
     });
   }
 
@@ -57,7 +60,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      // Dynamic background color to prevent white flashes
       backgroundColor: isDark
           ? AppColors.scaffoldDark
           : const Color(0xFFF8F9FD),
@@ -110,7 +112,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: TaskCard(
                         task: task,
-                        onTap: () => _openEditTask(task),
+                        onTap: () => _openTaskDetail(task), // ✅ FIXED: Detail instead of Edit
                         onToggleDone: () {
                           final isDone = task.status == TaskStatus.done.name;
                           final newStatus = isDone
@@ -174,18 +176,16 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             final dueBucket = ref.read(dueBucketFilterProvider);
             final sort = ref.read(sortByProvider);
 
-            // Safe mapping for Status
             final Set<TaskStatus> initialStatus = status != 'all'
                 ? TaskStatus.values.where((e) => e.name == status).toSet()
                 : {};
 
-            // Safe mapping for Priority (DB 1-based -> Enum 0-based)
             final Set<Priority> initialPriority =
                 (priority != null &&
-                    priority > 0 &&
-                    priority <= Priority.values.length)
-                ? {Priority.values[priority - 1]}
-                : {};
+                        priority > 0 &&
+                        priority <= Priority.values.length)
+                    ? {Priority.values[priority - 1]}
+                    : {};
 
             openFilterBottomSheet(
               context: context,
@@ -225,7 +225,6 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
         child: Container(
           decoration: BoxDecoration(
-            // Changed hardcoded Colors.white to cardDark
             color: isDark ? AppColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
