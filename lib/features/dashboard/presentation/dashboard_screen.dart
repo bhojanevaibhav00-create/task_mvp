@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' as drift;
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
@@ -8,6 +9,8 @@ import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/notification_providers.dart';
 import '../../../core/providers/project_providers.dart';
 import 'package:task_mvp/data/database/database.dart'; // ✅ Import for Task type
+import 'package:task_mvp/data/models/enums.dart';
+import 'package:task_mvp/features/tasks/presentation/task_create_edit_screen.dart';
 
 import 'widgets/dashboard_empty_state.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/quick_add_task_sheet.dart';
@@ -29,7 +32,9 @@ class DashboardScreen extends ConsumerWidget {
     final pending = tasks.where((t) => t.status != 'done').length;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FE),
+      backgroundColor: isDark
+          ? AppColors.scaffoldDark
+          : const Color(0xFFF8F9FE),
       floatingActionButton: FloatingActionButton.extended(
         elevation: 4,
         highlightElevation: 8,
@@ -37,7 +42,11 @@ class DashboardScreen extends ConsumerWidget {
         icon: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
         label: const Text(
           'Quick Add',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
         ),
         onPressed: () => _openQuickAdd(context),
       ),
@@ -48,28 +57,30 @@ class DashboardScreen extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
             sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  _sectionHeader('Overview', Icons.analytics_outlined, isDark),
-                  const SizedBox(height: 16),
-                  _statsRow(completed, pending, tasks.length),
-                  const SizedBox(height: 32),
-                  _sectionHeader('Projects', Icons.folder_special_outlined, isDark),
-                  const SizedBox(height: 12),
-                  _createProjectButton(context),
-                  const SizedBox(height: 16),
-                  // ✅ The reactive projects list
-                  _projects(projectsAsync, isDark, context),
-                  const SizedBox(height: 32),
-                  _sectionHeader('Quick Actions', Icons.bolt_rounded, isDark),
-                  const SizedBox(height: 16),
-                  _quickActions(context, isDark),
-                  const SizedBox(height: 32),
-                  _sectionHeader('Recent Tasks', Icons.history_rounded, isDark),
-                  const SizedBox(height: 16),
-                  _recentTasks(context, tasks, isDark), // ✅ Added context parameter
-                ],
-              ),
+              delegate: SliverChildListDelegate([
+                _sectionHeader('Overview', Icons.analytics_outlined, isDark),
+                const SizedBox(height: 16),
+                _statsRow(completed, pending, tasks.length),
+                const SizedBox(height: 32),
+                _sectionHeader(
+                  'Projects',
+                  Icons.folder_special_outlined,
+                  isDark,
+                ),
+                const SizedBox(height: 12),
+                _createProjectButton(context),
+                const SizedBox(height: 16),
+                // ✅ The reactive projects list
+                _projects(projectsAsync, isDark, context),
+                const SizedBox(height: 32),
+                _sectionHeader('Quick Actions', Icons.bolt_rounded, isDark),
+                const SizedBox(height: 16),
+                _quickActions(context, isDark),
+                const SizedBox(height: 32),
+                _sectionHeader('Recent Tasks', Icons.history_rounded, isDark),
+                const SizedBox(height: 16),
+                _recentTasks(context, ref, tasks, isDark),
+              ]),
             ),
           ),
         ],
@@ -86,7 +97,10 @@ class DashboardScreen extends ConsumerWidget {
       backgroundColor: AppColors.primary,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
+        stretchModes: const [
+          StretchMode.zoomBackground,
+          StretchMode.blurBackground,
+        ],
         titlePadding: const EdgeInsets.only(left: 20, bottom: 18),
         title: const Text(
           'My Workspace',
@@ -108,7 +122,10 @@ class DashboardScreen extends ConsumerWidget {
             Positioned(
               top: -50,
               right: -50,
-              child: CircleAvatar(radius: 100, backgroundColor: Colors.white.withOpacity(0.05)),
+              child: CircleAvatar(
+                radius: 100,
+                backgroundColor: Colors.white.withOpacity(0.05),
+              ),
             ),
           ],
         ),
@@ -131,7 +148,11 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _appBarAction({required IconData icon, int count = 0, required VoidCallback onTap}) {
+  Widget _appBarAction({
+    required IconData icon,
+    int count = 0,
+    required VoidCallback onTap,
+  }) {
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -145,11 +166,18 @@ class DashboardScreen extends ConsumerWidget {
             top: 12,
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+              ),
               constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
               child: Text(
                 count > 9 ? '9+' : count.toString(),
-                style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 9,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -181,11 +209,26 @@ class DashboardScreen extends ConsumerWidget {
   Widget _statsRow(int done, int pending, int total) {
     return Row(
       children: [
-        _statCard('Total', total, Icons.grid_view_rounded, AppColors.primaryGradient),
+        _statCard(
+          'Total',
+          total,
+          Icons.grid_view_rounded,
+          AppColors.primaryGradient,
+        ),
         const SizedBox(width: 12),
-        _statCard('Pending', pending, Icons.auto_awesome_rounded, AppColors.upcomingGradient),
+        _statCard(
+          'Pending',
+          pending,
+          Icons.auto_awesome_rounded,
+          AppColors.upcomingGradient,
+        ),
         const SizedBox(width: 12),
-        _statCard('Done', done, Icons.task_alt_rounded, AppColors.completedGradient),
+        _statCard(
+          'Done',
+          done,
+          Icons.task_alt_rounded,
+          AppColors.completedGradient,
+        ),
       ],
     );
   }
@@ -210,17 +253,28 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: Colors.white, size: 18),
             ),
             const SizedBox(height: 12),
             Text(
               value.toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             Text(
               label,
-              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -239,7 +293,11 @@ class DashboardScreen extends ConsumerWidget {
           gradient: AppColors.primaryGradient,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
           ],
         ),
         child: const Row(
@@ -249,7 +307,11 @@ class DashboardScreen extends ConsumerWidget {
             SizedBox(width: 8),
             Text(
               'New Project',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -262,18 +324,31 @@ class DashboardScreen extends ConsumerWidget {
     return SizedBox(
       height: 150,
       child: projects.when(
-        loading: () => const Center(child: CircularProgressIndicator.adaptive()),
-        error: (e, _) => Center(child: Text('Error loading projects', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54))),
+        loading: () =>
+            const Center(child: CircularProgressIndicator.adaptive()),
+        error: (e, _) => Center(
+          child: Text(
+            'Error loading projects',
+            style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+          ),
+        ),
         data: (list) {
           if (list.isEmpty) {
             return Container(
               alignment: Alignment.center,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                color: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.black.withOpacity(0.03),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text('No active projects', style: TextStyle(color: isDark ? Colors.white38 : Colors.black38)),
+              child: Text(
+                'No active projects',
+                style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.black38,
+                ),
+              ),
             );
           }
           return ListView.builder(
@@ -288,9 +363,19 @@ class DashboardScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.cardDark : Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.black.withOpacity(0.05),
+                  ),
                   boxShadow: [
-                    BoxShadow(color: isDark ? Colors.black45 : Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black45
+                          : Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
                 child: InkWell(
@@ -301,17 +386,29 @@ class DashboardScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.folder_rounded, color: AppColors.primary, size: 28),
+                        const Icon(
+                          Icons.folder_rounded,
+                          color: AppColors.primary,
+                          size: 28,
+                        ),
                         const Spacer(),
                         Text(
                           project.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: isDark ? Colors.white : Colors.black87),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
                         ),
                         Text(
                           'View Details',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary.withOpacity(0.7)),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary.withOpacity(0.7),
+                          ),
                         ),
                       ],
                     ),
@@ -330,17 +427,34 @@ class DashboardScreen extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child: _actionButton('Task List', Icons.list_alt_rounded, () => context.push(AppRoutes.tasks), isDark, primary: true),
+          child: _actionButton(
+            'Task List',
+            Icons.list_alt_rounded,
+            () => context.push(AppRoutes.tasks),
+            isDark,
+            primary: true,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _actionButton('Schedule', Icons.calendar_today_rounded, () {}, isDark),
+          child: _actionButton(
+            'Schedule',
+            Icons.calendar_today_rounded,
+            () {},
+            isDark,
+          ),
         ),
       ],
     );
   }
 
-  Widget _actionButton(String label, IconData icon, VoidCallback onTap, bool isDark, {bool primary = false}) {
+  Widget _actionButton(
+    String label,
+    IconData icon,
+    VoidCallback onTap,
+    bool isDark, {
+    bool primary = false,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -349,17 +463,29 @@ class DashboardScreen extends ConsumerWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: primary ? AppColors.primary : (isDark ? Colors.white.withOpacity(0.08) : AppColors.primary.withOpacity(0.08)),
+            color: primary
+                ? AppColors.primary
+                : (isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : AppColors.primary.withOpacity(0.08)),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 20, color: primary ? Colors.white : AppColors.primary),
+              Icon(
+                icon,
+                size: 20,
+                color: primary ? Colors.white : AppColors.primary,
+              ),
               const SizedBox(width: 10),
               Text(
                 label,
-                style: TextStyle(color: primary ? Colors.white : AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(
+                  color: primary ? Colors.white : AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
@@ -369,39 +495,81 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ================= RECENT TASKS =================
-  Widget _recentTasks(BuildContext context, List<Task> tasks, bool isDark) {
+  Widget _recentTasks(
+    BuildContext context,
+    WidgetRef ref,
+    List<Task> tasks,
+    bool isDark,
+  ) {
     if (tasks.isEmpty) return const DashboardEmptyState();
 
     return Column(
       children: tasks.take(5).map((t) {
+        final isDone = t.status == TaskStatus.done.name;
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
-              BoxShadow(color: isDark ? Colors.black26 : Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4)),
+              BoxShadow(
+                color: isDark ? Colors.black26 : Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
           child: ListTile(
-            onTap: () => context.push('/tasks/${t.id}'), // ✅ FIXED: Navigation to task detail
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.check_circle_outline_rounded, color: AppColors.primary, size: 22),
+            onTap: () => _openEditTask(context, ref, t),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            leading: InkWell(
+              onTap: () {
+                final newStatus = isDone
+                    ? TaskStatus.todo.name
+                    : TaskStatus.done.name;
+                ref
+                    .read(tasksProvider.notifier)
+                    .updateTask(t.copyWith(status: drift.Value(newStatus)));
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDone
+                      ? Colors.green.withOpacity(0.1)
+                      : AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isDone ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  color: isDone ? Colors.green : AppColors.primary,
+                  size: 22,
+                ),
+              ),
             ),
             title: Text(
               t.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
             ),
             subtitle: Text(
-              t.status ?? 'In Progress', 
-              style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38)
+              t.status ?? 'In Progress',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white38 : Colors.black38,
+              ),
             ),
-            trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white24 : Colors.black26),
+            trailing: Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: isDark ? Colors.white24 : Colors.black26,
+            ),
           ),
         );
       }).toList(),
@@ -415,5 +583,14 @@ class DashboardScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => const QuickAddTaskSheet(),
     );
+  }
+
+  void _openEditTask(BuildContext context, WidgetRef ref, Task task) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => TaskCreateEditScreen(task: task)),
+    ).then((changed) {
+      if (changed == true) ref.read(tasksProvider.notifier).loadTasks();
+    });
   }
 }

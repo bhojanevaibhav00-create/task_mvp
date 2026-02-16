@@ -8,10 +8,7 @@ import 'core/providers/theme_provider.dart';
 class MyApp extends ConsumerWidget {
   final ThemeMode themeMode;
 
-  const MyApp({
-    super.key, 
-    required this.themeMode,
-  });
+  const MyApp({super.key, required this.themeMode});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,9 +22,9 @@ class MyApp extends ConsumerWidget {
       // Apply the themes from your AppTheme file
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      
+
       // ✅ CRITICAL: Using the watched themeMode
-      themeMode: currentTheme, 
+      themeMode: currentTheme,
 
       routerConfig: appRouter,
     );
