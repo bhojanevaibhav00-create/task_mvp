@@ -624,6 +624,15 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
 
     if (confirm == true) {
+      // 🛠️ FIX: Manually delete tasks associated with this project first
+      final db = ref.read(databaseProvider);
+      await (db.delete(
+        db.tasks,
+      )..where((t) => t.projectId.equals(projectId))).go();
+
+      // ✅ REFRESH: Force the tasks provider to reload so Dashboard updates immediately
+      ref.read(tasksProvider.notifier).loadTasks();
+
       // ✅ SUCCESS: Calls the controller which handles DB + Notification logic
       await ref
           .read(projectControllerProvider)
