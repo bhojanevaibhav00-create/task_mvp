@@ -6,11 +6,12 @@ import 'package:drift/drift.dart' as drift;
 // Core Constants & Providers
 import 'package:task_mvp/core/constants/app_colors.dart';
 import 'package:task_mvp/core/providers/task_providers.dart';
-import 'package:task_mvp/core/providers/project_providers.dart'; 
+import 'package:task_mvp/core/providers/project_providers.dart';
 import 'package:task_mvp/core/providers/database_provider.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/task_card.dart';
 import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/models/enums.dart';
+import 'package:task_mvp/features/tasks/presentation/task_create_edit_screen.dart';
 import '../project_members_screen.dart';
 
 /// ✅ LOCAL PROVIDER: Manages task sorting state for this specific screen
@@ -27,7 +28,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     final projectsAsync = ref.watch(allProjectsProvider);
     final db = ref.watch(databaseProvider);
     final currentSort = ref.watch(projectSortProvider);
-    
+
     // 2. THEME: Detect brightness for adaptive UI
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -39,22 +40,35 @@ class ProjectDetailScreen extends ConsumerWidget {
         // Fallback if project was deleted or not found
         if (project == null) {
           return Scaffold(
-            backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+            backgroundColor: isDark
+                ? AppColors.scaffoldDark
+                : const Color(0xFFF8F9FD),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.search_off_rounded, size: 64, color: isDark ? Colors.white10 : Colors.black12),
+                  Icon(
+                    Icons.search_off_rounded,
+                    size: 64,
+                    color: isDark ? Colors.white10 : Colors.black12,
+                  ),
                   const SizedBox(height: 16),
-                  Text("Project not found", style: TextStyle(color: isDark ? Colors.white38 : Colors.black38)),
+                  Text(
+                    "Project not found",
+                    style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  ),
                 ],
               ),
             ),
           );
         }
-        
+
         return Scaffold(
-          backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+          backgroundColor: isDark
+              ? AppColors.scaffoldDark
+              : const Color(0xFFF8F9FD),
           body: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
@@ -62,17 +76,20 @@ class ProjectDetailScreen extends ConsumerWidget {
               _buildModernAppBar(context, ref, project, isDark),
 
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 24.0,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     // --- 2. EDITABLE DESCRIPTION CARD ---
                     _buildPremiumDescription(context, ref, project, isDark),
                     const SizedBox(height: 24),
-                    
+
                     // --- 3. PROJECT PROGRESS (REAL-TIME) ---
                     _buildModernProgressHeader(db, isDark),
                     const SizedBox(height: 32),
-                    
+
                     // --- 4. SECTION HEADER & SORT INFO ---
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -85,31 +102,42 @@ class ProjectDetailScreen extends ConsumerWidget {
                                 color: AppColors.primary.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Icon(Icons.list_alt_rounded, color: AppColors.primary, size: 20),
+                              child: Icon(
+                                Icons.list_alt_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Text(
                               "Project Tasks",
                               style: TextStyle(
-                                fontSize: 20, 
-                                fontWeight: FontWeight.w900, 
-                                color: isDark ? Colors.white : const Color(0xFF1A1C1E)
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1A1C1E),
                               ),
                             ),
                           ],
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                            color: isDark
+                                ? Colors.white.withOpacity(0.05)
+                                : Colors.black.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             "Sorted by ${currentSort == 'priority' ? 'Priority' : 'Date'}",
                             style: TextStyle(
-                              fontSize: 10, 
-                              color: isDark ? Colors.white38 : Colors.black38, 
-                              fontWeight: FontWeight.bold
+                              fontSize: 10,
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
@@ -119,17 +147,21 @@ class ProjectDetailScreen extends ConsumerWidget {
                   ]),
                 ),
               ),
-              
+
               // --- 5. DYNAMIC TASK LIST (DRIFT STREAM) ---
               StreamBuilder<List<Task>>(
-                stream: (db.select(db.tasks)
-                  ..where((t) => t.projectId.equals(projectId))
-                  ..orderBy([
-                    (t) => drift.OrderingTerm(
-                      expression: currentSort == 'priority' ? t.priority : t.dueDate,
-                      mode: drift.OrderingMode.asc,
-                    ),
-                  ])).watch(),
+                stream:
+                    (db.select(db.tasks)
+                          ..where((t) => t.projectId.equals(projectId))
+                          ..orderBy([
+                            (t) => drift.OrderingTerm(
+                              expression: currentSort == 'priority'
+                                  ? t.priority
+                                  : t.dueDate,
+                              mode: drift.OrderingMode.asc,
+                            ),
+                          ]))
+                        .watch(),
                 builder: (context, snapshot) {
                   final tasks = snapshot.data ?? [];
 
@@ -140,11 +172,20 @@ class ProjectDetailScreen extends ConsumerWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.assignment_late_outlined, 
-                              color: isDark ? Colors.white12 : Colors.grey.shade300, size: 60),
+                            Icon(
+                              Icons.assignment_late_outlined,
+                              color: isDark
+                                  ? Colors.white12
+                                  : Colors.grey.shade300,
+                              size: 60,
+                            ),
                             const SizedBox(height: 16),
-                            Text("No tasks found in this project", 
-                              style: TextStyle(color: isDark ? Colors.white24 : Colors.black26)),
+                            Text(
+                              "No tasks found in this project",
+                              style: TextStyle(
+                                color: isDark ? Colors.white24 : Colors.black26,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -154,19 +195,31 @@ class ProjectDetailScreen extends ConsumerWidget {
                   return SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
                     sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0),
-                            child: TaskCard(
-                              task: tasks[index],
-                              onTap: () => context.push('/tasks/${tasks[index].id}'),
-                              onToggleDone: () => _toggleTaskStatus(ref, tasks[index]),
-                            ),
-                          );
-                        },
-                        childCount: tasks.length,
-                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: TaskCard(
+                            task: tasks[index],
+                            onTap: () =>
+                                _openEditTask(context, ref, tasks[index]),
+                            onToggleDone: () {
+                              final task = tasks[index];
+                              final isDone =
+                                  task.status == TaskStatus.done.name;
+                              final newStatus = isDone
+                                  ? TaskStatus.todo.name
+                                  : TaskStatus.done.name;
+                              ref
+                                  .read(tasksProvider.notifier)
+                                  .updateTask(
+                                    task.copyWith(
+                                      status: drift.Value(newStatus),
+                                    ),
+                                  );
+                            },
+                          ),
+                        );
+                      }, childCount: tasks.length),
                     ),
                   );
                 },
@@ -178,18 +231,31 @@ class ProjectDetailScreen extends ConsumerWidget {
             elevation: 4,
             backgroundColor: AppColors.primary,
             icon: const Icon(Icons.add_task_rounded, color: Colors.white),
-            label: const Text("Add Task", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            label: const Text(
+              "Add Task",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         );
       },
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text("Error loading project: $e"))),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) =>
+          Scaffold(body: Center(child: Text("Error loading project: $e"))),
     );
   }
 
   // ================= UI HELPERS =================
 
-  Widget _buildModernAppBar(BuildContext context, WidgetRef ref, Project project, bool isDark) {
+  Widget _buildModernAppBar(
+    BuildContext context,
+    WidgetRef ref,
+    Project project,
+    bool isDark,
+  ) {
     return SliverAppBar(
       expandedHeight: 160,
       pinned: true,
@@ -197,24 +263,39 @@ class ProjectDetailScreen extends ConsumerWidget {
       stretch: true,
       backgroundColor: AppColors.primary,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+        icon: const Icon(
+          Icons.arrow_back_ios_new_rounded,
+          color: Colors.white,
+          size: 20,
+        ),
         onPressed: () => context.pop(),
       ),
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: false,
         titlePadding: const EdgeInsets.only(left: 56, bottom: 18),
         title: Text(
-          project.name, 
-          style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 20)
+          project.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            fontSize: 20,
+          ),
         ),
         background: Stack(
           fit: StackFit.expand,
           children: [
-            Container(decoration: const BoxDecoration(gradient: AppColors.primaryGradient)),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+              ),
+            ),
             Positioned(
               right: -20,
               top: -20,
-              child: CircleAvatar(radius: 80, backgroundColor: Colors.white.withOpacity(0.05)),
+              child: CircleAvatar(
+                radius: 80,
+                backgroundColor: Colors.white.withOpacity(0.05),
+              ),
             ),
           ],
         ),
@@ -223,31 +304,43 @@ class ProjectDetailScreen extends ConsumerWidget {
         // Sort Menu
         PopupMenuButton<String>(
           icon: const Icon(Icons.sort_rounded, color: Colors.white),
-          onSelected: (value) => ref.read(projectSortProvider.notifier).state = value,
+          onSelected: (value) =>
+              ref.read(projectSortProvider.notifier).state = value,
           itemBuilder: (context) => [
             const PopupMenuItem(value: 'date', child: Text("Sort by Date")),
-            const PopupMenuItem(value: 'priority', child: Text("Sort by Priority")),
+            const PopupMenuItem(
+              value: 'priority',
+              child: Text("Sort by Priority"),
+            ),
           ],
         ),
         // Members Action
         IconButton(
           icon: const Icon(Icons.group_add_outlined, color: Colors.white),
           onPressed: () => Navigator.push(
-            context, 
-            MaterialPageRoute(builder: (_) => ProjectMembersScreen(projectId: projectId))
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProjectMembersScreen(projectId: projectId),
+            ),
           ),
         ),
         // Delete Action
         IconButton(
           icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
-          onPressed: () => _showDeleteConfirmation(context, ref, project.name, isDark),
+          onPressed: () =>
+              _showDeleteConfirmation(context, ref, project.name, isDark),
         ),
         const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildPremiumDescription(BuildContext context, WidgetRef ref, Project project, bool isDark) {
+  Widget _buildPremiumDescription(
+    BuildContext context,
+    WidgetRef ref,
+    Project project,
+    bool isDark,
+  ) {
     return GestureDetector(
       onTap: () => _showEditDescriptionDialog(context, ref, project, isDark),
       child: Container(
@@ -256,41 +349,60 @@ class ProjectDetailScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: isDark ? AppColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(28),
-          border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
-          boxShadow: isDark ? [] : [
-            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))
-          ],
+          border: isDark
+              ? Border.all(color: Colors.white.withOpacity(0.05))
+              : null,
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.description_outlined, size: 14, color: AppColors.primary),
+                Icon(
+                  Icons.description_outlined,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: 8),
                 Text(
-                  "PROJECT DESCRIPTION", 
+                  "PROJECT DESCRIPTION",
                   style: TextStyle(
-                    color: isDark ? Colors.white38 : Colors.black38, 
-                    fontWeight: FontWeight.w900, 
-                    fontSize: 10, 
-                    letterSpacing: 1.2
-                  )
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                    letterSpacing: 1.2,
+                  ),
                 ),
                 const Spacer(),
-                Icon(Icons.edit_rounded, color: AppColors.primary.withOpacity(0.4), size: 16),
+                Icon(
+                  Icons.edit_rounded,
+                  color: AppColors.primary.withOpacity(0.4),
+                  size: 16,
+                ),
               ],
             ),
             const SizedBox(height: 14),
             Text(
-              project.description ?? "Tap to add a detailed project overview...",
+              project.description ??
+                  "Tap to add a detailed project overview...",
               style: TextStyle(
-                fontSize: 15, 
-                height: 1.6, 
-                color: project.description == null 
-                  ? (isDark ? Colors.white12 : Colors.black26)
-                  : (isDark ? Colors.white70 : const Color(0xFF1F2937)),
-                fontStyle: project.description == null ? FontStyle.italic : FontStyle.normal,
+                fontSize: 15,
+                height: 1.6,
+                color: project.description == null
+                    ? (isDark ? Colors.white12 : Colors.black26)
+                    : (isDark ? Colors.white70 : const Color(0xFF1F2937)),
+                fontStyle: project.description == null
+                    ? FontStyle.italic
+                    : FontStyle.normal,
               ),
             ),
           ],
@@ -301,12 +413,16 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   Widget _buildModernProgressHeader(AppDatabase db, bool isDark) {
     return StreamBuilder<List<Task>>(
-      stream: (db.select(db.tasks)..where((t) => t.projectId.equals(projectId))).watch(),
+      stream: (db.select(
+        db.tasks,
+      )..where((t) => t.projectId.equals(projectId))).watch(),
       builder: (context, snapshot) {
         final tasks = snapshot.data ?? [];
         if (tasks.isEmpty) return const SizedBox.shrink();
 
-        final done = tasks.where((t) => t.status == TaskStatus.done.name).length;
+        final done = tasks
+            .where((t) => t.status == TaskStatus.done.name)
+            .length;
         final double progress = tasks.isEmpty ? 0.0 : done / tasks.length;
 
         return Container(
@@ -314,7 +430,9 @@ class ProjectDetailScreen extends ConsumerWidget {
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(28),
-            border: isDark ? Border.all(color: Colors.white.withOpacity(0.05)) : null,
+            border: isDark
+                ? Border.all(color: Colors.white.withOpacity(0.05))
+                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,12 +441,20 @@ class ProjectDetailScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Completion Progress", 
-                    style: TextStyle(fontWeight: FontWeight.w800, color: isDark ? Colors.white70 : Colors.black54, fontSize: 13)
+                    "Completion Progress",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                      fontSize: 13,
+                    ),
                   ),
                   Text(
-                    "${(progress * 100).toInt()}%", 
-                    style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 14)
+                    "${(progress * 100).toInt()}%",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
@@ -339,7 +465,9 @@ class ProjectDetailScreen extends ConsumerWidget {
                     height: 10,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                      color: isDark
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.black.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -351,7 +479,11 @@ class ProjectDetailScreen extends ConsumerWidget {
                       gradient: AppColors.primaryGradient,
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
-                        BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
                     ),
                   ),
@@ -360,7 +492,11 @@ class ProjectDetailScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               Text(
                 "$done of ${tasks.length} tasks completed",
-                style: TextStyle(fontSize: 11, color: isDark ? Colors.white24 : Colors.black26, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white24 : Colors.black26,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -371,24 +507,31 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   // ================= LOGIC & DIALOGS =================
 
-  Future<void> _toggleTaskStatus(WidgetRef ref, Task task) async {
-    final db = ref.read(databaseProvider);
-    final isDone = task.status == TaskStatus.done.name;
-    final newStatus = isDone ? TaskStatus.todo.name : TaskStatus.done.name;
-
-    await (db.update(db.tasks)..where((t) => t.id.equals(task.id))).write(
-      TasksCompanion(status: drift.Value(newStatus)),
-    );
+  void _openEditTask(BuildContext context, WidgetRef ref, Task task) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => TaskCreateEditScreen(task: task)),
+    ).then((changed) {
+      if (changed == true) ref.read(tasksProvider.notifier).loadTasks();
+    });
   }
 
-  void _showEditDescriptionDialog(BuildContext context, WidgetRef ref, Project project, bool isDark) {
+  void _showEditDescriptionDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Project project,
+    bool isDark,
+  ) {
     final controller = TextEditingController(text: project.description);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text("Edit Description", style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text(
+          "Edit Description",
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
         content: TextField(
           controller: controller,
           maxLines: 5,
@@ -396,28 +539,44 @@ class ProjectDetailScreen extends ConsumerWidget {
           style: TextStyle(color: isDark ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             hintText: "Enter project goals or details...",
-            hintStyle: TextStyle(color: isDark ? Colors.white10 : Colors.black12),
+            hintStyle: TextStyle(
+              color: isDark ? Colors.white10 : Colors.black12,
+            ),
             filled: true,
-            fillColor: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8F9FD),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            fillColor: isDark
+                ? Colors.white.withOpacity(0.05)
+                : const Color(0xFFF8F9FD),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () async {
               final db = ref.read(databaseProvider);
-              await (db.update(db.projects)..where((p) => p.id.equals(project.id))).write(
-                ProjectsCompanion(description: drift.Value(controller.text.trim())),
+              await (db.update(
+                db.projects,
+              )..where((p) => p.id.equals(project.id))).write(
+                ProjectsCompanion(
+                  description: drift.Value(controller.text.trim()),
+                ),
               );
               // Invalidate to refresh UI
               ref.invalidate(allProjectsProvider);
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary, 
-              foregroundColor: Colors.white, 
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text("Save Changes"),
           ),
@@ -426,22 +585,37 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showDeleteConfirmation(BuildContext context, WidgetRef ref, String projectName, bool isDark) async {
+  Future<void> _showDeleteConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    String projectName,
+    bool isDark,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text("Delete $projectName?", style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text("This will permanently remove the project and all associated tasks."),
+        title: Text(
+          "Delete $projectName?",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          "This will permanently remove the project and all associated tasks.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600, 
-              foregroundColor: Colors.white, 
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text("Delete"),
           ),
@@ -450,9 +624,20 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
 
     if (confirm == true) {
+      // 🛠️ FIX: Manually delete tasks associated with this project first
+      final db = ref.read(databaseProvider);
+      await (db.delete(
+        db.tasks,
+      )..where((t) => t.projectId.equals(projectId))).go();
+
+      // ✅ REFRESH: Force the tasks provider to reload so Dashboard updates immediately
+      ref.read(tasksProvider.notifier).loadTasks();
+
       // ✅ SUCCESS: Calls the controller which handles DB + Notification logic
-      await ref.read(projectControllerProvider).deleteProject(projectId, projectName);
-      
+      await ref
+          .read(projectControllerProvider)
+          .deleteProject(projectId, projectName);
+
       if (context.mounted) context.pop();
     }
   }
