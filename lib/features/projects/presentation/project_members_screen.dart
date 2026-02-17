@@ -40,32 +40,73 @@ class ProjectMembersScreen extends ConsumerWidget {
         centerTitle: false,
         iconTheme: IconThemeData(color: darkText),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        onPressed: () => _showAddMemberDialog(context),
-        child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
-      ),
-      body: membersAsync.when(
-        data: (List<MemberWithUser> membersList) {
-          if (membersList.isEmpty) {
-            return _buildEmptyState(isDark);
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            itemCount: membersList.length,
-            itemBuilder: (context, index) {
-              final item = membersList[index];
-              return _buildMemberTile(context, ref, item, membersList, isDark);
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, stack) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Text("Connection Error: $e", textAlign: TextAlign.center),
-          ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 70), // Lifted to avoid overlap with Save button
+        child: FloatingActionButton(
+          backgroundColor: AppColors.primary,
+          onPressed: () => _showAddMemberDialog(context),
+          child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
         ),
+      ),
+      body: Stack(
+        children: [
+          membersAsync.when(
+            data: (List<MemberWithUser> membersList) {
+              if (membersList.isEmpty) {
+                return _buildEmptyState(isDark);
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100), // Bottom padding for button
+                itemCount: membersList.length,
+                itemBuilder: (context, index) {
+                  final item = membersList[index];
+                  return _buildMemberTile(context, ref, item, membersList, isDark);
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, stack) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text("Connection Error: $e", textAlign: TextAlign.center),
+              ),
+            ),
+          ),
+          
+          // ✅ FIXED BOTTOM SAVE BUTTON
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    (isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD)).withOpacity(0),
+                    isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+                  ],
+                ),
+              ),
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 4,
+                ),
+                child: const Text(
+                  "Save Changes",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -205,7 +246,6 @@ class ProjectMembersScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () async {
-              // ✅ FIXED: Ensure named parameters are used here
               await ref.read(collaborationActionProvider.notifier).removeMember(
                 projectId: projectId, 
                 userId: item.member.userId, 

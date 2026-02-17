@@ -5,11 +5,11 @@ import 'package:task_mvp/core/constants/app_colors.dart';
 import 'package:task_mvp/core/theme/app_text_styles.dart';
 import 'package:task_mvp/core/providers/theme_provider.dart';
 
-// ✅ Import your new screens here
+// ✅ Ensure this points to your actual Login Screen file
+import 'package:task_mvp/features/auth/presentation/login_screen.dart'; 
 import 'profile_screen.dart';
 import 'change_password_screen.dart';
 
-// Notifications toggle (UI only)
 final notificationsProvider = StateProvider<bool>((ref) => true);
 
 class SettingsScreen extends ConsumerWidget {
@@ -67,7 +67,6 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           _sectionTitle('Account'),
 
-          // ✅ Profile is now clickable and points to the new Premium Screen
           _settingTile(
             icon: Icons.person_outline_rounded,
             label: 'Profile',
@@ -78,7 +77,6 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           
-          // ✅ Change Password is now clickable and points to the new Security Screen
           _settingTile(
             icon: Icons.lock_outline_rounded,
             label: 'Change Password',
@@ -108,14 +106,12 @@ class SettingsScreen extends ConsumerWidget {
             icon: Icons.logout_rounded,
             label: 'Logout',
             isDark: isVisualDark,
-            onTap: () => _showLogoutDialog(context, isVisualDark),
+            onTap: () => _showLogoutDialog(context, isVisualDark, ref),
           ),
         ],
       ),
     );
   }
-
-  // ================= HELPERS =================
 
   Widget _sectionTitle(String title) {
     return Padding(
@@ -174,10 +170,10 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showLogoutDialog(BuildContext context, bool isDark) {
+  void _showLogoutDialog(BuildContext context, bool isDark, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Logout', 
@@ -186,11 +182,21 @@ class SettingsScreen extends ConsumerWidget {
           style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              // 1. Close the dialog
+              Navigator.pop(dialogContext); 
+
+              // 2. Clear Navigation Stack and go to your real Login Screen
+              // ✅ FIXED: Using LoginScreen() instead of a placeholder Scaffold
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                (route) => false,
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

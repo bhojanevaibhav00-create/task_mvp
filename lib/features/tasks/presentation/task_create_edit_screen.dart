@@ -127,7 +127,7 @@ class _TaskCreateEditScreenState
     child: Text(
       t,
       style: TextStyle(
-        fontSize: 12,
+        fontSize: 11,
         letterSpacing: 1.2,
         fontWeight: FontWeight.w800,
         color: isDark ? Colors.white38 : Colors.grey.shade500,
@@ -142,7 +142,7 @@ class _TaskCreateEditScreenState
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
             const Spacer(),
@@ -279,40 +279,72 @@ class _TaskCreateEditScreenState
   }
 
   Widget _settingsGroup(bool isDark, Color textColor) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.calendar_today, color: AppColors.primary),
-            title: Text('Due Date', style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
-            subtitle: Text(
-              dueDate == null ? 'Not set' : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
-              style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
-            ),
-            trailing: Icon(Icons.chevron_right, color: isDark ? Colors.white24 : Colors.grey),
-            onTap: _pickDueDate,
+    return Column(
+      children: [
+        // --- Due Date Widget ---
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: isDark ? [] : [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              )
+            ],
           ),
-          Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey.shade200),
-          Theme(
-            data: Theme.of(context).copyWith(
-              listTileTheme: ListTileThemeData(
-                iconColor: AppColors.primary,
-                titleTextStyle: TextStyle(fontWeight: FontWeight.w600, color: textColor, fontSize: 16),
-                subtitleTextStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            leading: CircleAvatar(
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              child: const Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 20),
+            ),
+            title: Text(
+              'Due Date', 
+              style: TextStyle(fontWeight: FontWeight.w700, color: textColor, fontSize: 15)
+            ),
+            subtitle: Text(
+              dueDate == null ? 'Set a deadline' : '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}',
+              style: TextStyle(
+                color: dueDate == null ? Colors.grey : AppColors.primary,
+                fontWeight: dueDate == null ? FontWeight.normal : FontWeight.w600,
               ),
             ),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+            onTap: _pickDueDate,
+          ),
+        ),
+
+        // --- Beautiful & Clean Reminder Widget ---
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: isDark ? [] : [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              )
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
             child: ReminderSection(
               initialEnabled: reminderEnabled,
               initialTime: reminderAt,
-              onChanged: (e, t) => setState(() => {reminderEnabled = e, reminderAt = t}),
+              onChanged: (enabled, time) {
+                setState(() {
+                  reminderEnabled = enabled;
+                  reminderAt = time;
+                });
+              },
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -370,7 +402,9 @@ class _TaskCreateEditScreenState
 
     if (ok == true && widget.task != null) {
       await ref.read(tasksProvider.notifier).deleteTask(widget.task!.id);
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        Navigator.pop(context, true); 
+      }
     }
   }
 

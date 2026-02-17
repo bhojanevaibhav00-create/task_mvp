@@ -93,7 +93,8 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() async {
+    // Use addPostFrameCallback for provider interactions in initState
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final database = ref.read(databaseProvider);
       await seedProjectData(database);
 
@@ -109,6 +110,6 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
     // Watch the themeMode to trigger the top-level rebuild
     final themeMode = ref.watch(themeModeProvider);
 
-    return MyApp(themeMode: themeMode); // ✅ Parameter name fixed
+    return MyApp(themeMode: themeMode); 
   }
 }
