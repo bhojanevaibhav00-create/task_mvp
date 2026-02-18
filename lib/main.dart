@@ -8,28 +8,16 @@ import 'core/providers/theme_provider.dart';
 import 'data/database/database.dart' as db;
 import 'package:task_mvp/core/providers/database_provider.dart';
 
-// 🚀 Database Seeding logic
+/// 🚀 Database Seeding logic (Only default project, no demo user)
 Future<void> seedProjectData(db.AppDatabase database) async {
   try {
-    final existingUsers = await database.select(database.users).get();
+    final existingProjects =
+        await database.select(database.projects).get();
 
-    if (existingUsers.isEmpty) {
+    if (existingProjects.isEmpty) {
       await database.transaction(() async {
-        // ✅ Insert User 1 (Admin)
-        final userId = await database
-            .into(database.users)
-            .insert(
-              db.UsersCompanion.insert(
-                name: 'Vaibhav Bhojane',
-                email: 'vaibhav@jbbtechnologies.com',
-                password: 'password123',
-              ),
-            );
-
         // ✅ Ensure Default Project exists
-        await database
-            .into(database.projects)
-            .insert(
+        await database.into(database.projects).insert(
               db.ProjectsCompanion.insert(
                 id: const drift.Value(1),
                 name: 'General Project',
@@ -37,40 +25,9 @@ Future<void> seedProjectData(db.AppDatabase database) async {
               ),
               mode: drift.InsertMode.insertOrIgnore,
             );
-
-        // ✅ Add Owner relationship
-        await database
-            .into(database.projectMembers)
-            .insert(
-              db.ProjectMembersCompanion.insert(
-                projectId: 1,
-                userId: userId,
-                role: 'Owner',
-              ),
-            );
-
-        // ✅ Team Users
-        await database
-            .into(database.users)
-            .insert(
-              db.UsersCompanion.insert(
-                name: 'Ajinkya Ghode',
-                email: 'ajinkya@test.com',
-                password: 'password123',
-              ),
-            );
-
-        await database
-            .into(database.users)
-            .insert(
-              db.UsersCompanion.insert(
-                name: 'Vaishnavi Mogal',
-                email: 'vaishnavi@test.com',
-                password: 'password123',
-              ),
-            );
       });
-      debugPrint("✅ Database Seeded Successfully");
+
+      debugPrint("✅ Default Project Created (No Demo User)");
     }
   } catch (e) {
     debugPrint("❌ Seed Error: $e");
@@ -93,11 +50,14 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   @override
   void initState() {
     super.initState();
-    // Use addPostFrameCallback for provider interactions in initState
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final database = ref.read(databaseProvider);
+
+      // ✅ Only create default project (no demo user)
       await seedProjectData(database);
 
+      // ✅ Reminder initialization (same as before)
       final reminder = ref.read(reminderServiceProvider);
       await reminder.init();
       await reminder.requestPermission();
@@ -107,9 +67,8 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the themeMode to trigger the top-level rebuild
     final themeMode = ref.watch(themeModeProvider);
 
-    return MyApp(themeMode: themeMode); 
+    return MyApp(themeMode: themeMode);
   }
 }
