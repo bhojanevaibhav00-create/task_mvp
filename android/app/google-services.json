@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "65815273928",
+    "project_id": "taskman-55dd2",
+    "storage_bucket": "taskman-55dd2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:65815273928:android:ef74625106577e63fe20fd",
+        "android_client_info": {
+          "package_name": "com.example.task_mvp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoW_XJw_GbEi9znnXRtmFR5mAPgiIQ_Wg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

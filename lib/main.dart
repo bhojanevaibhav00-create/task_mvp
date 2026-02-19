@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' as drift;
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-import 'app.dart';
 import 'core/providers/task_providers.dart';
 import 'core/providers/theme_provider.dart';
+import 'core/routes/app_router.dart';
+import 'core/providers/database_provider.dart';
 import 'data/database/database.dart' as db;
-import 'package:task_mvp/core/providers/database_provider.dart';
+import 'package:drift/drift.dart' as drift;
 
-/// 🚀 Database Seeding logic (Only default project, no demo user)
+/// 🚀 Database Seeding logic
 Future<void> seedProjectData(db.AppDatabase database) async {
   try {
-    final existingProjects =
-        await database.select(database.projects).get();
+    final existingProjects = await database.select(database.projects).get();
 
     if (existingProjects.isEmpty) {
       await database.transaction(() async {
-        // ✅ Ensure Default Project exists
         await database.into(database.projects).insert(
               db.ProjectsCompanion.insert(
                 id: const drift.Value(1),
@@ -26,16 +26,20 @@ Future<void> seedProjectData(db.AppDatabase database) async {
               mode: drift.InsertMode.insertOrIgnore,
             );
       });
-
-      debugPrint("✅ Default Project Created (No Demo User)");
+      debugPrint("✅ Default Project Created");
     }
   } catch (e) {
     debugPrint("❌ Seed Error: $e");
   }
 }
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const ProviderScope(child: AppBootstrap()));
 }
 
@@ -53,11 +57,8 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final database = ref.read(databaseProvider);
-
-      // ✅ Only create default project (no demo user)
       await seedProjectData(database);
 
-      // ✅ Reminder initialization (same as before)
       final reminder = ref.read(reminderServiceProvider);
       await reminder.init();
       await reminder.requestPermission();
@@ -69,6 +70,10 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
 
-    return MyApp(themeMode: themeMode);
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      themeMode: themeMode,
+      routerConfig: appRouter,   // ✅ THIS IS THE FIX
+    );
   }
 }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Added for Riverpod logic
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/providers/auth_providers.dart'; // ✅ Connect to Auth logic
 
-class RegisterScreen extends ConsumerStatefulWidget { // ✅ Changed to ConsumerStatefulWidget
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
@@ -13,10 +15,11 @@ class RegisterScreen extends ConsumerStatefulWidget { // ✅ Changed to Consumer
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final TextEditingController _nameController = TextEditingController(); 
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
+
   bool _isLoading = false;
 
   @override
@@ -28,81 +31,126 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  // ===========================================================================
-  // LOGIC FIX: Real Database Registration with Error Handling
-  // ===========================================================================
+  // ================================================================
+  // ✅ REGISTER FUNCTION
+  // ================================================================
   Future<void> _register() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
-    final password = _passwordController.text;
-    final confirm = _confirmController.text;
+    final password = _passwordController.text.trim();
+    final confirm = _confirmController.text.trim();
 
     if (name.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
-      _showSnackBar('All fields are required');
+      _showSnackBar("Please fill all fields");
       return;
     }
 
-    if (!email.contains('@')) {
-      _showSnackBar('Invalid email format');
+    if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      _showSnackBar("Enter valid email address");
+      return;
+    }
+
+    if (password.length < 6) {
+      _showSnackBar("Password must be at least 6 characters");
       return;
     }
 
     if (password != confirm) {
-      _showSnackBar('Passwords do not match');
-      return;
-    }
-    
-    if (password.length < 6) {
-      _showSnackBar('Password must be at least 6 characters');
+      _showSnackBar("Passwords do not match");
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // 1. Call the Repository to create user in SQLite
-      final authRepo = ref.read(authRepositoryProvider);
-      
-      // ✅ Registration now persists to local DB
-      await authRepo.register(
-        name: name,
+      // 🔹 Step 1: Create user in Firebase Auth
+      final userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
-        password: password, 
+        password: password,
       );
 
-      // 2. Success Feedback
-      if (mounted) {
-        _showSnackBar('Registration successful! Please login.', isError: false);
-        context.go(AppRoutes.login);
+      final user = userCredential.user;
+
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: "user-null",
+          message: "User creation failed",
+        );
       }
+
+      // 🔹 Step 2: Save profile to Firestore
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .set({
+        "uid": user.uid,
+        "name": name,
+        "email": email,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      _showSnackBar("Account created successfully!", isError: false);
+
+      // 🔹 Step 3: Navigate
+      context.go(AppRoutes.dashboard);
+
+    } on FirebaseAuthException catch (e) {
+      String message;
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = "Email already in use.";
+          break;
+        case 'weak-password':
+          message = "Password is too weak.";
+          break;
+        case 'invalid-email':
+          message = "Invalid email format.";
+          break;
+        default:
+          message = e.message ?? "Registration failed.";
+      }
+
+      _showSnackBar(message);
+
+    } on FirebaseException catch (e) {
+      _showSnackBar("Database error: ${e.code}");
+
     } catch (e) {
-      // Handles duplicate email errors from the database
-      _showSnackBar(e.toString().replaceAll('Exception: ', ''));
+      _showSnackBar("Unexpected error occurred.");
+
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ✅ UI FIX: Corrected SnackBar border parameter
+  // ================================================================
+  // ✅ SNACKBAR
+  // ================================================================
   void _showSnackBar(String message, {bool isError = true}) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
           style: const TextStyle(
-            color: Color(0xFF1A1C1E), // Dark Slate Text
+            color: Color(0xFF1A1C1E),
             fontWeight: FontWeight.w600,
           ),
         ),
         backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         elevation: 8,
-        // ✅ FIXED: Using 'side' instead of 'borderSide' inside RoundedRectangleBorder
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: isError ? Colors.redAccent.withOpacity(0.3) : AppColors.primary.withOpacity(0.3),
-            width: 1,
+            color: isError
+                ? Colors.redAccent.withOpacity(0.3)
+                : AppColors.primary.withOpacity(0.3),
           ),
         ),
         margin: const EdgeInsets.all(20),
@@ -111,14 +159,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
+  // ================================================================
+  // ✅ UI
+  // ================================================================
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: AppColors.primaryGradient,
         ),
@@ -129,7 +178,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               children: [
                 _buildLogo(),
                 const SizedBox(height: 32),
-
                 Container(
                   width: 420,
                   padding: const EdgeInsets.all(32),
@@ -153,14 +201,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: const Color(0xFF1A1C1E),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Sign up to start your workspace",
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -244,20 +284,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return TextFormField(
       controller: controller,
       obscureText: isObscure,
-      style: const TextStyle(color: Color(0xFF1A1C1E), fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.grey),
         prefixIcon: Icon(icon, color: AppColors.primary),
         filled: true,
         fillColor: const Color(0xFFF8F9FD),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFF3F4F6)),
         ),
       ),
     );
@@ -268,22 +302,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       onPressed: _isLoading ? null : _register,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 18),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        elevation: 0,
       ),
       child: _isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-            )
+          ? const CircularProgressIndicator(color: Colors.white)
           : const Text(
               "Register",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
     );
   }
