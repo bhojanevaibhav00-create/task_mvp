@@ -16,6 +16,9 @@ import 'widgets/task_card.dart';
 import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
 import 'package:task_mvp/features/common/widgets/task_list_empty_state.dart';
 import 'package:task_mvp/features/common/widgets/task_list_skeleton.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
@@ -113,17 +116,38 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       child: TaskCard(
                         task: task,
                         onTap: () => _openTaskDetail(task), // ✅ FIXED: Detail instead of Edit
-                        onToggleDone: () {
-                          final isDone = task.status == TaskStatus.done.name;
-                          final newStatus = isDone
-                              ? TaskStatus.todo.name
-                              : TaskStatus.done.name;
-                          ref
-                              .read(tasksProvider.notifier)
-                              .updateTask(
-                                task.copyWith(status: drift.Value(newStatus)),
-                              );
-                        },
+                        onToggleDone: () async {
+  final isDone = task.status == TaskStatus.done.name;
+  final newStatus = isDone
+      ? TaskStatus.todo.name
+      : TaskStatus.done.name;
+
+  // 1️⃣ Update Drift
+  await ref.read(tasksProvider.notifier).updateTask(
+        task.copyWith(status: drift.Value(newStatus)),
+      );
+
+  // 2️⃣ Sync to Firebase
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+
+  if (firebaseUser != null) {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(firebaseUser.uid)
+        .collection('tasks')
+        .doc(task.id.toString())
+        .set({
+      'id': task.id,
+      'title': task.title,
+      'description': task.description,
+      'status': newStatus,
+      'priority': task.priority,
+      'projectId': task.projectId,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+},
+
                       ),
                     );
                   }, childCount: visibleTasks.length),

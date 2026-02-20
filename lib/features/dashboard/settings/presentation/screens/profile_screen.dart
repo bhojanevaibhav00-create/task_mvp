@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:task_mvp/core/constants/app_colors.dart';
 import 'package:task_mvp/core/providers/database_provider.dart';
 import 'package:task_mvp/data/database/database.dart';
@@ -16,33 +19,56 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
+
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // ✅ Load existing data from database on startup
     _loadUserData();
   }
 
-  /// 📥 Fetch user from Drift and populate controllers
+  /// 🔥 Load user from Firebase first, then Drift fallback
   Future<void> _loadUserData() async {
-    final db = ref.read(databaseProvider);
-    // Assuming user ID 1 is the local app owner
-    final user = await (db.select(db.users)..where((u) => u.id.equals(1))).getSingleOrNull();
+    try {
+      final firebaseUser = FirebaseAuth.instance.currentUser;
 
-    if (user != null) {
-      _nameController.text = user.name;
-      _emailController.text = user.email;
-      _bioController.text = user.bio ?? "";
+      if (firebaseUser != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .get();
+
+        if (doc.exists) {
+          final data = doc.data()!;
+          _nameController.text = data['name'] ?? "";
+          _emailController.text = data['email'] ?? firebaseUser.email ?? "";
+          _bioController.text = data['bio'] ?? "";
+        }
+      }
+
+      // ✅ Also sync with Drift local DB
+      final db = ref.read(databaseProvider);
+      final user = await (db.select(db.users)
+            ..where((u) => u.id.equals(1)))
+          .getSingleOrNull();
+
+      if (user != null) {
+        _nameController.text = user.name;
+        _emailController.text = user.email;
+        _bioController.text = user.bio ?? "";
+      }
+
+    } catch (e) {
+      debugPrint("Profile load error: $e");
     }
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
   }
 
-  /// 💾 Save logic to update the database
+  /// 🔥 Save to Firebase + Drift
   Future<void> _handleSave() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
@@ -50,16 +76,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (name.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Name and Email are required"), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Name and Email are required"),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
-    final db = ref.read(databaseProvider);
-    
     try {
-      // ✅ Update the user record in Drift
-      await (db.update(db.users)..where((u) => u.id.equals(1))).write(
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+
+      if (firebaseUser != null) {
+        // ✅ Update Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .set({
+          'uid': firebaseUser.uid,
+          'name': name,
+          'email': email,
+          'bio': bio,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      // ✅ Update Drift local DB
+      final db = ref.read(databaseProvider);
+      await (db.update(db.users)
+            ..where((u) => u.id.equals(1)))
+          .write(
         UsersCompanion(
           name: drift.Value(name),
           email: drift.Value(email),
@@ -67,14 +113,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Profile updated successfully!"),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+     if (mounted) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Profile updated successfully!"),
+      backgroundColor: Colors.green,
+      duration: Duration(milliseconds: 800),
+    ),
+  );
+
+  // ✅ Go back after short delay
+  Future.delayed(const Duration(milliseconds: 900), () {
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  });
+}
+
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -92,14 +148,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
+  // =========================
+  // UI BELOW (UNCHANGED)
+  // =========================
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD);
+    final backgroundColor =
+        isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD);
     final cardColor = isDark ? AppColors.cardDark : Colors.white;
 
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(

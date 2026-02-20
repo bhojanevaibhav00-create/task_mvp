@@ -17,6 +17,9 @@ import 'package:task_mvp/features/tasks/presentation/task_create_edit_screen.dar
 import 'widgets/dashboard_empty_state.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/quick_add_task_sheet.dart';
 import 'package:task_mvp/features/dashboard/settings/presentation/screens/settings_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});

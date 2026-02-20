@@ -7,6 +7,8 @@ import 'package:task_mvp/data/database/database.dart';
 
 import 'package:task_mvp/core/providers/database_provider.dart';
 import 'package:task_mvp/core/constants/app_colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -40,57 +42,79 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
   /// ✅ Logic: Validates current password against DB and updates it
   Future<void> _handleUpdate() async {
-    if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isSaving = true);
-    final db = ref.read(databaseProvider);
+  setState(() => _isSaving = true);
 
-    try {
-      // 1. Fetch current user (Assuming ID 1 for local app)
-      final user = await (db.select(
-        db.users,
-      )..where((u) => u.id.equals(1))).getSingleOrNull();
+  try {
+    final user = FirebaseAuth.instance.currentUser;
 
-      // 2. Verify current password
-      if (user == null || user.password != _currentController.text) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("The current password you entered is incorrect."),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
-        return;
-      }
-
-      // 3. Update Database
-      await (db.update(db.users)..where((u) => u.id.equals(1))).write(
-        UsersCompanion(password: drift.Value(_newController.text.trim())),
+    if (user == null || user.email == null) {
+      throw FirebaseAuthException(
+        code: "no-user",
+        message: "No authenticated user found.",
       );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Security settings updated successfully!"),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error: $e"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
     }
+
+    // 🔐 Reauthenticate with current password
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: _currentController.text.trim(),
+    );
+
+    await user.reauthenticateWithCredential(credential);
+
+    // 🔁 Update password in Firebase
+    await user.updatePassword(_newController.text.trim());
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Security settings updated successfully!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    }
+  } on FirebaseAuthException catch (e) {
+    String message;
+
+    switch (e.code) {
+      case 'wrong-password':
+        message = "The current password you entered is incorrect.";
+        break;
+      case 'weak-password':
+        message = "New password is too weak.";
+        break;
+      case 'requires-recent-login':
+        message = "Please login again and try.";
+        break;
+      default:
+        message = e.message ?? "Password update failed.";
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isSaving = false);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -151,12 +175,12 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               const SizedBox(height: 10),
               _buildPasswordField(
                 controller: _newController,
-                hint: "Minimum 8 characters",
+                hint: "Minimum 6 characters",
                 obscure: _obscureNew,
                 onToggle: () => setState(() => _obscureNew = !_obscureNew),
                 cardColor: cardColor,
                 isDark: isDark,
-                validator: (val) => (val != null && val.length < 8)
+                validator: (val) => (val != null && val.length < 6)
                     ? "Password too short"
                     : null,
               ),

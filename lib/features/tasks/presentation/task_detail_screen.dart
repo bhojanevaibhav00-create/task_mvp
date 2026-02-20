@@ -11,6 +11,9 @@ import 'task_create_edit_screen.dart'; // ✅ Added for navigation
 // ✅ Fixed imports to ensure widgets are visible to the compiler
 import 'package:task_mvp/features/tasks/presentation/widgets/comment_tile.dart';
 import 'package:task_mvp/features/tasks/presentation/widgets/comment_input.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class TaskDetailScreen extends ConsumerWidget {
   final Task task;
@@ -179,9 +182,32 @@ class TaskDetailScreen extends ConsumerWidget {
                       )),
                       value: sub.isCompleted,
                       activeColor: AppColors.primary,
-                      onChanged: (val) {
-                        db.update(db.subtasks).replace(sub.copyWith(isCompleted: val ?? false));
-                      },
+                      onChanged: (val) async {
+  final newValue = val ?? false;
+
+  // 1️⃣ Update Drift
+  await db.update(db.subtasks)
+      .replace(sub.copyWith(isCompleted: newValue));
+
+  // 2️⃣ Sync to Firebase
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+  if (firebaseUser != null) {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(firebaseUser.uid)
+        .collection('tasks')
+        .doc(task.id.toString())
+        .collection('subtasks')
+        .doc(sub.id.toString())
+        .set({
+      'id': sub.id,
+      'title': sub.title,
+      'isCompleted': newValue,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+},
+
                     )).toList(),
                   ),
                 );

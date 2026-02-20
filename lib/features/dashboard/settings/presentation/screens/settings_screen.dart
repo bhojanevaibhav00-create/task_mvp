@@ -16,7 +16,9 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isVisualDark = Theme.of(context).brightness == Brightness.dark;
+    final themeMode = ref.watch(themeModeProvider);
+final isVisualDark = themeMode == ThemeMode.dark;
+
     final notificationsEnabled = ref.watch(notificationsProvider);
 
     return Scaffold(
@@ -45,15 +47,15 @@ class SettingsScreen extends ConsumerWidget {
           /// Dark Mode
           _settingTile(
             icon: isVisualDark ? Icons.dark_mode : Icons.light_mode,
-            label: 'Dark Mode',
-            isDark: isVisualDark,
-            trailing: Switch(
-              value: isVisualDark,
-              onChanged: (_) =>
-                  ref.read(themeModeProvider.notifier).toggleTheme(),
-              activeColor: AppColors.primary,
-            ),
-          ),
+  label: 'Dark Mode',
+  isDark: isVisualDark,
+  trailing: Switch(
+    value: isVisualDark,
+    onChanged: (_) =>
+        ref.read(themeModeProvider.notifier).toggleTheme(),
+    activeColor: AppColors.primary,
+  ),
+),
 
           /// Notifications
           _settingTile(

@@ -7,6 +7,8 @@ import '../../../core/providers/collaboration_providers.dart';
 import '../../../data/database/database.dart';
 import '../../../core/constants/app_colors.dart';
 import 'widgets/reminder_section.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TaskCreateEditScreen extends ConsumerStatefulWidget {
   final Task? task;
@@ -350,12 +352,20 @@ class _TaskCreateEditScreenState
 
   // ================= ACTIONS =================
 
-  Future<void> _saveTask() async {
-    if (!_formKey.currentState!.validate()) return;
-    final notifier = ref.read(tasksProvider.notifier);
-    final title = _titleCtrl.text.trim();
-    final description = _descCtrl.text.trim();
+       Future<void> _saveTask() async {
+  if (!_formKey.currentState!.validate()) return;
 
+  final notifier = ref.read(tasksProvider.notifier);
+  final title = _titleCtrl.text.trim();
+  final description = _descCtrl.text.trim();
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+
+  try {
+    int? taskId;
+
+    // ======================
+    // 1️⃣ SAVE TO DRIFT
+    // ======================
     if (widget.task == null) {
       await notifier.addTask(
         title,
@@ -365,6 +375,11 @@ class _TaskCreateEditScreenState
         assigneeId: _selectedAssigneeId,
         projectId: widget.projectId,
       );
+
+      // since addTask doesn't return id,
+      // we generate a temp unique ID for Firebase
+      taskId = DateTime.now().millisecondsSinceEpoch;
+
     } else {
       await notifier.updateTask(
         widget.task!.copyWith(
@@ -377,36 +392,99 @@ class _TaskCreateEditScreenState
           assigneeId: drift.Value(_selectedAssigneeId),
         ),
       );
+
+      taskId = widget.task!.id;
+    }
+
+    // ======================
+    // 2️⃣ SAVE TO FIREBASE
+    // ======================
+    if (firebaseUser != null && taskId != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .collection('tasks')
+          .doc(taskId.toString())
+          .set({
+        'id': taskId,
+        'title': title,
+        'description': description,
+        'priority': _priority,
+        'dueDate': dueDate?.toIso8601String(),
+        'reminderEnabled': reminderEnabled,
+        'reminderAt': reminderAt?.toIso8601String(),
+        'assigneeId': _selectedAssigneeId,
+        'projectId': widget.projectId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     }
 
     if (mounted) Navigator.pop(context, true);
+
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error saving task: $e")),
+      );
+    }
   }
+}
+
 
   Future<void> _confirmDelete(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.cardDark : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Delete Task?'),
-        content: const Text('Are you sure you want to remove this task? This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppColors.cardDark
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24)),
+      title: const Text('Delete Task?'),
+      content: const Text(
+          'Are you sure you want to remove this task? This cannot be undone.'),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child:
+              const Text('Delete', style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    ),
+  );
 
-    if (ok == true && widget.task != null) {
-      await ref.read(tasksProvider.notifier).deleteTask(widget.task!.id);
+  if (ok == true && widget.task != null) {
+    try {
+      // 1️⃣ Delete from Drift
+      await ref
+          .read(tasksProvider.notifier)
+          .deleteTask(widget.task!.id);
+
+      // 2️⃣ Delete from Firebase
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .collection('tasks')
+            .doc(widget.task!.id.toString())
+            .delete();
+      }
+
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
       if (mounted) {
-        Navigator.pop(context, true); 
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Delete failed: $e")),
+        );
       }
     }
   }
+}
+
 
   Future<void> _pickDueDate() async {
     final d = await showDatePicker(
