@@ -182,19 +182,18 @@ class TaskDetailScreen extends ConsumerWidget {
                       )),
                       value: sub.isCompleted,
                       activeColor: AppColors.primary,
-                      onChanged: (val) async {
+                     onChanged: (val) async {
   final newValue = val ?? false;
 
   // 1️⃣ Update Drift
   await db.update(db.subtasks)
       .replace(sub.copyWith(isCompleted: newValue));
 
-  // 2️⃣ Sync to Firebase
-  final firebaseUser = FirebaseAuth.instance.currentUser;
-  if (firebaseUser != null) {
+  // 2️⃣ Update Firestore (PROJECT BASED)
+  if (task.projectId != null) {
     await FirebaseFirestore.instance
-        .collection('users')
-        .doc(firebaseUser.uid)
+        .collection('projects')
+        .doc(task.projectId.toString())
         .collection('tasks')
         .doc(task.id.toString())
         .collection('subtasks')
@@ -207,6 +206,7 @@ class TaskDetailScreen extends ConsumerWidget {
     }, SetOptions(merge: true));
   }
 },
+
 
                     )).toList(),
                   ),

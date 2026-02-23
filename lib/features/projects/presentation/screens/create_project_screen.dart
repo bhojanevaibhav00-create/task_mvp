@@ -7,6 +7,9 @@ import '../../../../core/providers/database_provider.dart';
 import '../../../../core/providers/project_providers.dart';
 import '../../../../core/providers/task_providers.dart';
 import '../../../../core/constants/app_colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class CreateProjectScreen extends ConsumerStatefulWidget {
   const CreateProjectScreen({super.key});
@@ -28,40 +31,87 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
   }
 
   /// ✅ IMPROVED: Combined Logic for Database + Notification + Navigation
-  Future<void> _handleCreate() async {
-    final name = _nameController.text.trim();
-    final description = _descController.text.trim();
+    Future<void> _handleCreate() async {
+  final name = _nameController.text.trim();
+  final description = _descController.text.trim();
 
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Project name is required")),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-
-    try {
-      // ✅ TRIGGER: Call the controller which handles DB insertion AND Notification
-      await ref.read(projectControllerProvider).createProject(name);
-
-      // ✅ REFRESH: Manual invalidation as a fallback for the Dashboard stream
-      ref.invalidate(allProjectsProvider); 
-
-      if (mounted) {
-        // Return 'true' so the previous screen knows a refresh is needed
-        Navigator.pop(context, true); 
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error creating project: $e")),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+  if (name.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Project name is required")),
+    );
+    return;
   }
+
+  setState(() => _isSaving = true);
+
+  try {
+    final db = ref.read(databaseProvider);
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+
+    if (firebaseUser == null) {
+      throw Exception("User not logged in");
+    }
+
+    // ============================
+    // 1️⃣ SAVE TO DRIFT (LOCAL DB)
+    // ============================
+    final projectId = await db.into(db.projects).insert(
+      ProjectsCompanion.insert(
+        name: name,
+        description: drift.Value(
+            description.isEmpty ? null : description),
+        color: const drift.Value(0xFF2196F3),
+        createdAt: drift.Value(DateTime.now()),
+      ),
+    );
+
+    // ============================
+    // 2️⃣ SAVE TO FIREBASE (GLOBAL PROJECT)
+    // ============================
+    final projectRef = FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId.toString());
+
+    await projectRef.set({
+      'id': projectId,
+      'name': name,
+      'description': description.isEmpty ? null : description,
+      'color': 0xFF2196F3,
+      'createdBy': firebaseUser.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // ============================
+    // 3️⃣ ADD CREATOR AS OWNER
+    // ============================
+    await projectRef
+        .collection('members')
+        .doc(firebaseUser.uid)
+        .set({
+      'userId': firebaseUser.uid,
+      'role': 'Owner',
+      'addedAt': FieldValue.serverTimestamp(),
+    });
+
+    // ============================
+    // 4️⃣ REFRESH UI
+    // ============================
+    ref.invalidate(allProjectsProvider);
+
+    if (mounted) {
+      Navigator.pop(context, true);
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error creating project: $e")),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isSaving = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -13,6 +13,8 @@ import 'package:task_mvp/data/database/database.dart';
 import 'package:task_mvp/data/models/enums.dart';
 import 'package:task_mvp/features/tasks/presentation/task_create_edit_screen.dart';
 import '../project_members_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// ✅ LOCAL PROVIDER: Manages task sorting state for this specific screen
 final projectSortProvider = StateProvider.autoDispose<String>((ref) => 'date');
@@ -523,6 +525,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     bool isDark,
   ) {
     final controller = TextEditingController(text: project.description);
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -560,16 +563,47 @@ class ProjectDetailScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () async {
               final db = ref.read(databaseProvider);
-              await (db.update(
-                db.projects,
-              )..where((p) => p.id.equals(project.id))).write(
-                ProjectsCompanion(
-                  description: drift.Value(controller.text.trim()),
-                ),
-              );
-              // Invalidate to refresh UI
-              ref.invalidate(allProjectsProvider);
-              Navigator.pop(context);
+              final firebaseUser = FirebaseAuth.instance.currentUser;
+              final newDescription = controller.text.trim();
+
+              try {
+                // ===============================
+                // 1️⃣ UPDATE DRIFT (LOCAL DB)
+                // ===============================
+                await (db.update(
+                  db.projects,
+                )..where((p) => p.id.equals(project.id))).write(
+                  ProjectsCompanion(description: drift.Value(newDescription)),
+                );
+
+                // ===============================
+                // 2️⃣ UPDATE FIRESTORE (CLOUD)
+                // ===============================
+                if (firebaseUser != null) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(firebaseUser.uid)
+                      .collection('projects')
+                      .doc(project.id.toString())
+                      .set({
+                        'description': newDescription,
+                        'updatedAt': FieldValue.serverTimestamp(),
+                      }, SetOptions(merge: true));
+                }
+
+                // Refresh UI
+                ref.invalidate(allProjectsProvider);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text("Update failed: $e")));
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -624,21 +658,63 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
 
     if (confirm == true) {
-      // 🛠️ FIX: Manually delete tasks associated with this project first
-      final db = ref.read(databaseProvider);
-      await (db.delete(
-        db.tasks,
-      )..where((t) => t.projectId.equals(projectId))).go();
+  try {
+    final db = ref.read(databaseProvider);
 
-      // ✅ REFRESH: Force the tasks provider to reload so Dashboard updates immediately
-      ref.read(tasksProvider.notifier).loadTasks();
+    // ===============================
+    // 1️⃣ DELETE FROM DRIFT (LOCAL DB)
+    // ===============================
+    await (db.delete(db.tasks)
+          ..where((t) => t.projectId.equals(projectId)))
+        .go();
 
-      // ✅ SUCCESS: Calls the controller which handles DB + Notification logic
-      await ref
-          .read(projectControllerProvider)
-          .deleteProject(projectId, projectName);
+    await (db.delete(db.projects)
+          ..where((p) => p.id.equals(projectId)))
+        .go();
 
-      if (context.mounted) context.pop();
+    // ===============================
+    // 2️⃣ DELETE FROM FIRESTORE (GLOBAL PROJECT STRUCTURE)
+    // ===============================
+    final projectRef = FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId.toString());
+
+    // 🔹 Delete tasks subcollection
+    final tasksSnapshot =
+        await projectRef.collection('tasks').get();
+
+    for (final doc in tasksSnapshot.docs) {
+      await doc.reference.delete();
     }
+
+    // 🔹 Delete members subcollection
+    final membersSnapshot =
+        await projectRef.collection('members').get();
+
+    for (final doc in membersSnapshot.docs) {
+      await doc.reference.delete();
+    }
+
+    // 🔹 Finally delete project document
+    await projectRef.delete();
+
+    // ===============================
+    // 3️⃣ REFRESH UI
+    // ===============================
+    ref.read(tasksProvider.notifier).loadTasks();
+    ref.invalidate(allProjectsProvider);
+
+    if (context.mounted) {
+      context.pop();
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Delete failed: $e")),
+      );
+    }
+  }
+}
+
   }
 }

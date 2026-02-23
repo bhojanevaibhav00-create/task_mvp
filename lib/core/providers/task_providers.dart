@@ -63,32 +63,37 @@ class TasksNotifier extends StateNotifier<List<Task>> {
     }
   }
 
-  Future<void> addTask(
-    String title,
-    String description, {
-    int priority = 1,
-    DateTime? dueDate,
-    int? assigneeId,
-    int? projectId,
-  }) async {
-    final companion = TasksCompanion.insert(
-      title: title,
-      description: drift.Value(description.isEmpty ? null : description),
-      priority: drift.Value(priority),
-      status: drift.Value(TaskStatus.todo.name),
-      dueDate: drift.Value(dueDate),
-      assigneeId: drift.Value(assigneeId),
-      projectId: drift.Value(projectId),
-      createdAt: drift.Value(DateTime.now()),
-    );
+  Future<int> addTask(
+  String title,
+  String description, {
+  int priority = 1,
+  DateTime? dueDate,
+  int? assigneeId,
+  int? projectId,
+}) async {
+  final companion = TasksCompanion.insert(
+    title: title,
+    description: drift.Value(description.isEmpty ? null : description),
+    priority: drift.Value(priority),
+    status: drift.Value(TaskStatus.todo.name),
+    dueDate: drift.Value(dueDate),
+    assigneeId: drift.Value(assigneeId),
+    projectId: drift.Value(projectId),
+    createdAt: drift.Value(DateTime.now()),
+  );
 
-    final taskId = await _repository.createTask(companion);
-    if (assigneeId != null) {
-      await _triggerCollabEvents(taskId, "Assigned: $title", projectId);
-    }
-    await loadTasks();
-    _ref.invalidate(projectProgressProvider);
+  // ✅ Get real inserted ID from repository
+  final taskId = await _repository.createTask(companion);
+
+  if (assigneeId != null) {
+    await _triggerCollabEvents(taskId, "Assigned: $title", projectId);
   }
+
+  await loadTasks();
+  _ref.invalidate(projectProgressProvider);
+
+  return taskId; // ✅ IMPORTANT FIX
+}
 
   Future<void> updateTask(Task task) async {
     final oldTask = state.firstWhere(

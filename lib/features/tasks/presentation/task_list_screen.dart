@@ -118,35 +118,28 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                         onTap: () => _openTaskDetail(task), // ✅ FIXED: Detail instead of Edit
                         onToggleDone: () async {
   final isDone = task.status == TaskStatus.done.name;
-  final newStatus = isDone
-      ? TaskStatus.todo.name
-      : TaskStatus.done.name;
+  final newStatus =
+      isDone ? TaskStatus.todo.name : TaskStatus.done.name;
 
   // 1️⃣ Update Drift
   await ref.read(tasksProvider.notifier).updateTask(
         task.copyWith(status: drift.Value(newStatus)),
       );
 
-  // 2️⃣ Sync to Firebase
-  final firebaseUser = FirebaseAuth.instance.currentUser;
-
-  if (firebaseUser != null) {
+  // 2️⃣ Update Firestore (PROJECT BASED)
+  if (task.projectId != null) {
     await FirebaseFirestore.instance
-        .collection('users')
-        .doc(firebaseUser.uid)
+        .collection('projects')
+        .doc(task.projectId.toString())
         .collection('tasks')
         .doc(task.id.toString())
         .set({
-      'id': task.id,
-      'title': task.title,
-      'description': task.description,
       'status': newStatus,
-      'priority': task.priority,
-      'projectId': task.projectId,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 },
+
 
                       ),
                     );

@@ -11,14 +11,13 @@ import '../../../core/providers/collaboration_providers.dart';
 // Data Layer
 import '../../../data/database/database.dart';
 import '../widgets/add_member_dialog.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProjectMembersScreen extends ConsumerWidget {
   final int projectId;
 
-  const ProjectMembersScreen({
-    super.key,
-    required this.projectId,
-  });
+  const ProjectMembersScreen({super.key, required this.projectId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,7 +28,9 @@ class ProjectMembersScreen extends ConsumerWidget {
 
     return Scaffold(
       // ✅ ADAPTIVE PREMIUM THEME
-      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+      backgroundColor: isDark
+          ? AppColors.scaffoldDark
+          : const Color(0xFFF8F9FD),
       appBar: AppBar(
         title: Text(
           "Project Members",
@@ -41,11 +42,16 @@ class ProjectMembersScreen extends ConsumerWidget {
         iconTheme: IconThemeData(color: darkText),
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 70), // Lifted to avoid overlap with Save button
+        padding: const EdgeInsets.only(
+          bottom: 70,
+        ), // Lifted to avoid overlap with Save button
         child: FloatingActionButton(
           backgroundColor: AppColors.primary,
           onPressed: () => _showAddMemberDialog(context),
-          child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+          child: const Icon(
+            Icons.person_add_alt_1_rounded,
+            color: Colors.white,
+          ),
         ),
       ),
       body: Stack(
@@ -56,11 +62,22 @@ class ProjectMembersScreen extends ConsumerWidget {
                 return _buildEmptyState(isDark);
               }
               return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100), // Bottom padding for button
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  20,
+                  20,
+                  100,
+                ), // Bottom padding for button
                 itemCount: membersList.length,
                 itemBuilder: (context, index) {
                   final item = membersList[index];
-                  return _buildMemberTile(context, ref, item, membersList, isDark);
+                  return _buildMemberTile(
+                    context,
+                    ref,
+                    item,
+                    membersList,
+                    isDark,
+                  );
                 },
               );
             },
@@ -68,11 +85,14 @@ class ProjectMembersScreen extends ConsumerWidget {
             error: (e, stack) => Center(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
-                child: Text("Connection Error: $e", textAlign: TextAlign.center),
+                child: Text(
+                  "Connection Error: $e",
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ),
-          
+
           // ✅ FIXED BOTTOM SAVE BUTTON
           Positioned(
             bottom: 0,
@@ -85,7 +105,8 @@ class ProjectMembersScreen extends ConsumerWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    (isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD)).withOpacity(0),
+                    (isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD))
+                        .withOpacity(0),
                     isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
                   ],
                 ),
@@ -96,7 +117,9 @@ class ProjectMembersScreen extends ConsumerWidget {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: 4,
                 ),
                 child: const Text(
@@ -119,9 +142,9 @@ class ProjectMembersScreen extends ConsumerWidget {
   }
 
   Widget _buildMemberTile(
-    BuildContext context, 
-    WidgetRef ref, 
-    MemberWithUser item, 
+    BuildContext context,
+    WidgetRef ref,
+    MemberWithUser item,
     List<MemberWithUser> allMembers,
     bool isDark,
   ) {
@@ -129,7 +152,9 @@ class ProjectMembersScreen extends ConsumerWidget {
     final user = item.user;
 
     final isOwner = member.role.toLowerCase() == 'owner';
-    final ownerCount = allMembers.where((m) => m.member.role.toLowerCase() == 'owner').length;
+    final ownerCount = allMembers
+        .where((m) => m.member.role.toLowerCase() == 'owner')
+        .length;
     final isLastOwner = isOwner && ownerCount <= 1;
 
     return Container(
@@ -153,7 +178,7 @@ class ProjectMembersScreen extends ConsumerWidget {
           child: Text(
             user.name.isNotEmpty ? user.name[0].toUpperCase() : "?",
             style: const TextStyle(
-              color: AppColors.primary, 
+              color: AppColors.primary,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -162,21 +187,21 @@ class ProjectMembersScreen extends ConsumerWidget {
         title: Text(
           user.name,
           style: TextStyle(
-            fontWeight: FontWeight.bold, 
-            fontSize: 16, 
-            color: isDark ? Colors.white : const Color(0xFF111827)
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: isDark ? Colors.white : const Color(0xFF111827),
           ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: Row(
-            children: [_buildRoleChip(member.role, isOwner)],
-          ),
+          child: Row(children: [_buildRoleChip(member.role, isOwner)]),
         ),
         trailing: IconButton(
           icon: Icon(
             Icons.person_remove_rounded,
-            color: isLastOwner ? Colors.grey.shade400 : Colors.redAccent.withOpacity(0.7),
+            color: isLastOwner
+                ? Colors.grey.shade400
+                : Colors.redAccent.withOpacity(0.7),
           ),
           onPressed: () {
             if (isLastOwner) {
@@ -199,7 +224,9 @@ class ProjectMembersScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isOwner ? Colors.orange.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+        color: isOwner
+            ? Colors.orange.withOpacity(0.1)
+            : Colors.blue.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -218,15 +245,23 @@ class ProjectMembersScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.group_outlined, size: 80, color: isDark ? Colors.white12 : Colors.grey.shade200),
+          Icon(
+            Icons.group_outlined,
+            size: 80,
+            color: isDark ? Colors.white12 : Colors.grey.shade200,
+          ),
           const SizedBox(height: 16),
           Text(
-            "Team is Empty", 
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey),
+            "Team is Empty",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white38 : Colors.grey,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
-            "Invite members to collaborate.", 
+            "Invite members to collaborate.",
             style: TextStyle(color: isDark ? Colors.white24 : Colors.black26),
           ),
         ],
@@ -234,27 +269,73 @@ class ProjectMembersScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmRemoval(BuildContext context, WidgetRef ref, MemberWithUser item, List<MemberWithUser> allMembers) {
+  void _confirmRemoval(
+    BuildContext context,
+    WidgetRef ref,
+    MemberWithUser item,
+    List<MemberWithUser> allMembers,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.cardDark : Colors.white,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.cardDark
+            : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text("Remove Member?", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text("Are you sure you want to remove ${item.user.name} from this project?"),
+        title: const Text(
+          "Remove Member?",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          "Are you sure you want to remove ${item.user.name} from this project?",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () async {
-              await ref.read(collaborationActionProvider.notifier).removeMember(
-                projectId: projectId, 
-                userId: item.member.userId, 
-                allMembers: allMembers,
-              );
-              ref.invalidate(projectMembersProvider(projectId));
-              if (context.mounted) Navigator.pop(context);
+              try {
+                final firebaseUser = FirebaseAuth.instance.currentUser;
+
+                // ============================
+                // 1️⃣ REMOVE FROM DRIFT
+                // ============================
+                await ref
+                    .read(collaborationActionProvider.notifier)
+                    .removeMember(
+                      projectId: projectId,
+                      userId: item.member.userId,
+                      allMembers: allMembers,
+                    );
+
+               // ============================
+// 2️⃣ REMOVE FROM FIRESTORE (CORRECT PATH)
+// ============================
+await FirebaseFirestore.instance
+    .collection('projects')
+    .doc(projectId.toString())
+    .collection('members')
+    .doc(item.member.userId.toString())
+    .delete();
+
+
+                ref.invalidate(projectMembersProvider(projectId));
+
+                if (context.mounted) Navigator.pop(context);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Failed to remove member: $e")),
+                  );
+                }
+              }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text("Remove"),
           ),
         ],

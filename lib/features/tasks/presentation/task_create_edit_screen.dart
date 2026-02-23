@@ -352,7 +352,7 @@ class _TaskCreateEditScreenState
 
   // ================= ACTIONS =================
 
-       Future<void> _saveTask() async {
+    Future<void> _saveTask() async {
   if (!_formKey.currentState!.validate()) return;
 
   final notifier = ref.read(tasksProvider.notifier);
@@ -361,13 +361,15 @@ class _TaskCreateEditScreenState
   final firebaseUser = FirebaseAuth.instance.currentUser;
 
   try {
-    int? taskId;
+    int taskId;
 
     // ======================
     // 1️⃣ SAVE TO DRIFT
     // ======================
     if (widget.task == null) {
-      await notifier.addTask(
+
+      // ✅ addTask returns inserted ID (int)
+      taskId = await notifier.addTask(
         title,
         description,
         priority: _priority,
@@ -376,11 +378,8 @@ class _TaskCreateEditScreenState
         projectId: widget.projectId,
       );
 
-      // since addTask doesn't return id,
-      // we generate a temp unique ID for Firebase
-      taskId = DateTime.now().millisecondsSinceEpoch;
-
     } else {
+
       await notifier.updateTask(
         widget.task!.copyWith(
           title: title,
@@ -397,27 +396,29 @@ class _TaskCreateEditScreenState
     }
 
     // ======================
-    // 2️⃣ SAVE TO FIREBASE
-    // ======================
-    if (firebaseUser != null && taskId != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .collection('tasks')
-          .doc(taskId.toString())
-          .set({
-        'id': taskId,
-        'title': title,
-        'description': description,
-        'priority': _priority,
-        'dueDate': dueDate?.toIso8601String(),
-        'reminderEnabled': reminderEnabled,
-        'reminderAt': reminderAt?.toIso8601String(),
-        'assigneeId': _selectedAssigneeId,
-        'projectId': widget.projectId,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    }
+// 2️⃣ SAVE TO FIREBASE (CORRECT STRUCTURE)
+// ======================
+if (firebaseUser != null && widget.projectId != null) {
+  await FirebaseFirestore.instance
+      .collection('projects')
+      .doc(widget.projectId.toString())
+      .collection('tasks')
+      .doc(taskId.toString())
+      .set({
+    'id': taskId,
+    'title': title,
+    'description': description,
+    'priority': _priority,
+    'dueDate': dueDate?.toIso8601String(),
+    'reminderEnabled': reminderEnabled,
+    'reminderAt': reminderAt?.toIso8601String(),
+    'assigneeId': _selectedAssigneeId,
+    'projectId': widget.projectId,
+    'createdBy': firebaseUser.uid,
+    'updatedAt': FieldValue.serverTimestamp(),
+  }, SetOptions(merge: true));
+}
+
 
     if (mounted) Navigator.pop(context, true);
 
@@ -429,6 +430,7 @@ class _TaskCreateEditScreenState
     }
   }
 }
+
 
 
   Future<void> _confirmDelete(BuildContext context) async {
@@ -449,8 +451,8 @@ class _TaskCreateEditScreenState
             child: const Text('Cancel')),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
-          child:
-              const Text('Delete', style: TextStyle(color: Colors.red)),
+          child: const Text('Delete',
+              style: TextStyle(color: Colors.red)),
         ),
       ],
     ),
@@ -458,23 +460,28 @@ class _TaskCreateEditScreenState
 
   if (ok == true && widget.task != null) {
     try {
-      // 1️⃣ Delete from Drift
-      await ref
-          .read(tasksProvider.notifier)
-          .deleteTask(widget.task!.id);
+      final taskId = widget.task!.id;
 
-      // 2️⃣ Delete from Firebase
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      if (firebaseUser != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(firebaseUser.uid)
-            .collection('tasks')
-            .doc(widget.task!.id.toString())
-            .delete();
-      }
+      // ======================
+// 1️⃣ DELETE FROM FIREBASE (CORRECT STRUCTURE)
+// ======================
+if (widget.task?.projectId != null) {
+  await FirebaseFirestore.instance
+      .collection('projects')
+      .doc(widget.task!.projectId.toString())
+      .collection('tasks')
+      .doc(taskId.toString())
+      .delete();
+}
+
+
+      // ======================
+      // 2️⃣ DELETE FROM DRIFT
+      // ======================
+      await ref.read(tasksProvider.notifier).deleteTask(taskId);
 
       if (mounted) Navigator.pop(context, true);
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -484,6 +491,7 @@ class _TaskCreateEditScreenState
     }
   }
 }
+
 
 
   Future<void> _pickDueDate() async {
