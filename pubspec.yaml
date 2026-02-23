@@ -2,7 +2,7 @@ name: task_mvp
 description: "A new Flutter project."
 publish_to: "none"
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.8.1
@@ -12,9 +12,9 @@ dependencies:
     sdk: flutter
 
   # ✅ Update these to compatible stable versions
-  firebase_core: ^3.1.1      
-  firebase_auth: ^5.1.1      
-  cloud_firestore: ^5.0.2    
+  firebase_core: ^3.1.1
+  firebase_auth: ^5.1.1
+  cloud_firestore: ^5.0.2
 
   # Keep your other dependencies...
   drift: ^2.30.0

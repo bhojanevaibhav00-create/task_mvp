@@ -17,7 +17,9 @@ Future<void> seedProjectData(db.AppDatabase database) async {
 
     if (existingProjects.isEmpty) {
       await database.transaction(() async {
-        await database.into(database.projects).insert(
+        await database
+            .into(database.projects)
+            .insert(
               db.ProjectsCompanion.insert(
                 id: const drift.Value(1),
                 name: 'General Project',
@@ -36,9 +38,7 @@ Future<void> seedProjectData(db.AppDatabase database) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const ProviderScope(child: AppBootstrap()));
 }
@@ -73,7 +73,7 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
-      routerConfig: appRouter,   // ✅ THIS IS THE FIX
+      routerConfig: appRouter, // ✅ THIS IS THE FIX
     );
   }
 }
