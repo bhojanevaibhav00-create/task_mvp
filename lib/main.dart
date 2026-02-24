@@ -73,6 +73,16 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
+      theme: ThemeData(
+        colorSchemeSeed: const Color(0xFF2196F3),
+        useMaterial3: true,
+        brightness: Brightness.light,
+      ),
+      darkTheme: ThemeData(
+        colorSchemeSeed: const Color(0xFF2196F3),
+        useMaterial3: true,
+        brightness: Brightness.dark,
+      ),
       routerConfig: appRouter, // ✅ THIS IS THE FIX
     );
   }
