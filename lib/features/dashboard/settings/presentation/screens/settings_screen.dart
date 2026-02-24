@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../core/providers/theme_provider.dart';
+import 'package:task_mvp/core/constants/app_colors.dart';
+import 'package:task_mvp/core/theme/app_text_styles.dart';
+import 'package:task_mvp/core/providers/theme_provider.dart';
 
-// Notifications toggle (UI only)
+import 'profile_screen.dart';
+import 'change_password_screen.dart';
+
 final notificationsProvider = StateProvider<bool>((ref) => true);
 
 class SettingsScreen extends ConsumerWidget {
@@ -13,13 +16,14 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 💡 KEY FIX: Determine visual brightness to sync the switch on app start
-    final isVisualDark = Theme.of(context).brightness == Brightness.dark;
     final themeMode = ref.watch(themeModeProvider);
+final isVisualDark = themeMode == ThemeMode.dark;
+
     final notificationsEnabled = ref.watch(notificationsProvider);
 
     return Scaffold(
-      backgroundColor: isVisualDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
+      backgroundColor:
+          isVisualDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
@@ -40,30 +44,28 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           _sectionTitle('General'),
 
-          // 🌙 DARK MODE SWITCH - UPDATED FOR STARTUP SYNC
+          /// Dark Mode
           _settingTile(
             icon: isVisualDark ? Icons.dark_mode : Icons.light_mode,
-            label: 'Dark Mode',
-            isDark: isVisualDark,
-            trailing: Switch(
-              // ✅ Sync with visual state so it's ON if the app is dark at startup
-              value: isVisualDark, 
-              onChanged: (_) {
-                // Uses the robust toggle logic from your ThemeNotifier
-                ref.read(themeModeProvider.notifier).toggleTheme();
-              },
-              activeColor: AppColors.primary,
-            ),
-          ),
+  label: 'Dark Mode',
+  isDark: isVisualDark,
+  trailing: Switch(
+    value: isVisualDark,
+    onChanged: (_) =>
+        ref.read(themeModeProvider.notifier).toggleTheme(),
+    activeColor: AppColors.primary,
+  ),
+),
 
-          // 🔔 NOTIFICATIONS
+          /// Notifications
           _settingTile(
             icon: Icons.notifications,
             label: 'Notifications',
             isDark: isVisualDark,
             trailing: Switch(
               value: notificationsEnabled,
-              onChanged: (v) => ref.read(notificationsProvider.notifier).state = v,
+              onChanged: (v) =>
+                  ref.read(notificationsProvider.notifier).state = v,
               activeColor: AppColors.primary,
             ),
           ),
@@ -71,22 +73,34 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           _sectionTitle('Account'),
 
+          /// Profile
           _settingTile(
-            icon: Icons.person,
+            icon: Icons.person_outline_rounded,
             label: 'Profile',
             isDark: isVisualDark,
-            onTap: () => _push(context, const ProfileScreen()),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const ProfileScreen()),
+            ),
           ),
+
+          /// Change Password
           _settingTile(
-            icon: Icons.lock,
+            icon: Icons.lock_outline_rounded,
             label: 'Change Password',
             isDark: isVisualDark,
-            onTap: () => _push(context, const ChangePasswordScreen()),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const ChangePasswordScreen()),
+            ),
           ),
 
           const SizedBox(height: 24),
           _sectionTitle('About'),
 
+          /// App Version
           _settingTile(
             icon: Icons.info_outline,
             label: 'App Version',
@@ -94,13 +108,15 @@ class SettingsScreen extends ConsumerWidget {
             trailing: Text(
               '1.0.0',
               style: AppTextStyles.body.copyWith(
-                color: isVisualDark ? Colors.white70 : Colors.black54,
+                color:
+                    isVisualDark ? Colors.white38 : Colors.black26,
               ),
             ),
           ),
 
+          /// Logout
           _settingTile(
-            icon: Icons.logout,
+            icon: Icons.logout_rounded,
             label: 'Logout',
             isDark: isVisualDark,
             onTap: () => _showLogoutDialog(context, isVisualDark),
@@ -110,14 +126,15 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  // ================= HELPERS =================
-
+  // ==========================
+  // Section Title Widget
+  // ==========================
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 12, 0, 8),
       child: Text(
         title.toUpperCase(),
-        style: AppTextStyles.body.copyWith(
+        style: const TextStyle(
           fontWeight: FontWeight.w900,
           fontSize: 12,
           color: AppColors.primary,
@@ -127,6 +144,9 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  // ==========================
+  // Setting Tile Widget
+  // ==========================
   Widget _settingTile({
     required IconData icon,
     required String label,
@@ -140,13 +160,14 @@ class SettingsScreen extends ConsumerWidget {
       elevation: isDark ? 0 : 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: isDark 
-            ? BorderSide(color: Colors.white.withOpacity(0.05)) 
+        side: isDark
+            ? BorderSide(color: Colors.white.withOpacity(0.05))
             : BorderSide.none,
       ),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
@@ -157,7 +178,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
         title: Text(
           label,
-          style: AppTextStyles.body.copyWith(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.white : Colors.black87,
           ),
@@ -169,48 +190,56 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _push(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-  }
-
+  // ==========================
+  // Logout Dialog (FIXED)
+  // ==========================
   void _showLogoutDialog(BuildContext context, bool isDark) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: isDark ? AppColors.cardDark : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Logout', 
-          style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
-        content: Text('Are you sure you want to logout?',
-          style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor:
+            isDark ? AppColors.cardDark : Colors.white,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Logout',
+          style: TextStyle(
+              color: isDark ? Colors.white : Colors.black87),
+        ),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black54),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+
+              // ✅ Correct Logout Logic
+              await FirebaseAuth.instance.signOut();
+              // GoRouter redirect handles navigation automatically
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
     );
   }
-}
-
-// ===== PLACEHOLDERS =====
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Profile')));
-}
-
-class ChangePasswordScreen extends StatelessWidget {
-  const ChangePasswordScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Change Password')));
 }

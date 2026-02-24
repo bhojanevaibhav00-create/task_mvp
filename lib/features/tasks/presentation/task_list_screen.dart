@@ -11,10 +11,14 @@ import '../../../data/models/enums.dart';
 
 import '../../notifications/presentation/notification_screen.dart';
 import 'task_create_edit_screen.dart';
+import 'task_detail_screen.dart'; // ✅ IMPORTED TaskDetailScreen
 import 'widgets/task_card.dart';
 import 'package:task_mvp/features/dashboard/presentation/widgets/filter_bottom_sheet.dart';
 import 'package:task_mvp/features/common/widgets/task_list_empty_state.dart';
 import 'package:task_mvp/features/common/widgets/task_list_skeleton.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
@@ -36,269 +40,281 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   void _openCreateTask() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const TaskCreateEditScreen()),
+      MaterialPageRoute(builder: (context) => const TaskCreateEditScreen()),
     ).then((changed) {
-      if (changed == true) {
-        ref.read(tasksProvider.notifier).loadTasks();
-      }
+      if (changed == true) ref.read(tasksProvider.notifier).loadTasks();
     });
   }
 
-  void _openEditTask(db.Task task) {
+  /// ✅ FIXED: Logic now opens the Detail Screen for collaboration (Task 1A)
+  void _openTaskDetail(db.Task task) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => TaskCreateEditScreen(task: task)),
-    ).then((changed) {
-      if (changed == true) {
-        ref.read(tasksProvider.notifier).loadTasks();
-      }
+      MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
+    ).then((_) {
+      // Refresh list in case status changed inside details
+      ref.read(tasksProvider.notifier).loadTasks();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final filteredTasksAsync = ref.watch(filteredTasksProvider);
-    final unreadCount = ref.watch(unreadNotificationCountProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-      isDark ? AppColors.scaffoldDark : const Color(0xFFF6F7FB),
-
+      backgroundColor: isDark
+          ? AppColors.scaffoldDark
+          : const Color(0xFFF8F9FD),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-
-          // ================= APP BAR =================
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 130,
-            backgroundColor: AppColors.primary,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding:
-              const EdgeInsets.only(left: 20, bottom: 16),
-              title: const Text(
-                'My Tasks',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                ),
-              ),
-            ),
-            actions: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications_none_rounded,
-                        color: Colors.white),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                          const NotificationScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 10,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.filter_list,
-                    color: Colors.white),
-                onPressed: () => openFilterBottomSheet(
-                  context: context,
-                  allTags: const [],
-                  statusFilters: {},
-                  priorityFilters: {},
-                  tagFilters: {},
-                  dueBucket: null,
-                  sort: null,
-                  onApply: (_, __, ___, ____, _____) {},
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-
-          // ================= SEARCH =================
-          SliverToBoxAdapter(
-            child: Padding(
-              padding:
-              const EdgeInsets.fromLTRB(20, 24, 20, 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.cardDark
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: isDark
-                      ? []
-                      : [
-                    BoxShadow(
-                      color:
-                      Colors.black.withOpacity(0.05),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (v) =>
-                      setState(() => _searchQuery = v),
-                  style: TextStyle(
-                    color:
-                    isDark ? Colors.white : Colors.black87,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Search your tasks...',
-                    hintStyle: TextStyle(
-                      color: isDark
-                          ? Colors.white38
-                          : const Color(0xFF9CA3AF),
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: isDark
-                          ? Colors.white38
-                          : const Color(0xFF6B7280),
-                    ),
-                    border: InputBorder.none,
-                    contentPadding:
-                    const EdgeInsets.symmetric(
-                        vertical: 16),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // ================= TASK LIST =================
+          _buildSliverAppBar(isDark),
+          _buildSearchHeader(isDark),
           filteredTasksAsync.when(
-            loading: () => const SliverFillRemaining(
-              child: TaskListSkeleton(),
-            ),
+            loading: () => const SliverFillRemaining(child: TaskListSkeleton()),
             error: (e, _) => SliverFillRemaining(
               child: Center(
                 child: Text(
                   'Error: $e',
                   style: TextStyle(
-                    color: isDark
-                        ? Colors.white70
-                        : Colors.black87,
+                    color: isDark ? Colors.white70 : Colors.black87,
                   ),
                 ),
               ),
             ),
-            data: (tasksData) {
-              final List tasks =
-              tasksData is List ? tasksData : [];
+            data: (dynamic tasksData) {
+              final List tasks = tasksData is List ? tasksData : [];
 
               final visibleTasks = tasks.where((t) {
-                final task = t as db.Task;
-                return task.title
-                    .toLowerCase()
-                    .contains(_searchQuery.toLowerCase()) ||
-                    (task.description ?? '')
-                        .toLowerCase()
-                        .contains(_searchQuery.toLowerCase());
+                final db.Task task = t is db.Task ? t : (t as dynamic).task;
+                return task.title.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ||
+                    (task.description ?? '').toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    );
               }).toList();
 
               if (visibleTasks.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
-                  child: TaskListEmptyState(
-                      onAddTask: _openCreateTask),
+                  child: TaskListEmptyState(onAddTask: _openCreateTask),
                 );
               }
 
               return SliverPadding(
-                padding:
-                const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                      final db.Task task =
-                      visibleTasks[index] as db.Task;
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final item = visibleTasks[index];
+                    final db.Task task = item is db.Task
+                        ? item
+                        : (item as dynamic).task;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: TaskCard(
+                        task: task,
+                        onTap: () => _openTaskDetail(task), // ✅ FIXED: Detail instead of Edit
+                        onToggleDone: () async {
+  final isDone = task.status == TaskStatus.done.name;
+  final newStatus =
+      isDone ? TaskStatus.todo.name : TaskStatus.done.name;
 
-                      return Padding(
-                        padding:
-                        const EdgeInsets.only(bottom: 12),
-                        child: TaskCard(
-                          task: task,
-                          onTap: () =>
-                              _openEditTask(task),
-                          onToggleDone: () {
-                            final isDone =
-                                task.status ==
-                                    TaskStatus.done.name;
-                            final newStatus = isDone
-                                ? TaskStatus.todo.name
-                                : TaskStatus.done.name;
+  // 1️⃣ Update Drift
+  await ref.read(tasksProvider.notifier).updateTask(
+        task.copyWith(status: drift.Value(newStatus)),
+      );
 
-                            ref
-                                .read(tasksProvider.notifier)
-                                .updateTask(
-                              task.copyWith(
-                                status: drift.Value(
-                                    newStatus),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                    childCount: visibleTasks.length,
-                  ),
+  // 2️⃣ Update Firestore (PROJECT BASED)
+  if (task.projectId != null) {
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(task.projectId.toString())
+        .collection('tasks')
+        .doc(task.id.toString())
+        .set({
+      'status': newStatus,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+},
+
+
+                      ),
+                    );
+                  }, childCount: visibleTasks.length),
                 ),
               );
             },
           ),
         ],
       ),
-
-      floatingActionButton:
-      FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateTask,
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded,
-            color: Colors.white),
         label: const Text(
           'Add Task',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        backgroundColor: AppColors.primary,
+        elevation: 6,
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar(bool isDark) {
+    return SliverAppBar(
+      pinned: true,
+      expandedHeight: 120,
+      backgroundColor: AppColors.primary,
+      elevation: 0,
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+        title: const Text(
+          'My Tasks',
           style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold),
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        background: Container(
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
         ),
       ),
+      actions: [
+        _buildNotificationIcon(ref),
+        IconButton(
+          icon: const Icon(Icons.filter_list, color: Colors.white),
+          onPressed: () {
+            final status = ref.read(statusFilterProvider);
+            final priority = ref.read(priorityFilterProvider);
+            final dueBucket = ref.read(dueBucketFilterProvider);
+            final sort = ref.read(sortByProvider);
+
+            final Set<TaskStatus> initialStatus = status != 'all'
+                ? TaskStatus.values.where((e) => e.name == status).toSet()
+                : {};
+
+            final Set<Priority> initialPriority =
+                (priority != null &&
+                        priority > 0 &&
+                        priority <= Priority.values.length)
+                    ? {Priority.values[priority - 1]}
+                    : {};
+
+            openFilterBottomSheet(
+              context: context,
+              allTags: const [],
+              statusFilters: initialStatus,
+              priorityFilters: initialPriority,
+              tagFilters: {},
+              dueBucket: dueBucket,
+              sort: sort,
+              onApply: (statuses, priorities, tags, bucket, newSort) {
+                ref
+                    .read(statusFilterProvider.notifier)
+                    .state = statuses.isNotEmpty
+                    ? (statuses.first as TaskStatus).name
+                    : 'all';
+                ref
+                    .read(priorityFilterProvider.notifier)
+                    .state = priorities.isNotEmpty
+                    ? (priorities.first as Priority).index + 1
+                    : null;
+                ref.read(dueBucketFilterProvider.notifier).state = bucket;
+                if (newSort != null) {
+                  ref.read(sortByProvider.notifier).state = newSort;
+                }
+              },
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildSearchHeader(bool isDark) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black26 : Colors.black.withOpacity(0.05),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (v) => setState(() => _searchQuery = v),
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF111827),
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Search your tasks...',
+              hintStyle: TextStyle(
+                color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+              ),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                color: isDark ? Colors.white38 : const Color(0xFF6B7280),
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 15),
+              filled: true,
+              fillColor: Colors.transparent,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationIcon(WidgetRef ref) {
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(
+            Icons.notifications_none_rounded,
+            color: Colors.white,
+            size: 28,
+          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const NotificationScreen())),
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            right: 8,
+            top: 10,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                unreadCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

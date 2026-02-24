@@ -1,74 +1,45 @@
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
+import 'core/providers/task_providers.dart';
+import 'core/providers/theme_provider.dart';
+import 'core/routes/app_router.dart';
+import 'core/providers/database_provider.dart';
+import 'data/database/database.dart' as db;
 import 'package:drift/drift.dart' as drift;
 
-import 'app.dart';
-import 'core/providers/task_providers.dart';
-import 'core/providers/theme_provider.dart'; 
-import 'data/database/database.dart' as db;
-import 'package:task_mvp/core/providers/database_provider.dart';
-
-// 🚀 Database Seeding logic
+/// 🚀 Database Seeding logic
 Future<void> seedProjectData(db.AppDatabase database) async {
   try {
-    final existingUsers = await database.select(database.users).get();
+    final existingProjects = await database.select(database.projects).get();
 
-    if (existingUsers.isEmpty) {
+    if (existingProjects.isEmpty) {
       await database.transaction(() async {
-        // ✅ Insert User 1 (Admin)
-        final userId = await database.into(database.users).insert(
-          db.UsersCompanion.insert(
-            name: 'Vaibhav Bhojane',
-            email: 'vaibhav@jbbtechnologies.com',
-            password: 'password123',
-          ),
-        );
-
-        // ✅ Ensure Default Project exists
-        await database.into(database.projects).insert(
-          db.ProjectsCompanion.insert(
-            id: const drift.Value(1),
-            name: 'General Project',
-            color: const drift.Value(0xFF2196F3),
-          ),
-          mode: drift.InsertMode.insertOrIgnore,
-        );
-
-        // ✅ Add Owner relationship
-        await database.into(database.projectMembers).insert(
-          db.ProjectMembersCompanion.insert(
-            projectId: 1,
-            userId: userId,
-            role: 'Owner',
-          ),
-        );
-
-        // ✅ Team Users
-        await database.into(database.users).insert(
-          db.UsersCompanion.insert(
-            name: 'Ajinkya Ghode',
-            email: 'ajinkya@test.com',
-            password: 'password123',
-          ),
-        );
-
-        await database.into(database.users).insert(
-          db.UsersCompanion.insert(
-            name: 'Vaishnavi Mogal',
-            email: 'vaishnavi@test.com',
-            password: 'password123',
-          ),
-        );
+        await database
+            .into(database.projects)
+            .insert(
+              db.ProjectsCompanion.insert(
+                id: const drift.Value(1),
+                name: 'General Project',
+                color: const drift.Value(0xFF2196F3),
+              ),
+              mode: drift.InsertMode.insertOrIgnore,
+            );
       });
-      debugPrint("✅ Database Seeded Successfully");
+      debugPrint("✅ Default Project Created");
     }
   } catch (e) {
     debugPrint("❌ Seed Error: $e");
   }
 }
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   runApp(const ProviderScope(child: AppBootstrap()));
 }
 
@@ -83,7 +54,8 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() async {
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final database = ref.read(databaseProvider);
       await seedProjectData(database);
 
@@ -96,9 +68,12 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the themeMode to trigger the top-level rebuild
     final themeMode = ref.watch(themeModeProvider);
 
-    return MyApp(themeMode: themeMode); // ✅ Parameter name fixed
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      themeMode: themeMode,
+      routerConfig: appRouter, // ✅ THIS IS THE FIX
+    );
   }
 }

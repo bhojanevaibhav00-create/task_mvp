@@ -77,12 +77,15 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen> {
           // Using a modified filter approach to preserve assignee data
           final finalWrappers = filteredWrappers.where((w) {
             bool matches = true;
-            if (_statusFilter != null) matches &= w.task.status == _statusFilter;
-            if (_priorityFilter != null) matches &= w.task.priority == _priorityFilter;
+            if (_statusFilter != null)
+              matches &= w.task.status == _statusFilter;
+            if (_priorityFilter != null)
+              matches &= w.task.priority == _priorityFilter;
             if (_dueDateFilter != null) {
-              matches &= w.task.dueDate?.year == _dueDateFilter!.year &&
-                         w.task.dueDate?.month == _dueDateFilter!.month &&
-                         w.task.dueDate?.day == _dueDateFilter!.day;
+              matches &=
+                  w.task.dueDate?.year == _dueDateFilter!.year &&
+                  w.task.dueDate?.month == _dueDateFilter!.month &&
+                  w.task.dueDate?.day == _dueDateFilter!.day;
             }
             return matches;
           }).toList();
@@ -90,15 +93,15 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen> {
           if (finalWrappers.isEmpty) {
             return const Center(child: Text("No tasks in this list."));
           }
-          
+
           return ListView.builder(
             padding: const EdgeInsets.all(20),
             itemCount: finalWrappers.length,
             itemBuilder: (context, index) {
               final item = finalWrappers[index];
               return _TaskCard(
-                task: item.task, 
-                assigneeName: item.assignee?.name // ✅ Pass member name
+                task: item.task,
+                assigneeName: item.assignee?.name, // ✅ Pass member name
               );
             },
           );
