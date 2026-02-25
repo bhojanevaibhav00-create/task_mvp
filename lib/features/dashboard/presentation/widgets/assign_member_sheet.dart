@@ -83,7 +83,7 @@ class AssignMemberSheet extends ConsumerWidget {
                           // ✅ FIXED: Using collaborationActionProvider with Named Parameters
                           await ref.read(collaborationActionProvider.notifier).addMember(
                                 projectId: projectId!,
-                                userId: user.id,
+                                userId: user.id.toString(),
                                 role: 'Member', // Default role
                               );
                         }

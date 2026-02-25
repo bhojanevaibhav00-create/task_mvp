@@ -27,6 +27,7 @@ class _TaskCreateEditScreenState
 
   late TextEditingController _titleCtrl;
   late TextEditingController _descCtrl;
+  String? _selectedAssigneeUid;
 
   bool reminderEnabled = false;
   DateTime? reminderAt;
@@ -213,33 +214,40 @@ class _TaskCreateEditScreenState
     final membersAsync = ref.watch(projectMembersProvider(pid));
 
     return membersAsync.when(
-      loading: () => const LinearProgressIndicator(),
-      error: (_, __) => const Text('Failed to load members'),
-      data: (members) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<int?>(
-            isExpanded: true,
-            dropdownColor: isDark ? AppColors.cardDark : Colors.white,
-            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
-            value: _selectedAssigneeId,
-            hint: Text('Select assignee', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
-            items: [
-              DropdownMenuItem<int?>(value: null, child: Text('Unassigned', style: TextStyle(color: isDark ? Colors.white : Colors.black87))),
-              ...members.map((m) => DropdownMenuItem<int?>(
-                value: m.member.userId,
-                child: Text(m.user.name, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
-              )),
-            ],
-            onChanged: (v) => setState(() => _selectedAssigneeId = v),
+  loading: () => const LinearProgressIndicator(),
+  error: (_, __) => const Text('Failed to load members'),
+  data: (members) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    decoration: BoxDecoration(
+      color: isDark ? AppColors.cardDark : Colors.white,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: DropdownButtonHideUnderline(
+      // 🚀 FIX 1: Change <int?> to <String?>
+      child: DropdownButton<String?>(
+        isExpanded: true,
+        dropdownColor: isDark ? AppColors.cardDark : Colors.white,
+        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+        // 🚀 FIX 2: Ensure _selectedAssigneeUid is a String? variable
+        value: _selectedAssigneeUid, 
+        hint: Text('Select assignee', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
+        items: [
+          // 🚀 FIX 3: Change DropdownMenuItem<int?> to <String?>
+          DropdownMenuItem<String?>(
+            value: null, 
+            child: Text('Unassigned', style: TextStyle(color: isDark ? Colors.white : Colors.black87))
           ),
-        ),
+          ...members.map((m) => DropdownMenuItem<String?>(
+            // 🚀 FIX 4: Use m.uid (the String) instead of an int
+            value: m.uid, 
+            child: Text(m.name, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+          )),
+        ],
+        onChanged: (v) => setState(() => _selectedAssigneeUid = v),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _prioritySelector(bool isDark) {
