@@ -3811,6 +3811,787 @@ class ProjectMembersCompanion extends UpdateCompanion<ProjectMember> {
   }
 }
 
+class $LeadsTable extends Leads with TableInfo<$LeadsTable, Lead> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LeadsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _companyNameMeta = const VerificationMeta(
+    'companyName',
+  );
+  @override
+  late final GeneratedColumn<String> companyName = GeneratedColumn<String>(
+    'company_name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contactPersonNameMeta = const VerificationMeta(
+    'contactPersonName',
+  );
+  @override
+  late final GeneratedColumn<String> contactPersonName =
+      GeneratedColumn<String>(
+        'contact_person_name',
+        aliasedName,
+        false,
+        additionalChecks: GeneratedColumn.checkTextLength(
+          minTextLength: 1,
+          maxTextLength: 100,
+        ),
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _mobileMeta = const VerificationMeta('mobile');
+  @override
+  late final GeneratedColumn<String> mobile = GeneratedColumn<String>(
+    'mobile',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _productPitchedMeta = const VerificationMeta(
+    'productPitched',
+  );
+  @override
+  late final GeneratedColumn<String> productPitched = GeneratedColumn<String>(
+    'product_pitched',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _discussionMeta = const VerificationMeta(
+    'discussion',
+  );
+  @override
+  late final GeneratedColumn<String> discussion = GeneratedColumn<String>(
+    'discussion',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _followUpDateMeta = const VerificationMeta(
+    'followUpDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> followUpDate = GeneratedColumn<DateTime>(
+    'follow_up_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _followUpTimeMeta = const VerificationMeta(
+    'followUpTime',
+  );
+  @override
+  late final GeneratedColumn<String> followUpTime = GeneratedColumn<String>(
+    'follow_up_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<int> ownerId = GeneratedColumn<int>(
+    'owner_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES users (id)',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    companyName,
+    contactPersonName,
+    mobile,
+    email,
+    productPitched,
+    discussion,
+    followUpDate,
+    followUpTime,
+    status,
+    ownerId,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'leads';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Lead> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('company_name')) {
+      context.handle(
+        _companyNameMeta,
+        companyName.isAcceptableOrUnknown(
+          data['company_name']!,
+          _companyNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_companyNameMeta);
+    }
+    if (data.containsKey('contact_person_name')) {
+      context.handle(
+        _contactPersonNameMeta,
+        contactPersonName.isAcceptableOrUnknown(
+          data['contact_person_name']!,
+          _contactPersonNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_contactPersonNameMeta);
+    }
+    if (data.containsKey('mobile')) {
+      context.handle(
+        _mobileMeta,
+        mobile.isAcceptableOrUnknown(data['mobile']!, _mobileMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mobileMeta);
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('product_pitched')) {
+      context.handle(
+        _productPitchedMeta,
+        productPitched.isAcceptableOrUnknown(
+          data['product_pitched']!,
+          _productPitchedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('discussion')) {
+      context.handle(
+        _discussionMeta,
+        discussion.isAcceptableOrUnknown(data['discussion']!, _discussionMeta),
+      );
+    }
+    if (data.containsKey('follow_up_date')) {
+      context.handle(
+        _followUpDateMeta,
+        followUpDate.isAcceptableOrUnknown(
+          data['follow_up_date']!,
+          _followUpDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('follow_up_time')) {
+      context.handle(
+        _followUpTimeMeta,
+        followUpTime.isAcceptableOrUnknown(
+          data['follow_up_time']!,
+          _followUpTimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Lead map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Lead(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      companyName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}company_name'],
+      )!,
+      contactPersonName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contact_person_name'],
+      )!,
+      mobile: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mobile'],
+      )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      productPitched: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_pitched'],
+      ),
+      discussion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}discussion'],
+      ),
+      followUpDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}follow_up_date'],
+      ),
+      followUpTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}follow_up_time'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}owner_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $LeadsTable createAlias(String alias) {
+    return $LeadsTable(attachedDatabase, alias);
+  }
+}
+
+class Lead extends DataClass implements Insertable<Lead> {
+  final int id;
+  final String companyName;
+  final String contactPersonName;
+  final String mobile;
+  final String? email;
+  final String? productPitched;
+  final String? discussion;
+  final DateTime? followUpDate;
+  final String? followUpTime;
+  final String status;
+  final int? ownerId;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  const Lead({
+    required this.id,
+    required this.companyName,
+    required this.contactPersonName,
+    required this.mobile,
+    this.email,
+    this.productPitched,
+    this.discussion,
+    this.followUpDate,
+    this.followUpTime,
+    required this.status,
+    this.ownerId,
+    required this.createdAt,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['company_name'] = Variable<String>(companyName);
+    map['contact_person_name'] = Variable<String>(contactPersonName);
+    map['mobile'] = Variable<String>(mobile);
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || productPitched != null) {
+      map['product_pitched'] = Variable<String>(productPitched);
+    }
+    if (!nullToAbsent || discussion != null) {
+      map['discussion'] = Variable<String>(discussion);
+    }
+    if (!nullToAbsent || followUpDate != null) {
+      map['follow_up_date'] = Variable<DateTime>(followUpDate);
+    }
+    if (!nullToAbsent || followUpTime != null) {
+      map['follow_up_time'] = Variable<String>(followUpTime);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<int>(ownerId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  LeadsCompanion toCompanion(bool nullToAbsent) {
+    return LeadsCompanion(
+      id: Value(id),
+      companyName: Value(companyName),
+      contactPersonName: Value(contactPersonName),
+      mobile: Value(mobile),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      productPitched: productPitched == null && nullToAbsent
+          ? const Value.absent()
+          : Value(productPitched),
+      discussion: discussion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(discussion),
+      followUpDate: followUpDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(followUpDate),
+      followUpTime: followUpTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(followUpTime),
+      status: Value(status),
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
+      createdAt: Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory Lead.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Lead(
+      id: serializer.fromJson<int>(json['id']),
+      companyName: serializer.fromJson<String>(json['companyName']),
+      contactPersonName: serializer.fromJson<String>(json['contactPersonName']),
+      mobile: serializer.fromJson<String>(json['mobile']),
+      email: serializer.fromJson<String?>(json['email']),
+      productPitched: serializer.fromJson<String?>(json['productPitched']),
+      discussion: serializer.fromJson<String?>(json['discussion']),
+      followUpDate: serializer.fromJson<DateTime?>(json['followUpDate']),
+      followUpTime: serializer.fromJson<String?>(json['followUpTime']),
+      status: serializer.fromJson<String>(json['status']),
+      ownerId: serializer.fromJson<int?>(json['ownerId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'companyName': serializer.toJson<String>(companyName),
+      'contactPersonName': serializer.toJson<String>(contactPersonName),
+      'mobile': serializer.toJson<String>(mobile),
+      'email': serializer.toJson<String?>(email),
+      'productPitched': serializer.toJson<String?>(productPitched),
+      'discussion': serializer.toJson<String?>(discussion),
+      'followUpDate': serializer.toJson<DateTime?>(followUpDate),
+      'followUpTime': serializer.toJson<String?>(followUpTime),
+      'status': serializer.toJson<String>(status),
+      'ownerId': serializer.toJson<int?>(ownerId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  Lead copyWith({
+    int? id,
+    String? companyName,
+    String? contactPersonName,
+    String? mobile,
+    Value<String?> email = const Value.absent(),
+    Value<String?> productPitched = const Value.absent(),
+    Value<String?> discussion = const Value.absent(),
+    Value<DateTime?> followUpDate = const Value.absent(),
+    Value<String?> followUpTime = const Value.absent(),
+    String? status,
+    Value<int?> ownerId = const Value.absent(),
+    DateTime? createdAt,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => Lead(
+    id: id ?? this.id,
+    companyName: companyName ?? this.companyName,
+    contactPersonName: contactPersonName ?? this.contactPersonName,
+    mobile: mobile ?? this.mobile,
+    email: email.present ? email.value : this.email,
+    productPitched: productPitched.present
+        ? productPitched.value
+        : this.productPitched,
+    discussion: discussion.present ? discussion.value : this.discussion,
+    followUpDate: followUpDate.present ? followUpDate.value : this.followUpDate,
+    followUpTime: followUpTime.present ? followUpTime.value : this.followUpTime,
+    status: status ?? this.status,
+    ownerId: ownerId.present ? ownerId.value : this.ownerId,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  Lead copyWithCompanion(LeadsCompanion data) {
+    return Lead(
+      id: data.id.present ? data.id.value : this.id,
+      companyName: data.companyName.present
+          ? data.companyName.value
+          : this.companyName,
+      contactPersonName: data.contactPersonName.present
+          ? data.contactPersonName.value
+          : this.contactPersonName,
+      mobile: data.mobile.present ? data.mobile.value : this.mobile,
+      email: data.email.present ? data.email.value : this.email,
+      productPitched: data.productPitched.present
+          ? data.productPitched.value
+          : this.productPitched,
+      discussion: data.discussion.present
+          ? data.discussion.value
+          : this.discussion,
+      followUpDate: data.followUpDate.present
+          ? data.followUpDate.value
+          : this.followUpDate,
+      followUpTime: data.followUpTime.present
+          ? data.followUpTime.value
+          : this.followUpTime,
+      status: data.status.present ? data.status.value : this.status,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Lead(')
+          ..write('id: $id, ')
+          ..write('companyName: $companyName, ')
+          ..write('contactPersonName: $contactPersonName, ')
+          ..write('mobile: $mobile, ')
+          ..write('email: $email, ')
+          ..write('productPitched: $productPitched, ')
+          ..write('discussion: $discussion, ')
+          ..write('followUpDate: $followUpDate, ')
+          ..write('followUpTime: $followUpTime, ')
+          ..write('status: $status, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    companyName,
+    contactPersonName,
+    mobile,
+    email,
+    productPitched,
+    discussion,
+    followUpDate,
+    followUpTime,
+    status,
+    ownerId,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Lead &&
+          other.id == this.id &&
+          other.companyName == this.companyName &&
+          other.contactPersonName == this.contactPersonName &&
+          other.mobile == this.mobile &&
+          other.email == this.email &&
+          other.productPitched == this.productPitched &&
+          other.discussion == this.discussion &&
+          other.followUpDate == this.followUpDate &&
+          other.followUpTime == this.followUpTime &&
+          other.status == this.status &&
+          other.ownerId == this.ownerId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LeadsCompanion extends UpdateCompanion<Lead> {
+  final Value<int> id;
+  final Value<String> companyName;
+  final Value<String> contactPersonName;
+  final Value<String> mobile;
+  final Value<String?> email;
+  final Value<String?> productPitched;
+  final Value<String?> discussion;
+  final Value<DateTime?> followUpDate;
+  final Value<String?> followUpTime;
+  final Value<String> status;
+  final Value<int?> ownerId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> updatedAt;
+  const LeadsCompanion({
+    this.id = const Value.absent(),
+    this.companyName = const Value.absent(),
+    this.contactPersonName = const Value.absent(),
+    this.mobile = const Value.absent(),
+    this.email = const Value.absent(),
+    this.productPitched = const Value.absent(),
+    this.discussion = const Value.absent(),
+    this.followUpDate = const Value.absent(),
+    this.followUpTime = const Value.absent(),
+    this.status = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  LeadsCompanion.insert({
+    this.id = const Value.absent(),
+    required String companyName,
+    required String contactPersonName,
+    required String mobile,
+    this.email = const Value.absent(),
+    this.productPitched = const Value.absent(),
+    this.discussion = const Value.absent(),
+    this.followUpDate = const Value.absent(),
+    this.followUpTime = const Value.absent(),
+    required String status,
+    this.ownerId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : companyName = Value(companyName),
+       contactPersonName = Value(contactPersonName),
+       mobile = Value(mobile),
+       status = Value(status);
+  static Insertable<Lead> custom({
+    Expression<int>? id,
+    Expression<String>? companyName,
+    Expression<String>? contactPersonName,
+    Expression<String>? mobile,
+    Expression<String>? email,
+    Expression<String>? productPitched,
+    Expression<String>? discussion,
+    Expression<DateTime>? followUpDate,
+    Expression<String>? followUpTime,
+    Expression<String>? status,
+    Expression<int>? ownerId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (companyName != null) 'company_name': companyName,
+      if (contactPersonName != null) 'contact_person_name': contactPersonName,
+      if (mobile != null) 'mobile': mobile,
+      if (email != null) 'email': email,
+      if (productPitched != null) 'product_pitched': productPitched,
+      if (discussion != null) 'discussion': discussion,
+      if (followUpDate != null) 'follow_up_date': followUpDate,
+      if (followUpTime != null) 'follow_up_time': followUpTime,
+      if (status != null) 'status': status,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  LeadsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? companyName,
+    Value<String>? contactPersonName,
+    Value<String>? mobile,
+    Value<String?>? email,
+    Value<String?>? productPitched,
+    Value<String?>? discussion,
+    Value<DateTime?>? followUpDate,
+    Value<String?>? followUpTime,
+    Value<String>? status,
+    Value<int?>? ownerId,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? updatedAt,
+  }) {
+    return LeadsCompanion(
+      id: id ?? this.id,
+      companyName: companyName ?? this.companyName,
+      contactPersonName: contactPersonName ?? this.contactPersonName,
+      mobile: mobile ?? this.mobile,
+      email: email ?? this.email,
+      productPitched: productPitched ?? this.productPitched,
+      discussion: discussion ?? this.discussion,
+      followUpDate: followUpDate ?? this.followUpDate,
+      followUpTime: followUpTime ?? this.followUpTime,
+      status: status ?? this.status,
+      ownerId: ownerId ?? this.ownerId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (companyName.present) {
+      map['company_name'] = Variable<String>(companyName.value);
+    }
+    if (contactPersonName.present) {
+      map['contact_person_name'] = Variable<String>(contactPersonName.value);
+    }
+    if (mobile.present) {
+      map['mobile'] = Variable<String>(mobile.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (productPitched.present) {
+      map['product_pitched'] = Variable<String>(productPitched.value);
+    }
+    if (discussion.present) {
+      map['discussion'] = Variable<String>(discussion.value);
+    }
+    if (followUpDate.present) {
+      map['follow_up_date'] = Variable<DateTime>(followUpDate.value);
+    }
+    if (followUpTime.present) {
+      map['follow_up_time'] = Variable<String>(followUpTime.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<int>(ownerId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LeadsCompanion(')
+          ..write('id: $id, ')
+          ..write('companyName: $companyName, ')
+          ..write('contactPersonName: $contactPersonName, ')
+          ..write('mobile: $mobile, ')
+          ..write('email: $email, ')
+          ..write('productPitched: $productPitched, ')
+          ..write('discussion: $discussion, ')
+          ..write('followUpDate: $followUpDate, ')
+          ..write('followUpTime: $followUpTime, ')
+          ..write('status: $status, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3823,6 +4604,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ActivityLogsTable activityLogs = $ActivityLogsTable(this);
   late final $NotificationsTable notifications = $NotificationsTable(this);
   late final $ProjectMembersTable projectMembers = $ProjectMembersTable(this);
+  late final $LeadsTable leads = $LeadsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3837,6 +4619,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     activityLogs,
     notifications,
     projectMembers,
+    leads,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4856,6 +5639,25 @@ final class $$UsersTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$LeadsTable, List<Lead>> _leadsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.leads,
+    aliasName: $_aliasNameGenerator(db.users.id, db.leads.ownerId),
+  );
+
+  $$LeadsTableProcessedTableManager get leadsRefs {
+    final manager = $$LeadsTableTableManager(
+      $_db,
+      $_db.leads,
+    ).filter((f) => f.ownerId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_leadsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
@@ -4957,6 +5759,31 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
           }) => $$ProjectMembersTableFilterComposer(
             $db: $db,
             $table: $db.projectMembers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> leadsRefs(
+    Expression<bool> Function($$LeadsTableFilterComposer f) f,
+  ) {
+    final $$LeadsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.leads,
+      getReferencedColumn: (t) => t.ownerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LeadsTableFilterComposer(
+            $db: $db,
+            $table: $db.leads,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -5100,6 +5927,31 @@ class $$UsersTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> leadsRefs<T extends Object>(
+    Expression<T> Function($$LeadsTableAnnotationComposer a) f,
+  ) {
+    final $$LeadsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.leads,
+      getReferencedColumn: (t) => t.ownerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LeadsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.leads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$UsersTableTableManager
@@ -5119,6 +5971,7 @@ class $$UsersTableTableManager
             bool tasksRefs,
             bool commentsRefs,
             bool projectMembersRefs,
+            bool leadsRefs,
           })
         > {
   $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
@@ -5171,6 +6024,7 @@ class $$UsersTableTableManager
                 tasksRefs = false,
                 commentsRefs = false,
                 projectMembersRefs = false,
+                leadsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -5178,6 +6032,7 @@ class $$UsersTableTableManager
                     if (tasksRefs) db.tasks,
                     if (commentsRefs) db.comments,
                     if (projectMembersRefs) db.projectMembers,
+                    if (leadsRefs) db.leads,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -5233,6 +6088,19 @@ class $$UsersTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (leadsRefs)
+                        await $_getPrefetchedData<User, $UsersTable, Lead>(
+                          currentTable: table,
+                          referencedTable: $$UsersTableReferences
+                              ._leadsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$UsersTableReferences(db, table, p0).leadsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.ownerId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -5257,6 +6125,7 @@ typedef $$UsersTableProcessedTableManager =
         bool tasksRefs,
         bool commentsRefs,
         bool projectMembersRefs,
+        bool leadsRefs,
       })
     >;
 typedef $$TasksTableCreateCompanionBuilder =
@@ -8290,6 +9159,478 @@ typedef $$ProjectMembersTableProcessedTableManager =
       ProjectMember,
       PrefetchHooks Function({bool projectId, bool userId})
     >;
+typedef $$LeadsTableCreateCompanionBuilder =
+    LeadsCompanion Function({
+      Value<int> id,
+      required String companyName,
+      required String contactPersonName,
+      required String mobile,
+      Value<String?> email,
+      Value<String?> productPitched,
+      Value<String?> discussion,
+      Value<DateTime?> followUpDate,
+      Value<String?> followUpTime,
+      required String status,
+      Value<int?> ownerId,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+    });
+typedef $$LeadsTableUpdateCompanionBuilder =
+    LeadsCompanion Function({
+      Value<int> id,
+      Value<String> companyName,
+      Value<String> contactPersonName,
+      Value<String> mobile,
+      Value<String?> email,
+      Value<String?> productPitched,
+      Value<String?> discussion,
+      Value<DateTime?> followUpDate,
+      Value<String?> followUpTime,
+      Value<String> status,
+      Value<int?> ownerId,
+      Value<DateTime> createdAt,
+      Value<DateTime?> updatedAt,
+    });
+
+final class $$LeadsTableReferences
+    extends BaseReferences<_$AppDatabase, $LeadsTable, Lead> {
+  $$LeadsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $UsersTable _ownerIdTable(_$AppDatabase db) =>
+      db.users.createAlias($_aliasNameGenerator(db.leads.ownerId, db.users.id));
+
+  $$UsersTableProcessedTableManager? get ownerId {
+    final $_column = $_itemColumn<int>('owner_id');
+    if ($_column == null) return null;
+    final manager = $$UsersTableTableManager(
+      $_db,
+      $_db.users,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_ownerIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$LeadsTableFilterComposer extends Composer<_$AppDatabase, $LeadsTable> {
+  $$LeadsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contactPersonName => $composableBuilder(
+    column: $table.contactPersonName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mobile => $composableBuilder(
+    column: $table.mobile,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productPitched => $composableBuilder(
+    column: $table.productPitched,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get discussion => $composableBuilder(
+    column: $table.discussion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get followUpDate => $composableBuilder(
+    column: $table.followUpDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get followUpTime => $composableBuilder(
+    column: $table.followUpTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$UsersTableFilterComposer get ownerId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ownerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableFilterComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LeadsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LeadsTable> {
+  $$LeadsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contactPersonName => $composableBuilder(
+    column: $table.contactPersonName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mobile => $composableBuilder(
+    column: $table.mobile,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productPitched => $composableBuilder(
+    column: $table.productPitched,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get discussion => $composableBuilder(
+    column: $table.discussion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get followUpDate => $composableBuilder(
+    column: $table.followUpDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get followUpTime => $composableBuilder(
+    column: $table.followUpTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$UsersTableOrderingComposer get ownerId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ownerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LeadsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LeadsTable> {
+  $$LeadsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contactPersonName => $composableBuilder(
+    column: $table.contactPersonName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mobile =>
+      $composableBuilder(column: $table.mobile, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get productPitched => $composableBuilder(
+    column: $table.productPitched,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get discussion => $composableBuilder(
+    column: $table.discussion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get followUpDate => $composableBuilder(
+    column: $table.followUpDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get followUpTime => $composableBuilder(
+    column: $table.followUpTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$UsersTableAnnotationComposer get ownerId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ownerId,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LeadsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LeadsTable,
+          Lead,
+          $$LeadsTableFilterComposer,
+          $$LeadsTableOrderingComposer,
+          $$LeadsTableAnnotationComposer,
+          $$LeadsTableCreateCompanionBuilder,
+          $$LeadsTableUpdateCompanionBuilder,
+          (Lead, $$LeadsTableReferences),
+          Lead,
+          PrefetchHooks Function({bool ownerId})
+        > {
+  $$LeadsTableTableManager(_$AppDatabase db, $LeadsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LeadsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LeadsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LeadsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> companyName = const Value.absent(),
+                Value<String> contactPersonName = const Value.absent(),
+                Value<String> mobile = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> productPitched = const Value.absent(),
+                Value<String?> discussion = const Value.absent(),
+                Value<DateTime?> followUpDate = const Value.absent(),
+                Value<String?> followUpTime = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int?> ownerId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+              }) => LeadsCompanion(
+                id: id,
+                companyName: companyName,
+                contactPersonName: contactPersonName,
+                mobile: mobile,
+                email: email,
+                productPitched: productPitched,
+                discussion: discussion,
+                followUpDate: followUpDate,
+                followUpTime: followUpTime,
+                status: status,
+                ownerId: ownerId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String companyName,
+                required String contactPersonName,
+                required String mobile,
+                Value<String?> email = const Value.absent(),
+                Value<String?> productPitched = const Value.absent(),
+                Value<String?> discussion = const Value.absent(),
+                Value<DateTime?> followUpDate = const Value.absent(),
+                Value<String?> followUpTime = const Value.absent(),
+                required String status,
+                Value<int?> ownerId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+              }) => LeadsCompanion.insert(
+                id: id,
+                companyName: companyName,
+                contactPersonName: contactPersonName,
+                mobile: mobile,
+                email: email,
+                productPitched: productPitched,
+                discussion: discussion,
+                followUpDate: followUpDate,
+                followUpTime: followUpTime,
+                status: status,
+                ownerId: ownerId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) =>
+                    (e.readTable(table), $$LeadsTableReferences(db, table, e)),
+              )
+              .toList(),
+          prefetchHooksCallback: ({ownerId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (ownerId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.ownerId,
+                                referencedTable: $$LeadsTableReferences
+                                    ._ownerIdTable(db),
+                                referencedColumn: $$LeadsTableReferences
+                                    ._ownerIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$LeadsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LeadsTable,
+      Lead,
+      $$LeadsTableFilterComposer,
+      $$LeadsTableOrderingComposer,
+      $$LeadsTableAnnotationComposer,
+      $$LeadsTableCreateCompanionBuilder,
+      $$LeadsTableUpdateCompanionBuilder,
+      (Lead, $$LeadsTableReferences),
+      Lead,
+      PrefetchHooks Function({bool ownerId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8311,4 +9652,6 @@ class $AppDatabaseManager {
       $$NotificationsTableTableManager(_db, _db.notifications);
   $$ProjectMembersTableTableManager get projectMembers =>
       $$ProjectMembersTableTableManager(_db, _db.projectMembers);
+  $$LeadsTableTableManager get leads =>
+      $$LeadsTableTableManager(_db, _db.leads);
 }
