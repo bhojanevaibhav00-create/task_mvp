@@ -44,7 +44,7 @@ class LeadListScreen extends ConsumerWidget {
                 companyName: lead.companyName,
                 contactPerson: lead.contactPersonName,
                 mobile: lead.mobile,
-                status: lead.status,
+                status: lead.status.value,
                 followUp: lead.followUpDate != null
                     ? "${lead.followUpDate!.day}/${lead.followUpDate!.month}/${lead.followUpDate!.year}"
                     : "No Follow-up",
