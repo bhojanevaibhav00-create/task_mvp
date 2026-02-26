@@ -2,6 +2,8 @@
 
 ---
 
+app is now begin releaseed on firebase for the testers.
+
 ## Demo Script Flow (current)
 
 - **Login**: Enter user ID and password.
