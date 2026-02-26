@@ -4,16 +4,47 @@ import '../../data/database/database.dart';
 import 'notification_providers.dart'; 
 import 'package:task_mvp/core/providers/database_provider.dart';
 
-/// =======================================================
-/// 1. REACTIVE PROJECTS STREAM
-/// =======================================================
-/// ✅ FIXED: Switched to StreamProvider to ensure the Dashboard 
-/// updates automatically when a project is added or deleted.
-final allProjectsProvider = StreamProvider.autoDispose<List<Project>>((ref) {
-  final db = ref.watch(databaseProvider);
-  return db.select(db.projects).watch();
-});
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+final allProjectsProvider =
+    StreamProvider.autoDispose<List<Project>>((ref) async* {
+  final db = ref.watch(databaseProvider);
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+
+  if (firebaseUser == null) {
+    yield [];
+    return;
+  }
+
+  final firestoreStream = FirebaseFirestore.instance
+      .collection('projects')
+      .where('members', arrayContains: firebaseUser.uid)
+      .snapshots();
+
+  await for (final snapshot in firestoreStream) {
+
+    // 🔥 First sync Firestore → Drift
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final projectId = int.tryParse(doc.id);
+      if (projectId == null) continue;
+
+      await db.into(db.projects).insertOnConflictUpdate(
+        ProjectsCompanion(
+          id: drift.Value(projectId),
+          name: drift.Value(data['name'] ?? ''),
+          description: drift.Value(data['description']),
+          color: drift.Value(data['color'] ?? 0xFF2196F3),
+          createdAt: drift.Value(DateTime.now()),
+        ),
+      );
+    }
+
+    // 🔥 Then return Drift stream
+    yield await db.select(db.projects).get();
+  }
+});
 /// =======================================================
 /// 2. PROJECT CONTROLLER PROVIDER
 /// =======================================================

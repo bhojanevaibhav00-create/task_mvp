@@ -228,19 +228,41 @@ class ProjectDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => context.push('/tasks/new?projectId=$projectId'),
-            elevation: 4,
-            backgroundColor: AppColors.primary,
-            icon: const Icon(Icons.add_task_rounded, color: Colors.white),
-            label: const Text(
-              "Add Task",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          floatingActionButton: FutureBuilder<String?>(
+  future: _getUserRole(projectId),
+  builder: (context, snapshot) {
+    final role = snapshot.data;
+
+    if (role != 'owner' && role != 'admin') {
+      return const SizedBox();
+    }
+
+    return FloatingActionButton.extended(
+      onPressed: () {
+        final firebaseUser = FirebaseAuth.instance.currentUser;
+
+        if (firebaseUser == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("User not logged in")),
+          );
+          return;
+        }
+
+        context.push('/tasks/new?projectId=$projectId');
+      },
+      elevation: 4,
+      backgroundColor: AppColors.primary,
+      icon: const Icon(Icons.add_task_rounded, color: Colors.white),
+      label: const Text(
+        "Add Task",
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  },
+),
         );
       },
       loading: () =>
@@ -303,37 +325,56 @@ class ProjectDetailScreen extends ConsumerWidget {
         ),
       ),
       actions: [
-        // Sort Menu
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.sort_rounded, color: Colors.white),
-          onSelected: (value) =>
-              ref.read(projectSortProvider.notifier).state = value,
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'date', child: Text("Sort by Date")),
-            const PopupMenuItem(
-              value: 'priority',
-              child: Text("Sort by Priority"),
-            ),
-          ],
-        ),
-        // Members Action
-        IconButton(
-          icon: const Icon(Icons.group_add_outlined, color: Colors.white),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProjectMembersScreen(projectId: projectId),
-            ),
+  FutureBuilder<String?>(
+    future: _getUserRole(projectId),
+    builder: (context, snapshot) {
+      final role = snapshot.data;
+
+      if (role == null) return const SizedBox();
+
+      return Row(
+        children: [
+
+          // SORT (visible to all)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.sort_rounded, color: Colors.white),
+            onSelected: (value) =>
+                ref.read(projectSortProvider.notifier).state = value,
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'date', child: Text("Sort by Date")),
+              PopupMenuItem(value: 'priority', child: Text("Sort by Priority")),
+            ],
           ),
-        ),
-        // Delete Action
-        IconButton(
-          icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
-          onPressed: () =>
-              _showDeleteConfirmation(context, ref, project.name, isDark),
-        ),
-        const SizedBox(width: 8),
-      ],
+
+          // ADD MEMBER → owner + admin
+          if (role == 'owner' || role == 'admin')
+            IconButton(
+              icon: const Icon(Icons.group_add_outlined,
+                  color: Colors.white),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      ProjectMembersScreen(projectId: projectId),
+                ),
+              ),
+            ),
+
+          // DELETE → owner only
+          if (role == 'owner')
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.white),
+              onPressed: () =>
+                  _showDeleteConfirmation(context, ref, project.name, isDark),
+            ),
+
+          const SizedBox(width: 8),
+        ],
+      );
+    },
+  ),
+],
     );
   }
 
@@ -580,16 +621,29 @@ class ProjectDetailScreen extends ConsumerWidget {
                 // 2️⃣ UPDATE FIRESTORE (CLOUD)
                 // ===============================
                 if (firebaseUser != null) {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(firebaseUser.uid)
-                      .collection('projects')
-                      .doc(project.id.toString())
-                      .set({
-                        'description': newDescription,
-                        'updatedAt': FieldValue.serverTimestamp(),
-                      }, SetOptions(merge: true));
-                }
+  final projectRef = FirebaseFirestore.instance
+      .collection('projects')
+      .doc(project.id.toString());
+
+  final projectDoc = await projectRef.get();
+  final data = projectDoc.data();
+
+  if (data != null) {
+    final roles = Map<String, dynamic>.from(data['roles'] ?? {});
+    final currentUserRole = roles[firebaseUser.uid];
+
+    // 🔐 Only Admin or Owner can edit description
+    if (currentUserRole == 'owner' ||
+        currentUserRole == 'admin') {
+      await projectRef.update({
+        'description': newDescription,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      throw Exception("Only Owner or Admin can edit project");
+    }
+  }
+}
 
                 // Refresh UI
                 ref.invalidate(allProjectsProvider);
@@ -675,11 +729,29 @@ class ProjectDetailScreen extends ConsumerWidget {
     // ===============================
     // 2️⃣ DELETE FROM FIRESTORE (GLOBAL PROJECT STRUCTURE)
     // ===============================
-    final projectRef = FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId.toString());
+    // ===============================
+// 2️⃣ DELETE FROM FIRESTORE
+// ===============================
+final firebaseUser = FirebaseAuth.instance.currentUser;
 
-    // 🔹 Delete tasks subcollection
+if (firebaseUser != null) {
+  final projectRef = FirebaseFirestore.instance
+      .collection('projects')
+      .doc(projectId.toString());
+
+  final projectDoc = await projectRef.get();
+  final data = projectDoc.data();
+
+  if (data != null) {
+    final roles = Map<String, dynamic>.from(data['roles'] ?? {});
+    final currentUserRole = roles[firebaseUser.uid];
+
+    // 🔐 Only Owner can delete project
+    if (currentUserRole != 'owner') {
+      throw Exception("Only Owner can delete project");
+    }
+
+    // Delete tasks subcollection (if exists)
     final tasksSnapshot =
         await projectRef.collection('tasks').get();
 
@@ -687,16 +759,10 @@ class ProjectDetailScreen extends ConsumerWidget {
       await doc.reference.delete();
     }
 
-    // 🔹 Delete members subcollection
-    final membersSnapshot =
-        await projectRef.collection('members').get();
-
-    for (final doc in membersSnapshot.docs) {
-      await doc.reference.delete();
-    }
-
-    // 🔹 Finally delete project document
+    // Finally delete project document
     await projectRef.delete();
+  }
+}
 
     // ===============================
     // 3️⃣ REFRESH UI
@@ -717,4 +783,19 @@ class ProjectDetailScreen extends ConsumerWidget {
 }
 
   }
+}
+Future<String?> _getUserRole(int projectId) async {
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+  if (firebaseUser == null) return null;
+
+  final doc = await FirebaseFirestore.instance
+      .collection('projects')
+      .doc(projectId.toString())
+      .get();
+
+  final data = doc.data();
+  if (data == null) return null;
+
+  final roles = Map<String, dynamic>.from(data['roles'] ?? {});
+  return roles[firebaseUser.uid];
 }
