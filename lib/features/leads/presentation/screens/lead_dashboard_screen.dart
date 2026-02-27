@@ -10,15 +10,15 @@ class LeadDashboardScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-      isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+      backgroundColor: isDark
+          ? AppColors.scaffoldDark
+          : const Color(0xFFF8F9FD),
       appBar: AppBar(
         title: const Text(
           "Lead Management",
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
-        backgroundColor:
-        isDark ? AppColors.cardDark : Colors.white,
+        backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -26,14 +26,10 @@ class LeadDashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // 🔹 SUMMARY CARDS
             const Text(
               "Dashboard Overview",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
 
@@ -60,10 +56,7 @@ class LeadDashboardScreen extends StatelessWidget {
             // 🔹 QUICK ACTIONS
             const Text(
               "Quick Actions",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 16),
 
@@ -115,10 +108,7 @@ class _DashboardCard extends StatelessWidget {
   final String title;
   final String count;
 
-  const _DashboardCard({
-    required this.title,
-    required this.count,
-  });
+  const _DashboardCard({required this.title, required this.count});
 
   @override
   Widget build(BuildContext context) {
