@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
+import 'package:task_mvp/core/providers/database_provider.dart';
 
 import '../../../core/providers/task_providers.dart';
 import '../../../core/providers/collaboration_providers.dart';
@@ -441,7 +442,7 @@ if (firebaseUser != null && widget.projectId != null) {
 
 
 
-  Future<void> _confirmDelete(BuildContext context) async {
+ Future<void> _confirmDelete(BuildContext context) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
@@ -449,53 +450,69 @@ if (firebaseUser != null && widget.projectId != null) {
           ? AppColors.cardDark
           : Colors.white,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24)),
+        borderRadius: BorderRadius.circular(24),
+      ),
       title: const Text('Delete Task?'),
       content: const Text(
-          'Are you sure you want to remove this task? This cannot be undone.'),
+        'Are you sure you want to remove this task? This cannot be undone.',
+      ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel')),
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
         TextButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text('Delete',
-              style: TextStyle(color: Colors.red)),
+          child: const Text(
+            'Delete',
+            style: TextStyle(color: Colors.red),
+          ),
         ),
       ],
     ),
   );
 
-  if (ok == true && widget.task != null) {
-    try {
-      final taskId = widget.task!.id;
+  if (ok != true || widget.task == null) return;
 
-      // ======================
-// 1️⃣ DELETE FROM FIREBASE (CORRECT STRUCTURE)
-// ======================
-if (widget.task?.projectId != null) {
-  await FirebaseFirestore.instance
-      .collection('projects')
-      .doc(widget.task!.projectId.toString())
-      .collection('tasks')
-      .doc(taskId.toString())
-      .delete();
-}
+  try {
+    final taskId = widget.task!.id;
+    final projectId = widget.task!.projectId;
 
+    // ==============================
+    // 1️⃣ DELETE FROM FIREBASE
+    // ==============================
+    if (projectId != null) {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId.toString())
+          .collection('tasks')
+          .doc(taskId.toString())
+          .delete();
+    }
 
-      // ======================
-      // 2️⃣ DELETE FROM DRIFT
-      // ======================
-      await ref.read(tasksProvider.notifier).deleteTask(taskId);
+    // ==============================
+    // 2️⃣ DELETE DIRECTLY FROM DRIFT
+    // (NO PROVIDER SELF DEPENDENCY)
+    // ==============================
+    final database = ref.read(databaseProvider);
 
-      if (mounted) Navigator.pop(context, true);
+    await (database.delete(database.tasks)
+          ..where((t) => t.id.equals(taskId)))
+        .go();
 
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Delete failed: $e")),
-        );
-      }
+    // ==============================
+    // 3️⃣ GO BACK AUTOMATICALLY
+    // ==============================
+    if (mounted) {
+      Navigator.of(context).pop(true); 
+      // 🔥 This closes Edit screen and goes back to Project screen
+    }
+
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Delete failed: $e")),
+      );
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 
 import 'core/providers/task_providers.dart';
@@ -9,6 +10,9 @@ import 'core/routes/app_router.dart';
 import 'core/providers/database_provider.dart';
 import 'data/database/database.dart' as db;
 import 'package:drift/drift.dart' as drift;
+import 'package:task_mvp/core/services/fcm_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// 🚀 Database Seeding logic
 Future<void> seedProjectData(db.AppDatabase database) async {
@@ -17,9 +21,7 @@ Future<void> seedProjectData(db.AppDatabase database) async {
 
     if (existingProjects.isEmpty) {
       await database.transaction(() async {
-        await database
-            .into(database.projects)
-            .insert(
+        await database.into(database.projects).insert(
               db.ProjectsCompanion.insert(
                 id: const drift.Value(1),
                 name: 'General Project',
@@ -35,10 +37,22 @@ Future<void> seedProjectData(db.AppDatabase database) async {
   }
 }
 
+/// 🔥 BACKGROUND HANDLER (Required for FCM)
+Future<void> _firebaseMessagingBackgroundHandler(
+    RemoteMessage message) async {
+  await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform);
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform);
+
+  // 🔥 Register background handler
+  FirebaseMessaging.onBackgroundMessage(
+      _firebaseMessagingBackgroundHandler);
 
   runApp(const ProviderScope(child: AppBootstrap()));
 }
@@ -51,6 +65,7 @@ class AppBootstrap extends ConsumerStatefulWidget {
 }
 
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
+
   @override
   void initState() {
     super.initState();
@@ -63,7 +78,31 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
       await reminder.init();
       await reminder.requestPermission();
       await reminder.resyncOnAppStart();
+
+      // ✅ FCM initialization
+     final fcmService = ref.read(fcmServiceProvider);
+      await fcmService.initialize();
+
+      // ✅ Save FCM token
+      await _saveFcmToken();
     });
+  }
+
+  /// 🔥 SAVE DEVICE TOKEN TO FIRESTORE
+  Future<void> _saveFcmToken() async {
+    final token = await FirebaseMessaging.instance.getToken();
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (token == null || user == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set({
+      'fcmToken': token,
+    }, SetOptions(merge: true));
+
+    debugPrint("✅ FCM Token Saved");
   }
 
   @override
@@ -83,7 +122,7 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
         useMaterial3: true,
         brightness: Brightness.dark,
       ),
-      routerConfig: appRouter, // ✅ THIS IS THE FIX
+      routerConfig: appRouter,
     );
   }
 }
