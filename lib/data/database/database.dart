@@ -10,12 +10,12 @@ class Tasks extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text().withLength(min: 1, max: 50)();
   TextColumn get description => text().nullable()();
-  TextColumn get status => text().nullable()();
+  TextColumn get status => text().named('status').nullable()();
   DateTimeColumn get dueDate => dateTime().nullable()();
   TextColumn get dueTime => text().nullable()();
   DateTimeColumn get reminderAt => dateTime().nullable()();
   BoolColumn get reminderEnabled =>
-      boolean().withDefault(const Constant(false))();
+      boolean().named('reminder_enabled').withDefault(const Constant(false))();
   IntColumn get priority => integer().nullable()();
   IntColumn get projectId => integer().nullable().references(
     Projects,
@@ -37,7 +37,7 @@ class Subtasks extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text().withLength(min: 1, max: 100)();
   BoolColumn get isCompleted =>
-      boolean().withDefault(const Constant(false))();
+      boolean().named('is_completed').withDefault(const Constant(false))();
   IntColumn get taskId =>
       integer().references(Tasks, #id, onDelete: KeyAction.cascade)();
 }
@@ -49,11 +49,9 @@ class Comments extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get taskId =>
       integer().references(Tasks, #id, onDelete: KeyAction.cascade)();
-  IntColumn get userId =>
-      integer().references(Users, #id)();
+  IntColumn get userId => integer().references(Users, #id)();
   TextColumn get content => text()();
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 /// =======================
@@ -64,10 +62,8 @@ class Projects extends Table {
   TextColumn get name => text().withLength(min: 1, max: 50)();
   TextColumn get description => text().nullable()();
   IntColumn get color => integer().nullable()();
-  BoolColumn get isArchived =>
-      boolean().withDefault(const Constant(false))();
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }
 
@@ -91,8 +87,7 @@ class Tags extends Table {
   IntColumn get colorHex => integer()();
 
   @override
-  List<String> get customConstraints =>
-      ['UNIQUE(label COLLATE NOCASE)'];
+  List<String> get customConstraints => ['UNIQUE(label COLLATE NOCASE)'];
 }
 
 /// =======================
@@ -102,14 +97,17 @@ class ActivityLogs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get action => text()();
   TextColumn get description => text().nullable()();
-  IntColumn get taskId =>
-      integer().nullable().references(Tasks, #id,
-          onDelete: KeyAction.cascade)();
-  IntColumn get projectId =>
-      integer().nullable().references(Projects, #id,
-          onDelete: KeyAction.cascade)();
-  DateTimeColumn get timestamp =>
-      dateTime().withDefault(currentDateAndTime)();
+  IntColumn get taskId => integer().nullable().references(
+    Tasks,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  IntColumn get projectId => integer().nullable().references(
+    Projects,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
 }
 
 /// =======================
@@ -120,16 +118,19 @@ class Notifications extends Table {
   TextColumn get type => text()();
   TextColumn get title => text()();
   TextColumn get message => text()();
-  IntColumn get taskId =>
-      integer().nullable().references(Tasks, #id,
-          onDelete: KeyAction.cascade)();
-  IntColumn get projectId =>
-      integer().nullable().references(Projects, #id,
-          onDelete: KeyAction.cascade)();
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  IntColumn get taskId => integer().nullable().references(
+    Tasks,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  IntColumn get projectId => integer().nullable().references(
+    Projects,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isRead =>
-      boolean().withDefault(const Constant(false))();
+      boolean().named('is_read').withDefault(const Constant(false))();
 }
 
 /// =======================
@@ -137,14 +138,11 @@ class Notifications extends Table {
 /// =======================
 class ProjectMembers extends Table {
   IntColumn get projectId =>
-      integer().references(Projects, #id,
-          onDelete: KeyAction.cascade)();
+      integer().references(Projects, #id, onDelete: KeyAction.cascade)();
   IntColumn get userId =>
-      integer().references(Users, #id,
-          onDelete: KeyAction.cascade)();
+      integer().references(Users, #id, onDelete: KeyAction.cascade)();
   TextColumn get role => text()();
-  DateTimeColumn get joinedAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get joinedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {projectId, userId};
@@ -155,22 +153,17 @@ class ProjectMembers extends Table {
 /// =======================
 class Leads extends Table {
   IntColumn get id => integer().autoIncrement()();
-  TextColumn get companyName =>
-      text().withLength(min: 1, max: 100)();
-  TextColumn get contactPersonName =>
-      text().withLength(min: 1, max: 100)();
+  TextColumn get companyName => text().withLength(min: 1, max: 100)();
+  TextColumn get contactPersonName => text().withLength(min: 1, max: 100)();
   TextColumn get mobile => text()();
   TextColumn get email => text().nullable()();
   TextColumn get productPitched => text().nullable()();
   TextColumn get discussion => text().nullable()();
-  DateTimeColumn get followUpDate =>
-      dateTime().nullable()();
+  DateTimeColumn get followUpDate => dateTime().nullable()();
   TextColumn get followUpTime => text().nullable()();
   TextColumn get status => text()();
-  IntColumn get ownerId =>
-      integer().nullable().references(Users, #id)();
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  IntColumn get ownerId => integer().nullable().references(Users, #id)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }
 
