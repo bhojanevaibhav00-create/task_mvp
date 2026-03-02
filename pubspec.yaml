@@ -2,7 +2,7 @@ name: task_mvp
 description: "A new Flutter project."
 publish_to: "none"
 
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.8.1
@@ -16,7 +16,7 @@ dependencies:
   firebase_auth: ^6.1.4
   cloud_firestore: ^6.1.2
   firebase_messaging: any
-  flutter_local_notifications: any 
+  flutter_local_notifications: any
 
   drift: ^2.30.0
   drift_flutter: ^0.2.8

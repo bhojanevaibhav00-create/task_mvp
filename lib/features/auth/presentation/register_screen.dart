@@ -64,11 +64,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       // 🔹 Step 1: Create user in Firebase Auth
-      final userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       final user = userCredential.user;
 
@@ -80,10 +77,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
 
       // 🔹 Step 2: Save profile to Firestore
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(user.uid)
-          .set({
+      await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
         "uid": user.uid,
         "name": name,
         "email": email,
@@ -96,7 +90,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       // 🔹 Step 3: Navigate
       context.go(AppRoutes.dashboard);
-
     } on FirebaseAuthException catch (e) {
       String message;
 
@@ -115,13 +108,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
 
       _showSnackBar(message);
-
     } on FirebaseException catch (e) {
       _showSnackBar("Database error: ${e.code}");
-
     } catch (e) {
       _showSnackBar("Unexpected error occurred.");
-
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -168,9 +158,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.primaryGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -284,8 +272,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return TextFormField(
       controller: controller,
       obscureText: isObscure,
+      style: const TextStyle(color: Color(0xFF1A1C1E)),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(color: Colors.black54),
         prefixIcon: Icon(icon, color: AppColors.primary),
         filled: true,
         fillColor: const Color(0xFFF8F9FD),
@@ -303,9 +293,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         padding: const EdgeInsets.symmetric(vertical: 18),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       child: _isLoading
           ? const CircularProgressIndicator(color: Colors.white)
