@@ -428,31 +428,44 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ================= QUICK ACTIONS =================
+  
   Widget _quickActions(BuildContext context, bool isDark) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _actionButton(
-            'Task List',
-            Icons.list_alt_rounded,
-            () => context.push(AppRoutes.tasks),
-            isDark,
-            primary: true,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _actionButton(
+                'Task List',
+                Icons.list_alt_rounded,
+                () => context.push(AppRoutes.tasks),
+                isDark,
+                primary: true,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _actionButton(
+                'Schedule',
+                Icons.calendar_today_rounded,
+                () {}, // Future: Add schedule route
+                isDark,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _actionButton(
-            'Schedule',
-            Icons.calendar_today_rounded,
-            () {},
-            isDark,
-          ),
+        const SizedBox(height: 12),
+        // ✅ Integrated Lead Management Action
+        _actionButton(
+          'Lead Management',
+          Icons.leaderboard_rounded,
+          () => context.push('/lead-dashboard'),
+          isDark,
+          primary: false, // Keeping it secondary to match the 'Schedule' style
         ),
       ],
     );
   }
-
   Widget _actionButton(
     String label,
     IconData icon,

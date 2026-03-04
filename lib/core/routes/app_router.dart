@@ -26,7 +26,13 @@ import '../../data/database/database.dart';
 // OTHER
 import '../../features/notifications/presentation/notification_screen.dart';
 
-/// 🔥 Auth notifier (refresh router on login/logout)
+//  IMPORTS FOR THE NEW LEAD MODULE
+import '../../features/leads/presentation/screens/lead_dashboard_screen.dart';
+import '../../features/leads/presentation/screens/lead_list_screen.dart';
+import '../../features/leads/presentation/screens/add_lead_screen.dart';
+import '../../features/leads/presentation/screens/lead_report_screen.dart';
+
+/// Auth notifier (refresh router on login/logout)
 class AuthNotifier extends ChangeNotifier {
   AuthNotifier() {
     FirebaseAuth.instance.authStateChanges().listen((_) {
@@ -42,31 +48,22 @@ final appRouter = GoRouter(
 
   redirect: (context, state) {
     final user = FirebaseAuth.instance.currentUser;
-
-    // ✅ Correct way for latest GoRouter
     final String location = state.uri.path;
 
     final bool isLogin = location == AppRoutes.login;
     final bool isRegister = location == AppRoutes.register;
 
-    // 🔴 NOT LOGGED IN
     if (user == null) {
-      if (isLogin || isRegister) {
-        return null; // allow login & register
-      }
-      return AppRoutes.login; // force login
+      if (isLogin || isRegister) return null;
+      return AppRoutes.login;
     }
 
-    // 🟢 LOGGED IN
-    if (isLogin || isRegister) {
-      return AppRoutes.dashboard; // prevent going back
-    }
+    if (isLogin || isRegister) return AppRoutes.dashboard;
 
     return null;
   },
 
   routes: [
-
     /// ================= AUTH =================
     GoRoute(
       path: AppRoutes.login,
@@ -82,6 +79,27 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.dashboard,
       builder: (context, state) => const DashboardScreen(),
+    ),
+
+    ///  ================= LEAD MANAGEMENT (NEW) =================
+    GoRoute(
+      path: '/lead-dashboard',
+      builder: (context, state) => const LeadDashboardScreen(),
+    ),
+
+    GoRoute(
+      path: '/add-lead',
+      builder: (context, state) => const AddLeadScreen(),
+    ),
+
+    GoRoute(
+      path: '/lead-list',
+      builder: (context, state) => const LeadListScreen(),
+    ),
+
+    GoRoute(
+      path: '/lead-reports',
+      builder: (context, state) => const LeadReportScreen(),
     ),
 
     /// ================= PROJECTS =================

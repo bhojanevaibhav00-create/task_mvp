@@ -1,18 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class LeadDashboardScreen extends StatelessWidget {
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/database_provider.dart';
+
+// 🔹 PROVIDER: Watches the leads collection in Firebase for real-time counts
+final leadSummaryProvider = StreamProvider<Map<String, int>>((ref) {
+  return FirebaseFirestore.instance.collection('leads').snapshots().map((snapshot) {
+    final docs = snapshot.docs;
+    final now = DateTime.now();
+
+    return {
+      'all': docs.length,
+      'today': docs.where((doc) {
+        final timestamp = doc.data()['createdAt'] as Timestamp?;
+        if (timestamp == null) return false;
+        final date = timestamp.toDate();
+        return date.day == now.day && date.month == now.month && date.year == now.year;
+      }).length,
+      'hot': docs.where((doc) => doc.data()['status'] == 'Hot').length,
+      'warm': docs.where((doc) => doc.data()['status'] == 'Warm').length,
+      'cold': docs.where((doc) => doc.data()['status'] == 'Cold').length,
+      'lost': docs.where((doc) => doc.data()['status'] == 'Lost').length,
+      'closed': docs.where((doc) => doc.data()['status'] == 'Closed').length,
+    };
+  });
+});
+
+class LeadDashboardScreen extends ConsumerWidget {
   const LeadDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final summaryAsync = ref.watch(leadSummaryProvider);
 
     return Scaffold(
-      backgroundColor: isDark
-          ? AppColors.scaffoldDark
-          : const Color(0xFFF8F9FD),
+      backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
       appBar: AppBar(
         title: const Text(
           "Lead Management",
@@ -21,94 +47,129 @@ class LeadDashboardScreen extends StatelessWidget {
         backgroundColor: isDark ? AppColors.cardDark : Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🔹 SUMMARY CARDS
-            const Text(
-              "Dashboard Overview",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 16),
+      body: summaryAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text("Error loading data: $err")),
+        data: (counts) => SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Dashboard Overview",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 16),
 
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.2,
-              children: const [
-                _DashboardCard(title: "Today's Leads", count: "12"),
-                _DashboardCard(title: "All Leads", count: "45"),
-                _DashboardCard(title: "Closed Leads", count: "8"),
-                _DashboardCard(title: "Hot Leads", count: "5"),
-                _DashboardCard(title: "Warm Leads", count: "7"),
-                _DashboardCard(title: "Cold Leads", count: "10"),
-                _DashboardCard(title: "Lost Leads", count: "3"),
-              ],
-            ),
+              
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.2,
+                children: [
+                  _DashboardCard(
+                    title: "Today's Leads", 
+                    count: counts['today'].toString(), 
+                    icon: Icons.today,
+                  ),
+                  _DashboardCard(
+                    title: "All Leads", 
+                    count: counts['all'].toString(), 
+                    icon: Icons.analytics,
+                  ),
+                  _DashboardCard(
+                    title: "Closed Leads", 
+                    count: counts['closed'].toString(), 
+                    icon: Icons.check_circle, 
+                    color: Colors.green,
+                  ),
+                  _DashboardCard(
+                    title: "Hot Leads", 
+                    count: counts['hot'].toString(), 
+                    icon: Icons.local_fire_department, 
+                    color: Colors.deepOrange,
+                  ),
+                  _DashboardCard(
+                    title: "Warm Leads", 
+                    count: counts['warm'].toString(), 
+                    icon: Icons.wb_sunny, 
+                    color: Colors.orange,
+                  ),
+                  _DashboardCard(
+                    title: "Cold Leads", 
+                    count: counts['cold'].toString(), 
+                    icon: Icons.ac_unit, 
+                    color: Colors.blue,
+                  ),
+                  _DashboardCard(
+                    title: "Lost Leads", 
+                    count: counts['lost'].toString(), 
+                    icon: Icons.thumb_down, 
+                    color: Colors.grey,
+                  ),
+                ],
+              ),
 
-            const SizedBox(height: 30),
+              const SizedBox(height: 30),
 
-            // 🔹 QUICK ACTIONS
-            const Text(
-              "Quick Actions",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 16),
+              const Text(
+                "Quick Actions",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 16),
 
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      context.push('/add-lead');
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text("Add Lead"),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.push('/add-lead'),
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text("Add Lead", style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      context.push('/lead-list');
-                    },
-                    icon: const Icon(Icons.list),
-                    label: const Text("View Leads"),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push('/lead-list'),
+                      icon: const Icon(Icons.list),
+                      label: const Text("View Leads"),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// 🔹 Dashboard Card Widget
 class _DashboardCard extends StatelessWidget {
   final String title;
   final String count;
+  final IconData icon;
+  final Color? color;
 
-  const _DashboardCard({required this.title, required this.count});
+  const _DashboardCard({
+    required this.title, 
+    required this.count, 
+    required this.icon, 
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -129,20 +190,27 @@ class _DashboardCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            count,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: AppColors.primary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                count,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: color ?? AppColors.primary,
+                ),
+              ),
+              Icon(icon, color: (color ?? AppColors.primary).withOpacity(0.5), size: 28),
+            ],
           ),
-          const SizedBox(height: 8),
           Text(
             title,
             style: TextStyle(
               fontSize: 13,
+              fontWeight: FontWeight.w600,
               color: isDark ? Colors.white70 : Colors.black54,
             ),
           ),

@@ -17,6 +17,7 @@ dependencies:
   cloud_firestore: ^6.1.2
   firebase_messaging: any
   flutter_local_notifications: any
+  fl_chart: ^1.1.1
 
   drift: ^2.30.0
   drift_flutter: ^0.2.8
