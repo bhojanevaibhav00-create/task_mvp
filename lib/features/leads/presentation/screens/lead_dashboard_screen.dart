@@ -61,7 +61,6 @@ class LeadDashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -113,7 +112,7 @@ class LeadDashboardScreen extends ConsumerWidget {
                 ],
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 32),
 
               const Text(
                 "Quick Actions",
@@ -121,6 +120,7 @@ class LeadDashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
+              // ✅ PRIMARY ACTIONS ROW
               Row(
                 children: [
                   Expanded(
@@ -149,6 +149,26 @@ class LeadDashboardScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // ✅ NEW: PERFORMANCE REPORTS ACTION
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => context.push('/lead-reports'),
+                  icon: const Icon(Icons.bar_chart, color: Colors.white),
+                  label: const Text(
+                    "Performance Reports", 
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.indigo,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
               ),
             ],
           ),

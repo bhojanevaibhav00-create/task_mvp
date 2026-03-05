@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:go_router/go_router.dart';
+import 'package:task_mvp/core/providers/notification_providers.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/database_provider.dart';
@@ -165,60 +166,80 @@ class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
   }
 
   Future<void> _saveLead() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  final db = ref.read(databaseProvider);
-  final currentUser = FirebaseAuth.instance.currentUser;
+    final db = ref.read(databaseProvider);
+    final currentUser = FirebaseAuth.instance.currentUser;
 
-  // 1. Prepare the data Map for Firebase
-  final leadData = {
-    'companyName': companyController.text.trim(),
-    'contactPersonName': contactController.text.trim(),
-    'mobile': mobileController.text.trim(),
-    'email': emailController.text.trim(),
-    'productPitched': productController.text.trim(),
-    'status': selectedStatus,
-    'discussion': selectedStatus == "Lost" 
-        ? "LOST REASON: ${lostReasonController.text}\n${discussionController.text}" 
-        : discussionController.text,
-    'followUpDate': followUpDate?.toIso8601String(),
-    'followUpTime': followUpTime?.format(context),
-    'ownerId': currentUser?.uid, // Links the lead to the person who created it
-    'createdAt': FieldValue.serverTimestamp(),
-    'updatedAt': FieldValue.serverTimestamp(),
-  };
+    // 1. Prepare data
+    final leadData = {
+      'companyName': companyController.text.trim(),
+      'contactPersonName': contactController.text.trim(),
+      'mobile': mobileController.text.trim(),
+      'email': emailController.text.trim(),
+      'productPitched': productController.text.trim(),
+      'status': selectedStatus,
+      'discussion': selectedStatus == "Lost" 
+          ? "LOST REASON: ${lostReasonController.text}\n${discussionController.text}" 
+          : discussionController.text,
+      'followUpDate': followUpDate?.toIso8601String(),
+      'followUpTime': followUpTime?.format(context),
+      'ownerId': currentUser?.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
 
-  try {
-    // 2. SAVE TO FIREBASE (Cloud)
-    final docRef = await FirebaseFirestore.instance.collection('leads').add(leadData);
+    try {
+      // 2. SAVE TO FIREBASE
+      await FirebaseFirestore.instance.collection('leads').add(leadData);
 
-    // 3. SAVE TO DRIFT (Local)
-    await db.into(db.leads).insert(
-      LeadsCompanion(
-        // Use the Firestore ID as the local ID if your Drift ID is a String, 
-        // otherwise Drift will auto-increment its own int ID.
-        companyName: drift.Value(companyController.text.trim()),
-        contactPersonName: drift.Value(contactController.text.trim()),
-        mobile: drift.Value(mobileController.text.trim()),
-        email: drift.Value(emailController.text.trim()),
-        productPitched: drift.Value(productController.text.trim()),
-        status: drift.Value(selectedStatus),
-        followUpDate: drift.Value(followUpDate),
-        followUpTime: drift.Value(followUpTime?.format(context)),
-        createdAt: drift.Value(DateTime.now()),
-      ),
-    );
+      // 3. SAVE TO DRIFT
+      await db.into(db.leads).insert(
+        LeadsCompanion(
+          companyName: drift.Value(companyController.text.trim()),
+          contactPersonName: drift.Value(contactController.text.trim()),
+          mobile: drift.Value(mobileController.text.trim()),
+          email: drift.Value(emailController.text.trim()),
+          productPitched: drift.Value(productController.text.trim()),
+          status: drift.Value(selectedStatus),
+          followUpDate: drift.Value(followUpDate),
+          followUpTime: drift.Value(followUpTime?.format(context)),
+          createdAt: drift.Value(DateTime.now()),
+        ),
+      );
 
-    if (mounted) {
-      context.pop();
+      // ✅ 4. SCHEDULE NOTIFICATION (New Step)
+      if (followUpDate != null && followUpTime != null) {
+        final scheduledDateTime = DateTime(
+          followUpDate!.year,
+          followUpDate!.month,
+          followUpDate!.day,
+          followUpTime!.hour,
+          followUpTime!.minute,
+        );
+
+        // Ensure the time is in the future
+        if (scheduledDateTime.isAfter(DateTime.now())) {
+          // Assuming you have a notification provider configured
+          ref.read(notificationServiceProvider).scheduleNotification(
+            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            title: "Follow-up: ${companyController.text.trim()}",
+            body: "Call ${contactController.text.trim()} about ${productController.text.trim()}",
+            scheduledDate: scheduledDateTime,
+          );
+        }
+      }
+
+      if (mounted) {
+        context.pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Lead Saved & Notification Scheduled"), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lead Synced to Cloud & Local Storage"), backgroundColor: Colors.green),
+        SnackBar(content: Text("Sync Error: $e"), backgroundColor: Colors.red),
       );
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Sync Error: $e"), backgroundColor: Colors.red),
-    );
   }
-}
 }

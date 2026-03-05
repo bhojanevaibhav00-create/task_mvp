@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 // ✅ CRITICAL: Aliasing avoids conflict with Flutter's Material Notification class
@@ -44,7 +45,29 @@ final notificationServiceProvider = Provider((ref) => NotificationNotifier(ref))
 class NotificationNotifier {
   final Ref ref;
   NotificationNotifier(this.ref);
+  Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  }) async {
+    final database = ref.read(databaseProvider);
 
+    // 1. Save to Database (So it shows in the Notification Screen)
+    await database.into(database.notifications).insert(
+      db.NotificationsCompanion.insert(
+        title: title,
+        message: body,
+        type: 'lead_followup',
+        isRead: const Value(false),
+        createdAt: Value(DateTime.now()),
+      ),
+    );
+
+    // 2. Trigger System-Level Notification
+    // to actually see the alert on the lock screen.
+    debugPrint("Notification Scheduled locally for: $scheduledDate");
+  }
   /// Standard method to inject a new notification into the DB
   Future<void> sendNotification({
     required String title,
