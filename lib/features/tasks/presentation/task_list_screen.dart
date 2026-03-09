@@ -19,7 +19,6 @@ import 'package:task_mvp/features/common/widgets/task_list_skeleton.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
 
@@ -115,32 +114,40 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: TaskCard(
                         task: task,
-                        onTap: () => _openTaskDetail(task), // ✅ FIXED: Detail instead of Edit
+                        onTap: () => _openTaskDetail(
+                          task,
+                        ), // ✅ FIXED: Detail instead of Edit
                         onToggleDone: () async {
-  final isDone = task.status == TaskStatus.done.name;
-  final newStatus =
-      isDone ? TaskStatus.todo.name : TaskStatus.done.name;
+                          final isDone = task.status == TaskStatus.done.name;
+                          final newStatus = isDone
+                              ? TaskStatus.todo.name
+                              : TaskStatus.done.name;
 
-  // 1️⃣ Update Drift
-  await ref.read(tasksProvider.notifier).updateTask(
-        task.copyWith(status: drift.Value(newStatus)),
-      );
+                          // 1️⃣ Update Drift
+                          await ref
+                              .read(tasksProvider.notifier)
+                              .updateTask(
+                                task.copyWith(status: drift.Value(newStatus)),
+                              );
 
-  // 2️⃣ Update Firestore (PROJECT BASED)
-  if (task.projectId != null) {
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(task.projectId.toString())
-        .collection('tasks')
-        .doc(task.id.toString())
-        .set({
-      'status': newStatus,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  }
-},
-
-
+                          // 2️⃣ Update Firestore (PROJECT BASED)
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (task.projectId != null && user != null) {
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('projects')
+                                  .doc(task.projectId.toString())
+                                  .collection('tasks')
+                                  .doc(task.id.toString())
+                                  .set({
+                                    'status': newStatus,
+                                    'updatedAt': FieldValue.serverTimestamp(),
+                                  }, SetOptions(merge: true));
+                            } catch (e) {
+                              debugPrint('Firestore sync error: $e');
+                            }
+                          }
+                        },
                       ),
                     );
                   }, childCount: visibleTasks.length),
@@ -199,10 +206,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
             final Set<Priority> initialPriority =
                 (priority != null &&
-                        priority > 0 &&
-                        priority <= Priority.values.length)
-                    ? {Priority.values[priority - 1]}
-                    : {};
+                    priority > 0 &&
+                    priority <= Priority.values.length)
+                ? {Priority.values[priority - 1]}
+                : {};
 
             openFilterBottomSheet(
               context: context,
