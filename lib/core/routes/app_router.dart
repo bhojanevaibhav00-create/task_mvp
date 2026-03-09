@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ Added for module check
 
 import '../constants/app_routes.dart';
 
@@ -26,7 +27,7 @@ import '../../data/database/database.dart';
 // OTHER
 import '../../features/notifications/presentation/notification_screen.dart';
 
-//  IMPORTS FOR THE NEW LEAD MODULE
+// IMPORTS FOR THE NEW LEAD MODULE
 import '../../features/leads/presentation/screens/lead_dashboard_screen.dart';
 import '../../features/leads/presentation/screens/lead_list_screen.dart';
 import '../../features/leads/presentation/screens/add_lead_screen.dart';
@@ -46,19 +47,43 @@ final appRouter = GoRouter(
   debugLogDiagnostics: true,
   refreshListenable: AuthNotifier(),
 
-  redirect: (context, state) {
+  // ✅ FIXED: Async redirect logic to handle Lead vs Project separation
+  redirect: (context, state) async {
     final user = FirebaseAuth.instance.currentUser;
     final String location = state.uri.path;
 
     final bool isLogin = location == AppRoutes.login;
     final bool isRegister = location == AppRoutes.register;
 
+    // 1. If not logged in, force Login screen
     if (user == null) {
       if (isLogin || isRegister) return null;
       return AppRoutes.login;
     }
 
-    if (isLogin || isRegister) return AppRoutes.dashboard;
+    // 2. If logged in and on Auth screens, redirect based on Firestore Module Type
+    if (isLogin || isRegister) {
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final module = userDoc.data()?['module'] ?? "Project";
+
+          // ✅ Module pramane correct dashboard var pathvane
+          if (module == "Lead") {
+            return '/lead-dashboard';
+          } else {
+            return AppRoutes.dashboard;
+          }
+        }
+      } catch (e) {
+        debugPrint("Router Error: $e");
+      }
+      return AppRoutes.dashboard;
+    }
 
     return null;
   },
@@ -75,13 +100,13 @@ final appRouter = GoRouter(
       builder: (context, state) => const RegisterScreen(),
     ),
 
-    /// ================= DASHBOARD =================
+    /// ================= DASHBOARD (PROJECT MODULE) =================
     GoRoute(
       path: AppRoutes.dashboard,
       builder: (context, state) => const DashboardScreen(),
     ),
 
-    ///  ================= LEAD MANAGEMENT (NEW) =================
+    /// ================= LEAD MANAGEMENT (LEAD MODULE) =================
     GoRoute(
       path: '/lead-dashboard',
       builder: (context, state) => const LeadDashboardScreen(),

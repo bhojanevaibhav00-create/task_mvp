@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart'; 
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/database_provider.dart';
 import '../../../../data/database/database.dart';
@@ -67,9 +69,16 @@ class LeadListScreen extends ConsumerWidget {
             itemCount: leads.length,
             itemBuilder: (context, index) {
               final lead = leads[index];
-              return InkWell(
+              return _LeadCard(
+                companyName: lead.companyName,
+                contactPerson: lead.contactPersonName,
+                mobile: lead.mobile,
+                email: lead.email ?? "", 
+                status: lead.status,
+                followUp: lead.followUpDate != null
+                    ? "${lead.followUpDate!.day}/${lead.followUpDate!.month}/${lead.followUpDate!.year}"
+                    : "No Follow-up",
                 onTap: () {
-                  // Connect to the detail screen
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -77,15 +86,6 @@ class LeadListScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                child: _LeadCard(
-                  companyName: lead.companyName,
-                  contactPerson: lead.contactPersonName,
-                  mobile: lead.mobile,
-                  status: lead.status,
-                  followUp: lead.followUpDate != null
-                      ? "${lead.followUpDate!.day}/${lead.followUpDate!.month}/${lead.followUpDate!.year}"
-                      : "No Follow-up",
-                ),
               );
             },
           );
@@ -101,15 +101,19 @@ class _LeadCard extends StatelessWidget {
   final String companyName;
   final String contactPerson;
   final String mobile;
+  final String email;
   final String status;
   final String followUp;
+  final VoidCallback onTap;
 
   const _LeadCard({
     required this.companyName,
     required this.contactPerson,
     required this.mobile,
+    required this.email,
     required this.status,
     required this.followUp,
+    required this.onTap,
   });
 
   @override
@@ -118,7 +122,6 @@ class _LeadCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -130,35 +133,65 @@ class _LeadCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  companyName,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      companyName,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  _StatusChip(status: status),
+                ],
               ),
-              _StatusChip(status: status),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(contactPerson, style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
+                      const SizedBox(height: 4),
+                      Text(mobile, style: TextStyle(fontSize: 13, color: isDark ? Colors.white54 : Colors.black45)),
+                    ],
+                  ),
+                  // ✅ NEW: QUICK CONTACT ACTIONS
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.phone, color: Colors.green, size: 22),
+                        onPressed: () => launchUrl(Uri.parse('tel:$mobile')),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.email, color: Colors.blue, size: 22),
+                        onPressed: () => launchUrl(Uri.parse('mailto:$email')),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text("Follow-up: $followUp", style: const TextStyle(fontSize: 12, color: AppColors.primary)),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(contactPerson, style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black54)),
-          const SizedBox(height: 4),
-          Text(mobile, style: TextStyle(fontSize: 13, color: isDark ? Colors.white54 : Colors.black45)),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, size: 14, color: AppColors.primary),
-              const SizedBox(width: 6),
-              Text("Follow-up: $followUp", style: const TextStyle(fontSize: 12, color: AppColors.primary)),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

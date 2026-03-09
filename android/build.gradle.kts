@@ -1,12 +1,11 @@
 plugins {
     // Android Gradle Plugin
-    id("com.android.application") version "8.7.3" apply false
-    
+    id("com.android.application") version "8.9.1" apply false
+
     // Kotlin Android Plugin
     id("org.jetbrains.kotlin.android") version "2.1.0" apply false
-    
-    // 🔥 FIXED: Google Services Plugin (Firebase)
-    // Use ONLY 4.3.15 to avoid version conflict
+
+    // Google Services Plugin (Firebase)
     id("com.google.gms.google-services") version "4.3.15" apply false
 }
 
@@ -17,7 +16,7 @@ allprojects {
     }
 }
 
-// Custom build directory setup (keep as-is)
+// Custom build directory setup
 val newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.set(newBuildDir)
 

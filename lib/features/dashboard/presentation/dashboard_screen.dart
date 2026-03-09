@@ -454,15 +454,8 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        // ✅ Integrated Lead Management Action
-        _actionButton(
-          'Lead Management',
-          Icons.leaderboard_rounded,
-          () => context.push('/lead-dashboard'),
-          isDark,
-          primary: false, // Keeping it secondary to match the 'Schedule' style
-        ),
+    
+    
       ],
     );
   }

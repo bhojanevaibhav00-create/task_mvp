@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
@@ -18,6 +19,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  // ✅ AJINKYA SIR'S CHANGE: Module Selection Toggle
+  String _selectedModule = "Project"; 
 
   @override
   void dispose() {
@@ -27,7 +30,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   // ===================================================================
-  // ✅ FIREBASE LOGIN LOGIC
+  // ✅ FIREBASE LOGIN LOGIC WITH ROLE-BASED REDIRECTION
   // ===================================================================
   Future<void> _login() async {
     final email = _emailController.text.trim();
@@ -46,38 +49,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      // 1. Authenticate with Firebase
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // ❌ REMOVE manual navigation
-      // Router redirect handles dashboard navigation automatically
+      // 2. Fetch User Module Type from Cloud
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
 
-    } on FirebaseAuthException catch (e) {
-      String message;
+      if (userDoc.exists) {
+        final userModule = userDoc.data()?['module'] ?? "Project";
 
-      switch (e.code) {
-        case 'user-not-found':
-          message = "No user found for this email.";
-          break;
-        case 'wrong-password':
-          message = "Incorrect password.";
-          break;
-        case 'invalid-email':
-          message = "Invalid email format.";
-          break;
-        case 'invalid-credential':
-          message = "Invalid login credentials.";
-          break;
-        case 'network-request-failed':
-          message = "Network error. Check your connection.";
-          break;
-        default:
-          message = e.message ?? "Login failed.";
+        if (mounted) {
+          // 3. Separate Navigation based on Module
+          if (userModule == "Lead") {
+            context.go('/lead-dashboard'); 
+          } else {
+            context.go(AppRoutes.dashboard);
+          }
+        }
+      } else {
+        _showSnackBar("User module profile not found.");
       }
 
-      _showSnackBar(message);
+    } on FirebaseAuthException catch (e) {
+      _showSnackBar(e.message ?? "Login failed.");
     } catch (e) {
       _showSnackBar("Unexpected error occurred.");
     } finally {
@@ -86,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   // ===================================================================
-  // ✅ SNACKBAR
+  // ✅ SNACKBAR (Original Styling)
   // ===================================================================
   void _showSnackBar(String message) {
     if (!mounted) return;
@@ -114,7 +114,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   // ===================================================================
-  // ✅ UI (UNCHANGED)
+  // ✅ UI (FULL ORIGINAL FORMAT)
   // ===================================================================
   @override
   Widget build(BuildContext context) {
@@ -168,7 +168,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           color: Colors.grey.shade600,
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+
+                      // ✅ TOGGLE SECTION: Added while maintaining UI flow
+                      _buildModuleToggle(),
+                      const SizedBox(height: 24),
 
                       _buildTextField(
                         controller: _emailController,
@@ -188,7 +192,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _buildLoginButton(),
                       const SizedBox(height: 16),
 
-                      /// 🔥 ONLY CHANGE HERE
                       TextButton(
                         onPressed: () => context.push(AppRoutes.register),
                         child: const Text(
@@ -203,6 +206,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModuleToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FD),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          _buildToggleItem("Project", 0),
+          _buildToggleItem("Lead", 1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleItem(String label, int index) {
+    bool isSelected = _selectedModule == label;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedModule = label),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.grey,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -235,10 +277,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return TextFormField(
       controller: controller,
       obscureText: isObscure,
-      style: const TextStyle(
-        color: Color(0xFF1A1C1E),
-        fontWeight: FontWeight.w600,
-      ),
+      style: const TextStyle(color: Color(0xFF1A1C1E), fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppColors.primary),
@@ -267,17 +306,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ? const SizedBox(
               height: 20,
               width: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
             )
           : const Text(
               "Login",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
     );
   }

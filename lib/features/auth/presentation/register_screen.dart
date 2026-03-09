@@ -21,6 +21,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final TextEditingController _confirmController = TextEditingController();
 
   bool _isLoading = false;
+  // ✅ AJINKYA SIR'S CHANGE: Default to Project module
+  String _selectedModule = "Project"; 
 
   @override
   void dispose() {
@@ -32,7 +34,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   // ================================================================
-  // ✅ REGISTER FUNCTION
+  // ✅ REGISTER FUNCTION WITH ROLE-BASED CLOUD STORAGE
   // ================================================================
   Future<void> _register() async {
     final name = _nameController.text.trim();
@@ -76,11 +78,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
       }
 
-      // 🔹 Step 2: Save profile to Firestore
+      // 🔹 Step 2: Save profile with 'module' selection to Firestore
+      // This ensures the two modules stay separate from the start
       await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
         "uid": user.uid,
         "name": name,
         "email": email,
+        "module": _selectedModule, // ✅ 'Project' or 'Lead'
         "createdAt": FieldValue.serverTimestamp(),
       });
 
@@ -88,28 +92,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       _showSnackBar("Account created successfully!", isError: false);
 
-      // 🔹 Step 3: Navigate
-      context.go(AppRoutes.dashboard);
+      // 🔹 Step 3: Conditional Navigation
+      if (_selectedModule == "Lead") {
+        context.go('/lead-dashboard'); 
+      } else {
+        context.go(AppRoutes.dashboard);
+      }
+      
     } on FirebaseAuthException catch (e) {
       String message;
-
       switch (e.code) {
-        case 'email-already-in-use':
-          message = "Email already in use.";
-          break;
-        case 'weak-password':
-          message = "Password is too weak.";
-          break;
-        case 'invalid-email':
-          message = "Invalid email format.";
-          break;
-        default:
-          message = e.message ?? "Registration failed.";
+        case 'email-already-in-use': message = "Email already in use."; break;
+        case 'weak-password': message = "Password is too weak."; break;
+        default: message = e.message ?? "Registration failed.";
       }
-
       _showSnackBar(message);
-    } on FirebaseException catch (e) {
-      _showSnackBar("Database error: ${e.code}");
     } catch (e) {
       _showSnackBar("Unexpected error occurred.");
     } finally {
@@ -117,41 +114,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  // ================================================================
-  // ✅ SNACKBAR
-  // ================================================================
   void _showSnackBar(String message, {bool isError = true}) {
     if (!mounted) return;
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            color: Color(0xFF1A1C1E),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        content: Text(message, style: const TextStyle(color: Color(0xFF1A1C1E), fontWeight: FontWeight.w600)),
         backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
-        elevation: 8,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: isError
-                ? Colors.redAccent.withOpacity(0.3)
-                : AppColors.primary.withOpacity(0.3),
-          ),
+          side: BorderSide(color: isError ? Colors.redAccent.withOpacity(0.3) : AppColors.primary.withOpacity(0.3)),
         ),
         margin: const EdgeInsets.all(20),
-        duration: const Duration(seconds: 3),
       ),
     );
   }
 
-  // ================================================================
-  // ✅ UI
-  // ================================================================
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -172,13 +150,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 30,
-                        offset: const Offset(0, 15),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, 15))],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -186,41 +158,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       Text(
                         "Create Account",
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: const Color(0xFF1A1C1E),
-                        ),
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, color: const Color(0xFF1A1C1E)),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
 
-                      _buildTextField(
-                        controller: _nameController,
-                        label: "Full Name",
-                        icon: Icons.person_outline,
-                      ),
+                      // ✅ MODULE TOGGLE INTEGRATION
+                      _buildModuleToggle(),
+                      const SizedBox(height: 24),
+
+                      _buildTextField(controller: _nameController, label: "Full Name", icon: Icons.person_outline),
                       const SizedBox(height: 16),
-
-                      _buildTextField(
-                        controller: _emailController,
-                        label: "Email Address",
-                        icon: Icons.email_outlined,
-                      ),
+                      _buildTextField(controller: _emailController, label: "Email Address", icon: Icons.email_outlined),
                       const SizedBox(height: 16),
-
-                      _buildTextField(
-                        controller: _passwordController,
-                        label: "Password",
-                        icon: Icons.lock_outline,
-                        isObscure: true,
-                      ),
+                      _buildTextField(controller: _passwordController, label: "Password", icon: Icons.lock_outline, isObscure: true),
                       const SizedBox(height: 16),
-
-                      _buildTextField(
-                        controller: _confirmController,
-                        label: "Confirm Password",
-                        icon: Icons.lock_reset_outlined,
-                        isObscure: true,
-                      ),
+                      _buildTextField(controller: _confirmController, label: "Confirm Password", icon: Icons.lock_reset_outlined, isObscure: true),
                       const SizedBox(height: 32),
 
                       _buildRegisterButton(),
@@ -230,10 +182,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         onPressed: () => context.go(AppRoutes.login),
                         child: const Text(
                           "Already have an account? Login",
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -247,42 +196,59 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  Widget _buildLogo() {
+  // ✅ Toggle UI Component
+  Widget _buildModuleToggle() {
     return Container(
-      height: 80,
-      width: 80,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(
-        Icons.task_alt_rounded,
-        size: 48,
-        color: AppColors.primary,
+      decoration: BoxDecoration(color: const Color(0xFFF8F9FD), borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        children: [
+          _buildToggleItem("Project"),
+          _buildToggleItem("Lead"),
+        ],
       ),
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool isObscure = false,
-  }) {
+  Widget _buildToggleItem(String label) {
+    bool isSelected = _selectedModule == label;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedModule = label),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogo() {
+    return Container(
+      height: 80, width: 80,
+      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+      child: const Icon(Icons.task_alt_rounded, size: 48, color: AppColors.primary),
+    );
+  }
+
+  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, bool isObscure = false}) {
     return TextFormField(
       controller: controller,
       obscureText: isObscure,
       style: const TextStyle(color: Color(0xFF1A1C1E)),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.black54),
         prefixIcon: Icon(icon, color: AppColors.primary),
         filled: true,
         fillColor: const Color(0xFFF8F9FD),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       ),
     );
   }
@@ -297,14 +263,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
       child: _isLoading
           ? const CircularProgressIndicator(color: Colors.white)
-          : const Text(
-              "Register",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+          : const Text("Register", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
     );
   }
 }

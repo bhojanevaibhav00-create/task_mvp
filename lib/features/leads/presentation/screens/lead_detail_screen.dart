@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/database_provider.dart';
@@ -17,6 +16,60 @@ class LeadDetailScreen extends ConsumerWidget {
     required this.leadId,
   });
 
+  /// Convert Lead → Project
+ Future<void> _convertToProject(
+    BuildContext context, WidgetRef ref, Lead lead) async {
+
+  final db = ref.read(databaseProvider);
+
+  final projectData = {
+    'projectName': "${lead.companyName} - Project",
+    'clientName': lead.contactPersonName,
+    'clientEmail': lead.email ?? "",
+    'status': 'In Progress',
+    'leadReferenceId': lead.id,
+    'createdAt': FieldValue.serverTimestamp(),
+  };
+
+  try {
+
+    /// Firebase
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .add(projectData);
+
+    /// Drift
+    await db.into(db.projects).insert(
+      ProjectsCompanion.insert(
+        name: "${lead.companyName} - Project",
+        description: drift.Value("Client: ${lead.contactPersonName}"),
+      ),
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Lead converted to Project successfully"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+
+  } catch (e) {
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Conversion Error: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+
+  }
+
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final db = ref.watch(databaseProvider);
@@ -29,7 +82,9 @@ class LeadDetailScreen extends ConsumerWidget {
         final lead = snapshot.data;
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         if (!snapshot.hasData || lead == null) {
@@ -38,60 +93,97 @@ class LeadDetailScreen extends ConsumerWidget {
           );
         }
 
+        final bool isClosed = (lead.status ?? "").toLowerCase() == "closed";
+
         return Scaffold(
-          backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+          backgroundColor:
+              isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
+
+          /// APPBAR
           appBar: AppBar(
-            title: const Text("Lead Details", style: TextStyle(fontWeight: FontWeight.w700)),
+            title: const Text(
+              "Lead Details",
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             backgroundColor: isDark ? AppColors.cardDark : Colors.white,
             elevation: 0,
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () {
-                  // Using GoRouter for navigation if configured, or standard push
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => EditLeadScreen(lead: lead)),
+                    MaterialPageRoute(
+                      builder: (_) => EditLeadScreen(lead: lead),
+                    ),
                   );
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                icon: const Icon(Icons.delete_outline,
+                    color: Colors.redAccent),
                 onPressed: () => _confirmDelete(context, db, lead),
               ),
             ],
           ),
+
+          /// BODY
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🔹 Header Section
+                /// Company Name
                 Text(
                   lead.companyName,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+
                 const SizedBox(height: 8),
-                _StatusChip(status: lead.status),
+
+                _StatusChip(status: lead.status ?? "unknown"),
+
                 const Divider(height: 40),
 
-                // 🔹 Contact Info
+                /// Contact
                 _buildSectionTitle("Contact Information"),
-                _InfoTile("Contact Person", lead.contactPersonName, Icons.person_outline),
+
+                _InfoTile(
+                    "Contact Person", lead.contactPersonName, Icons.person),
+
                 _InfoTile("Mobile", lead.mobile, Icons.phone_android),
-                _InfoTile("Email", lead.email ?? "No Email Provided", Icons.email_outlined),
+
+                _InfoTile(
+                  "Email",
+                  lead.email ?? "No Email Provided",
+                  Icons.email_outlined,
+                ),
 
                 const SizedBox(height: 10),
 
-                // 🔹 Business Info
+                /// Deal
                 _buildSectionTitle("Deal Details"),
-                _InfoTile("Product Pitched", lead.productPitched ?? "Not specified", Icons.shopping_bag_outlined),
-                _InfoTile("Discussion / Remarks", lead.discussion ?? "No remarks", Icons.notes),
+
+                _InfoTile(
+                  "Product Pitched",
+                  lead.productPitched ?? "Not specified",
+                  Icons.shopping_bag_outlined,
+                ),
+
+                _InfoTile(
+                  "Discussion / Remarks",
+                  lead.discussion ?? "No remarks",
+                  Icons.notes,
+                ),
 
                 const SizedBox(height: 10),
 
-                // 🔹 Schedule
+                /// Schedule
                 _buildSectionTitle("Schedule"),
+
                 _InfoTile(
                   "Follow-up Date",
                   lead.followUpDate != null
@@ -99,7 +191,41 @@ class LeadDetailScreen extends ConsumerWidget {
                       : "Not Scheduled",
                   Icons.calendar_today_outlined,
                 ),
-                _InfoTile("Follow-up Time", lead.followUpTime ?? "Not Set", Icons.access_time),
+
+                _InfoTile(
+                  "Follow-up Time",
+                  lead.followUpTime ?? "Not Set",
+                  Icons.access_time,
+                ),
+
+                const SizedBox(height: 40),
+
+                /// Convert Button
+                if (isClosed)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _convertToProject(context, ref, lead),
+                      icon: const Icon(Icons.rocket_launch,
+                          color: Colors.white),
+                      label: const Text(
+                        "CONVERT TO PROJECT",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -123,42 +249,47 @@ class LeadDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, AppDatabase db, Lead lead) async {
+  Future<void> _confirmDelete(
+      BuildContext context, AppDatabase db, Lead lead) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Delete Lead?"),
-        content: const Text("This will remove the lead from local storage and Firebase."),
+        content: const Text(
+            "This will remove the lead from local storage and Firebase."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("CANCEL")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("CANCEL"),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("DELETE", style: TextStyle(color: Colors.red)),
+            child: const Text(
+              "DELETE",
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      // 1. Delete from Firebase
       try {
         final query = await FirebaseFirestore.instance
             .collection('leads')
             .where('mobile', isEqualTo: lead.mobile)
             .get();
-        
+
         for (var doc in query.docs) {
           await doc.reference.delete();
         }
 
-        // 2. Delete from Drift
         await (db.delete(db.leads)..where((l) => l.id.equals(lead.id))).go();
 
         if (context.mounted) Navigator.pop(context);
       } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error deleting: $e")));
-        }
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Error deleting: $e")));
       }
     }
   }
@@ -180,23 +311,24 @@ class _InfoTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: isDark ? Colors.white38 : Colors.black38),
+          Icon(icon,
+              size: 20,
+              color: isDark ? Colors.white38 : Colors.black38),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.white54 : Colors.black45,
-                  ),
-                ),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color:
+                            isDark ? Colors.white54 : Colors.black45)),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -209,18 +341,31 @@ class _InfoTile extends StatelessWidget {
 
 class _StatusChip extends StatelessWidget {
   final String status;
+
   const _StatusChip({required this.status});
 
   @override
   Widget build(BuildContext context) {
     Color color;
+
     switch (status.toLowerCase()) {
-      case "hot": color = Colors.red; break;
-      case "warm": color = Colors.orange; break;
-      case "cold": color = Colors.blue; break;
-      case "lost": color = Colors.grey; break;
-      case "closed": color = Colors.green; break;
-      default: color = AppColors.primary;
+      case "hot":
+        color = Colors.red;
+        break;
+      case "warm":
+        color = Colors.orange;
+        break;
+      case "cold":
+        color = Colors.blue;
+        break;
+      case "lost":
+        color = Colors.grey;
+        break;
+      case "closed":
+        color = Colors.green;
+        break;
+      default:
+        color = AppColors.primary;
     }
 
     return Container(
@@ -232,7 +377,11 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 12),
+        style: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: color,
+          fontSize: 12,
+        ),
       ),
     );
   }
