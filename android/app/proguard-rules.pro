@@ -11,3 +11,11 @@
 
 # Fix for R8 missing class errors related to Play Store deferred components
 -dontwarn com.google.android.play.core.**
+
+# Gson (Required by flutter_local_notifications for payload serialization)
+-keep class com.google.gson.** { *; }
+
+# Keep generic classes that might be used by plugins
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class sun.misc.Unsafe { *; }
