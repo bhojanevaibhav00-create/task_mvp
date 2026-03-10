@@ -1,9 +1,13 @@
-# Flutter/Drift specific rules
-# This rule prevents R8 from removing the names of your enums, which are needed
-# by drift's EnumNameConverter and other serialization methods that rely on enum.name.
-# Without this, looking up an enum by its string name (e.g., 'done') will fail in release builds.
--keep public enum com.example.task_mvp.data.models.enums.** { *; }
--keep public enum com.example.task_mvp.data.models.project_role.** { *; }
+# Flutter Wrapper
+-keep class io.flutter.app.** { *; }
+-keep class io.flutter.plugin.**  { *; }
+-keep class io.flutter.util.**  { *; }
+-keep class io.flutter.view.**  { *; }
+-keep class io.flutter.**  { *; }
+-keep class io.flutter.plugins.**  { *; }
 
-# It's also a good practice to keep your data models if they are used with reflection.
--keep class com.example.task_mvp.data.models.** { *; }
+# Prevent R8 from stripping Flutter Local Notifications classes (Crucial for reminders)
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+
+# Fix for R8 missing class errors related to Play Store deferred components
+-dontwarn com.google.android.play.core.**

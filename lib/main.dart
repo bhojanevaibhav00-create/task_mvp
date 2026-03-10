@@ -21,7 +21,9 @@ Future<void> seedProjectData(db.AppDatabase database) async {
 
     if (existingProjects.isEmpty) {
       await database.transaction(() async {
-        await database.into(database.projects).insert(
+        await database
+            .into(database.projects)
+            .insert(
               db.ProjectsCompanion.insert(
                 id: const drift.Value(1),
                 name: 'General Project',
@@ -38,21 +40,17 @@ Future<void> seedProjectData(db.AppDatabase database) async {
 }
 
 /// 🔥 BACKGROUND HANDLER (Required for FCM)
-Future<void> _firebaseMessagingBackgroundHandler(
-    RemoteMessage message) async {
-  await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform);
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // 🔥 Register background handler
-  FirebaseMessaging.onBackgroundMessage(
-      _firebaseMessagingBackgroundHandler);
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   runApp(const ProviderScope(child: AppBootstrap()));
 }
@@ -65,44 +63,50 @@ class AppBootstrap extends ConsumerStatefulWidget {
 }
 
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
-
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final database = ref.read(databaseProvider);
-      await seedProjectData(database);
+      try {
+        final database = ref.read(databaseProvider);
+        await seedProjectData(database);
 
-      final reminder = ref.read(reminderServiceProvider);
-      await reminder.init();
-      await reminder.requestPermission();
-      await reminder.resyncOnAppStart();
+        final reminder = ref.read(reminderServiceProvider);
+        await reminder.init();
+        await reminder.requestPermission();
+        await reminder.resyncOnAppStart();
 
-      // ✅ FCM initialization
-     final fcmService = ref.read(fcmServiceProvider);
-      await fcmService.initialize();
+        // ✅ FCM initialization
+        final fcmService = ref.read(fcmServiceProvider);
+        await fcmService.initialize();
 
-      // ✅ Save FCM token
-      await _saveFcmToken();
+        // ✅ Save FCM token (Optimized)
+        _setupFcmTokenListener();
+      } catch (e, stack) {
+        debugPrint("❌ Error during app initialization: $e");
+        debugPrint(stack.toString());
+      }
     });
   }
 
-  /// 🔥 SAVE DEVICE TOKEN TO FIRESTORE
-  Future<void> _saveFcmToken() async {
-    final token = await FirebaseMessaging.instance.getToken();
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (token == null || user == null) return;
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .set({
-      'fcmToken': token,
-    }, SetOptions(merge: true));
-
-    debugPrint("✅ FCM Token Saved");
+  /// 🔥 LISTEN FOR AUTH CHANGES TO SAVE TOKEN
+  void _setupFcmTokenListener() {
+    FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+      if (user != null) {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+                'fcmToken': token,
+                'lastActive': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+          debugPrint("✅ FCM Token Saved for ${user.uid}");
+        }
+      }
+    });
   }
 
   @override
