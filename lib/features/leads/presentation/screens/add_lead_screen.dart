@@ -20,7 +20,6 @@ class AddLeadScreen extends ConsumerStatefulWidget {
 class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers for all fields in the spreadsheet
   final companyController = TextEditingController();
   final contactController = TextEditingController();
   final mobileController = TextEditingController();
@@ -35,7 +34,6 @@ class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
 
   @override
   void dispose() {
-    // Clean up controllers
     companyController.dispose();
     contactController.dispose();
     mobileController.dispose();
@@ -53,102 +51,225 @@ class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text("Add Lead", style: TextStyle(fontWeight: FontWeight.w700)),
-        backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+        title: const Text("Create New Lead", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        foregroundColor: isDark ? Colors.white : Colors.black87,
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            _buildTextField(companyController, "Company Name", Icons.business),
-            _buildTextField(contactController, "Contact Person Name", Icons.person),
-            _buildTextField(mobileController, "Contact Person Mob No", Icons.phone, keyboard: TextInputType.phone),
-            _buildTextField(emailController, "Contact Person Mail ID", Icons.email, keyboard: TextInputType.emailAddress),
-            _buildTextField(productController, "Product/ Service Pitched", Icons.shopping_bag),
-            _buildTextField(discussionController, "Discussion Details/Remarks", Icons.comment, maxLines: 3),
-
-            const SizedBox(height: 10),
-            
-            // STATUS DROPDOWN
-            DropdownButtonFormField<String>(
-              value: selectedStatus,
-              decoration: InputDecoration(
-                labelText: "Lead Status: Hot/Warm/Cold/Lost",
-                prefixIcon: const Icon(Icons.analytics),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              _buildSectionCard(
+                "Business Information",
+                Icons.business_center_rounded,
+                isDark,
+                [
+                  _buildModernField(companyController, "Company Name", Icons.store_rounded),
+                  _buildModernField(contactController, "Contact Person", Icons.person_rounded),
+                ],
               ),
-              items: ["Hot", "Warm", "Cold", "Lost", "Closed"]
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (value) => setState(() => selectedStatus = value!),
-            ),
-
-            // CONDITIONAL FIELD: LOST REASON
-            if (selectedStatus == "Lost") ...[
-              const SizedBox(height: 16),
-              _buildTextField(lostReasonController, "IF Lost: Reason", Icons.warning, isRequired: true),
+              _buildSectionCard(
+                "Contact Details",
+                Icons.contact_phone_rounded,
+                isDark,
+                [
+                  _buildModernField(mobileController, "Mobile Number", Icons.phone_iphone_rounded, keyboard: TextInputType.phone),
+                  _buildModernField(emailController, "Email Address", Icons.alternate_email_rounded, keyboard: TextInputType.emailAddress),
+                ],
+              ),
+              _buildSectionCard(
+                "Lead Intelligence",
+                Icons.psychology_rounded,
+                isDark,
+                [
+                  _buildModernField(productController, "Product/Service Pitched", Icons.shopping_cart_checkout_rounded),
+                  _buildStatusSelector(isDark),
+                  if (selectedStatus == "Lost")
+                    _buildModernField(lostReasonController, "Reason for Loss", Icons.sentiment_very_dissatisfied_rounded),
+                  _buildModernField(discussionController, "Discussion Summary", Icons.notes_rounded, maxLines: 3),
+                ],
+              ),
+              _buildSectionCard(
+                "Follow-up Schedule",
+                Icons.event_repeat_rounded,
+                isDark,
+                [
+                  _buildDateTimeRow(context, isDark),
+                ],
+              ),
+              const SizedBox(height: 30),
+              _buildSaveButton(),
+              const SizedBox(height: 40),
             ],
-
-            const SizedBox(height: 16),
-
-            // DATE & TIME PICKERS
-            Row(
-              children: [
-                Expanded(
-                  child: ListTile(
-                    title: Text(followUpDate == null ? "Follow Up Date" : "${followUpDate!.day}/${followUpDate!.month}/${followUpDate!.year}"),
-                    subtitle: const Text("Date"),
-                    leading: const Icon(Icons.calendar_month),
-                    onTap: _pickDate,
-                  ),
-                ),
-                Expanded(
-                  child: ListTile(
-                    title: Text(followUpTime == null ? "Follow Up Time" : followUpTime!.format(context)),
-                    subtitle: const Text("Time"),
-                    leading: const Icon(Icons.access_time),
-                    onTap: _pickTime,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            ElevatedButton(
-              onPressed: _saveLead,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("SAVE LEAD", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // Helper for consistent TextFields
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, 
-      {TextInputType keyboard = TextInputType.text, int maxLines = 1, bool isRequired = true}) {
+  // --- PREMIUM WIDGETS ---
+
+  Widget _buildSectionCard(String title, IconData icon, bool isDark, List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.grey)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernField(TextEditingController controller, String label, IconData icon, {TextInputType keyboard = TextInputType.text, int maxLines = 1}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboard,
         maxLines: maxLines,
-        validator: (value) => (isRequired && (value == null || value.isEmpty)) ? "Field required" : null,
+        validator: (value) => (value == null || value.isEmpty) ? "Required" : null,
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          prefixIcon: Icon(icon, size: 20),
+          filled: true,
+          fillColor: AppColors.primary.withOpacity(0.04),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
         ),
       ),
     );
   }
+
+  Widget _buildStatusSelector(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Priority Level", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            children: ["Hot", "Warm", "Cold", "Lost", "Closed"].map((s) {
+              final isSelected = selectedStatus == s;
+              return ChoiceChip(
+                label: Text(s),
+                selected: isSelected,
+                onSelected: (val) => setState(() => selectedStatus = s),
+                selectedColor: _getStatusColor(s),
+                labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontWeight: FontWeight.bold),
+                backgroundColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String s) {
+    switch (s) {
+      case "Hot": return Colors.redAccent;
+      case "Warm": return Colors.orangeAccent;
+      case "Cold": return Colors.blueAccent;
+      case "Closed": return Colors.green;
+      default: return Colors.grey;
+    }
+  }
+
+  Widget _buildDateTimeRow(BuildContext context, bool isDark) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildPickerTile(
+            icon: Icons.calendar_today_rounded,
+            label: followUpDate == null ? "Pick Date" : "${followUpDate!.day}/${followUpDate!.month}",
+            onTap: _pickDate,
+            isDark: isDark,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildPickerTile(
+            icon: Icons.alarm_rounded,
+            label: followUpTime == null ? "Pick Time" : followUpTime!.format(context),
+            onTap: _pickTime,
+            isDark: isDark,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPickerTile({required IconData icon, required String label, required VoidCallback onTap, required bool isDark}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: AppColors.primaryGradient,
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _saveLead,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+        child: const Text("CREATE LEAD", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2)),
+      ),
+    );
+  }
+
+  // --- LOGIC (REMAINING SAME) ---
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -156,6 +277,10 @@ class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime(2030),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(colorScheme: ColorScheme.light(primary: AppColors.primary)),
+        child: child!,
+      ),
     );
     if (picked != null) setState(() => followUpDate = picked);
   }
@@ -171,7 +296,6 @@ class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
     final db = ref.read(databaseProvider);
     final currentUser = FirebaseAuth.instance.currentUser;
 
-    // 1. Prepare data
     final leadData = {
       'companyName': companyController.text.trim(),
       'contactPersonName': contactController.text.trim(),
@@ -190,10 +314,8 @@ class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
     };
 
     try {
-      // 2. SAVE TO FIREBASE
       await FirebaseFirestore.instance.collection('leads').add(leadData);
 
-      // 3. SAVE TO DRIFT
       await db.into(db.leads).insert(
         LeadsCompanion(
           companyName: drift.Value(companyController.text.trim()),
@@ -208,19 +330,9 @@ class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
         ),
       );
 
-      // ✅ 4. SCHEDULE NOTIFICATION (New Step)
       if (followUpDate != null && followUpTime != null) {
-        final scheduledDateTime = DateTime(
-          followUpDate!.year,
-          followUpDate!.month,
-          followUpDate!.day,
-          followUpTime!.hour,
-          followUpTime!.minute,
-        );
-
-        // Ensure the time is in the future
+        final scheduledDateTime = DateTime(followUpDate!.year, followUpDate!.month, followUpDate!.day, followUpTime!.hour, followUpTime!.minute);
         if (scheduledDateTime.isAfter(DateTime.now())) {
-          // Assuming you have a notification provider configured
           ref.read(notificationServiceProvider).scheduleNotification(
             id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
             title: "Follow-up: ${companyController.text.trim()}",
@@ -233,12 +345,12 @@ class _AddLeadScreenState extends ConsumerState<AddLeadScreen> {
       if (mounted) {
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Lead Saved & Notification Scheduled"), backgroundColor: Colors.green),
+          const SnackBar(content: Text("Lead Saved & Notification Scheduled"), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sync Error: $e"), backgroundColor: Colors.red),
+        SnackBar(content: Text("Sync Error: $e"), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
       );
     }
   }

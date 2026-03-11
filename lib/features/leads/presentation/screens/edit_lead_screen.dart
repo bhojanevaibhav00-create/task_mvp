@@ -9,7 +9,7 @@ import '../../../../core/providers/database_provider.dart';
 import '../../../../data/database/database.dart';
 
 class EditLeadScreen extends ConsumerStatefulWidget {
-  final Lead lead; // This is the Drift generated class
+  final Lead lead;
 
   const EditLeadScreen({super.key, required this.lead});
 
@@ -33,7 +33,6 @@ class _EditLeadScreenState extends ConsumerState<EditLeadScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize with existing lead data
     companyController = TextEditingController(text: widget.lead.companyName);
     contactController = TextEditingController(text: widget.lead.contactPersonName);
     mobileController = TextEditingController(text: widget.lead.mobile);
@@ -63,52 +62,153 @@ class _EditLeadScreenState extends ConsumerState<EditLeadScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.scaffoldDark : const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text("Edit Lead", style: TextStyle(fontWeight: FontWeight.w700)),
-        backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+        title: const Text("Edit Lead Details", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: isDark ? Colors.white : Colors.black87,
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            _buildTextField(companyController, "Company Name", Icons.business),
-            _buildTextField(contactController, "Contact Person", Icons.person),
-            _buildTextField(mobileController, "Mobile Number", Icons.phone, keyboard: TextInputType.phone),
-            _buildTextField(emailController, "Email", Icons.email, keyboard: TextInputType.emailAddress),
-            _buildTextField(productController, "Product Pitched", Icons.shopping_bag),
-            _buildTextField(discussionController, "Discussion/Remarks", Icons.notes, maxLines: 3),
-
-            const SizedBox(height: 16),
-            
-            DropdownButtonFormField<String>(
-              value: selectedStatus,
-              decoration: InputDecoration(
-                labelText: "Lead Status",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              _buildSectionCard(
+                "Client Profile",
+                Icons.person_pin_rounded,
+                isDark,
+                [
+                  _buildModernField(companyController, "Company Name", Icons.store_rounded),
+                  _buildModernField(contactController, "Contact Person", Icons.person_rounded),
+                  _buildModernField(mobileController, "Mobile Number", Icons.phone_iphone_rounded, keyboard: TextInputType.phone),
+                  _buildModernField(emailController, "Email Address", Icons.alternate_email_rounded, keyboard: TextInputType.emailAddress),
+                ],
               ),
-              items: ["Hot", "Warm", "Cold", "Lost", "Closed"]
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (value) => setState(() => selectedStatus = value!),
-            ),
+              _buildSectionCard(
+                "Sales Intelligence",
+                Icons.insights_rounded,
+                isDark,
+                [
+                  _buildModernField(productController, "Product/Service Pitched", Icons.shopping_cart_checkout_rounded),
+                  _buildStatusSelector(isDark),
+                  _buildModernField(discussionController, "Remarks & Discussion", Icons.notes_rounded, maxLines: 3),
+                ],
+              ),
+              _buildSectionCard(
+                "Timeline",
+                Icons.event_note_rounded,
+                isDark,
+                [
+                  _buildDatePicker(isDark),
+                ],
+              ),
+              const SizedBox(height: 30),
+              _buildUpdateButton(),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-            ListTile(
-              title: Text(followUpDate == null 
-                ? "Select Follow-up" 
-                : "Follow-up: ${followUpDate!.day}/${followUpDate!.month}/${followUpDate!.year}"),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: _pickDate,
-            ),
+  // --- PREMIUM WIDGETS ---
 
-            const SizedBox(height: 30),
+  Widget _buildSectionCard(String title, IconData icon, bool isDark, List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.grey, letterSpacing: 0.5)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ...children,
+        ],
+      ),
+    );
+  }
 
-            ElevatedButton(
-              onPressed: _updateLead,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+  Widget _buildModernField(TextEditingController controller, String label, IconData icon, {TextInputType keyboard = TextInputType.text, int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboard,
+        maxLines: maxLines,
+        validator: (value) => (value == null || value.isEmpty) ? "Required" : null,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, size: 20),
+          filled: true,
+          fillColor: AppColors.primary.withOpacity(0.04),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusSelector(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Lead Status", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            children: ["Hot", "Warm", "Cold", "Lost", "Closed"].map((s) {
+              final isSelected = selectedStatus == s;
+              return ChoiceChip(
+                label: Text(s),
+                selected: isSelected,
+                onSelected: (val) => setState(() => selectedStatus = s),
+                selectedColor: AppColors.primary,
+                labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontWeight: FontWeight.bold),
+                backgroundColor: isDark ? Colors.white10 : Colors.grey.shade100,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("UPDATE & SYNC", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDatePicker(bool isDark) {
+    return InkWell(
+      onTap: _pickDate,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today_rounded, size: 20, color: AppColors.primary),
+            const SizedBox(width: 12),
+            Text(
+              followUpDate == null ? "Schedule Follow-up" : "Follow-up: ${followUpDate!.day}/${followUpDate!.month}/${followUpDate!.year}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -116,24 +216,26 @@ class _EditLeadScreenState extends ConsumerState<EditLeadScreen> {
     );
   }
 
-  // Same helper as AddLeadScreen for consistency
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, 
-      {TextInputType keyboard = TextInputType.text, int maxLines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboard,
-        maxLines: maxLines,
-        validator: (value) => value == null || value.isEmpty ? "Required" : null,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+  Widget _buildUpdateButton() {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: AppColors.primaryGradient,
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _updateLead,
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+        child: const Text("SAVE & SYNC CHANGES", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.5)),
       ),
     );
   }
+
+  // --- LOGIC ---
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -141,6 +243,10 @@ class _EditLeadScreenState extends ConsumerState<EditLeadScreen> {
       initialDate: followUpDate ?? DateTime.now(),
       firstDate: DateTime(2023),
       lastDate: DateTime(2030),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(colorScheme: ColorScheme.light(primary: AppColors.primary)),
+        child: child!,
+      ),
     );
     if (picked != null) setState(() => followUpDate = picked);
   }
@@ -151,9 +257,6 @@ class _EditLeadScreenState extends ConsumerState<EditLeadScreen> {
     final db = ref.read(databaseProvider);
 
     try {
-      // 1. Update Cloud (Firebase)
-      // Note: This assumes you stored the Firestore Document ID in your Drift table. 
-      // If you didn't, you should query Firestore by mobile number or another unique field.
       final querySnapshot = await FirebaseFirestore.instance
           .collection('leads')
           .where('mobile', isEqualTo: widget.lead.mobile)
@@ -172,7 +275,6 @@ class _EditLeadScreenState extends ConsumerState<EditLeadScreen> {
         });
       }
 
-      // 2. Update Local (Drift)
       await (db.update(db.leads)..where((l) => l.id.equals(widget.lead.id))).write(
         LeadsCompanion(
           companyName: drift.Value(companyController.text.trim()),
@@ -189,12 +291,12 @@ class _EditLeadScreenState extends ConsumerState<EditLeadScreen> {
       if (mounted) {
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Lead Updated & Synced"), backgroundColor: Colors.blue),
+          const SnackBar(content: Text("Changes Saved & Synced"), backgroundColor: Colors.blueAccent, behavior: SnackBarBehavior.floating),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Update Failed: $e"), backgroundColor: Colors.red),
+        SnackBar(content: Text("Sync Error: $e"), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
       );
     }
   }
