@@ -89,7 +89,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
 
                     // --- 3. PROJECT PROGRESS (REAL-TIME) ---
-                    _buildModernProgressHeader(db, isDark),
+                    _buildModernProgressHeader(projectId, isDark),
                     const SizedBox(height: 32),
 
                     // --- 4. SECTION HEADER & SORT INFO ---
@@ -454,99 +454,121 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildModernProgressHeader(AppDatabase db, bool isDark) {
-    return StreamBuilder<List<Task>>(
-      stream: (db.select(
-        db.tasks,
-      )..where((t) => t.projectId.equals(projectId))).watch(),
-      builder: (context, snapshot) {
-        final tasks = snapshot.data ?? [];
-        if (tasks.isEmpty) return const SizedBox.shrink();
 
-        final done = tasks
-            .where((t) => t.status == TaskStatus.done.name)
-            .length;
-        final double progress = tasks.isEmpty ? 0.0 : done / tasks.length;
+   Widget _buildModernProgressHeader(int projectId, bool isDark) {
+  return StreamBuilder<QuerySnapshot>(
+    // ☁️ Firestore madhun real-time data ghene
+    stream: FirebaseFirestore.instance
+        .collection('tasks')
+        .where('projectId', isEqualTo: projectId.toString())
+        .snapshots(),
+    builder: (context, snapshot) {
+      final taskDocs = snapshot.data?.docs ?? [];
+      
+      if (taskDocs.isEmpty) return const SizedBox.shrink();
 
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: isDark
-                ? Border.all(color: Colors.white.withOpacity(0.05))
-                : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Completion Progress",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white70 : Colors.black54,
-                      fontSize: 13,
-                    ),
-                  ),
-                  Text(
-                    "${(progress * 100).toInt()}%",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
+      // ✅ Sarva members chya activities capture karne
+      final totalTasks = taskDocs.length;
+      final doneTasks = taskDocs
+          .where((doc) => (doc.data() as Map<String, dynamic>)['status'] == 'done')
+          .length;
+          
+      final double progress = totalTasks == 0 ? 0.0 : doneTasks / totalTasks;
+
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
-              const SizedBox(height: 16),
-              Stack(
-                children: [
-                  Container(
-                    height: 10,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withOpacity(0.05)
-                          : Colors.black.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Project Health", // Change title for more premium feel
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    fontSize: 13,
                   ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 500),
-                    height: 10,
-                    width: (MediaQuery.of(context).size.width - 88) * progress,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "$done of ${tasks.length} tasks completed",
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isDark ? Colors.white24 : Colors.black26,
-                  fontWeight: FontWeight.bold,
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+                Text(
+                  "${(progress * 100).toInt()}%",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                    fontSize: 16, // Increased size for visibility
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Stack(
+              children: [
+                // Background Track
+                Container(
+                  height: 10,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white10 : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                // Animated Progress Fill
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeOutCubic, // Smoother animation
+                  height: 10,
+                  width: (MediaQuery.of(context).size.width - 88) * progress,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(Icons.check_circle_outline, 
+                     size: 14, 
+                     color: isDark ? Colors.white24 : Colors.black26),
+                const SizedBox(width: 6),
+                Text(
+                  "$doneTasks of $totalTasks tasks completed",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.white24 : Colors.black26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+  
 
   // ================= LOGIC & DIALOGS =================
 
