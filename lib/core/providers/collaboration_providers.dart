@@ -14,14 +14,10 @@ class MemberWithUser {
   final String name;
   final String role;
 
-  MemberWithUser({
-    required this.uid,
-    required this.name,
-    required this.role,
-  });
+  MemberWithUser({required this.uid, required this.name, required this.role});
 
   // 🚀 ADD THIS LINE TO FIX THE 'user.id' ERROR
-  String get id => uid; 
+  String get id => uid;
 
   // Keep these for your other UI rows
   MemberWithUser get member => this;
@@ -37,54 +33,60 @@ class _UserProxy {
 /// 2️⃣ FETCH PROJECT MEMBERS FROM FIRESTORE
 /// =======================================================
 
-final projectMembersProvider =
-    StreamProvider.family.autoDispose<List<MemberWithUser>, int>(
-        (ref, projectId) async* {
-  final firebaseUser = FirebaseAuth.instance.currentUser;
-  if (firebaseUser == null) {
-    yield [];
-    return;
-  }
+final projectMembersProvider = StreamProvider.family
+    .autoDispose<List<MemberWithUser>, int>((ref, projectId) async* {
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser == null) {
+        yield [];
+        return;
+      }
 
-  final projectStream = FirebaseFirestore.instance
-      .collection('projects')
-      .doc(projectId.toString())
-      .snapshots();
+      final projectStream = FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId.toString())
+          .snapshots();
 
-  await for (final snapshot in projectStream) {
-    final data = snapshot.data();
-    if (data == null) {
-      yield [];
-      continue;
-    }
+      await for (final snapshot in projectStream) {
+        final data = snapshot.data();
+        if (data == null) {
+          yield [];
+          continue;
+        }
 
-    final members = List<String>.from(data['members'] ?? []);
-    final roles = Map<String, dynamic>.from(data['roles'] ?? {});
+        // Safely parse members and roles to avoid TypeErrors if IDs were saved as integers
+        final membersList = data['members'] as List<dynamic>? ?? [];
+        final members = membersList.map((e) => e.toString().trim()).toList();
+        final rawRoles = data['roles'] as Map<dynamic, dynamic>? ?? {};
+        final roles = rawRoles.map((k, v) => MapEntry(k.toString().trim(), v));
 
-    final result = <MemberWithUser>[];
+        final result = <MemberWithUser>[];
 
-    for (final uid in members) {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+        for (final uid in members) {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .get();
 
-      if (!userDoc.exists) continue;
+          if (!userDoc.exists) continue;
 
-      final userData = userDoc.data()!;
+          final userData = userDoc.data()!;
 
-      result.add(
-        MemberWithUser(
-          uid: uid,
-          name: userData['name'] ?? 'Unknown User',
-          role: roles[uid] ?? 'member',
-        ),
-      );
-    }
+          // Sanitize role in case it was saved as an Enum string (e.g. 'ProjectRole.admin') or capitalized
+          String rawRole = roles[uid]?.toString().trim() ?? 'member';
+          if (rawRole.contains('.')) rawRole = rawRole.split('.').last;
 
-    yield result;
-  }
-});
+          result.add(
+            MemberWithUser(
+              uid: uid,
+              name: userData['name'] ?? 'Unknown User',
+              role: rawRole.toLowerCase(),
+            ),
+          );
+        }
+
+        yield result;
+      }
+    });
 
 /// =======================================================
 /// 3️⃣ COLLABORATION NOTIFIER (HANDLES FIRESTORE + DRIFT)
@@ -95,7 +97,7 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
 
   CollaborationNotifier(this.database, this.ref)
-      : super(const AsyncValue.data(null));
+    : super(const AsyncValue.data(null));
 
   /// Adds a member to Firestore and logs the action in local Drift DB
   Future<void> addMember({
@@ -106,6 +108,17 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('Permission denied: User is not authenticated.');
+      }
+
+      // Ensure role is properly formatted string (e.g., 'admin' instead of 'ProjectRole.admin' or 'Admin')
+      final cleanRole = role.contains('.')
+          ? role.split('.').last.toLowerCase().trim()
+          : role.toLowerCase().trim();
+      final cleanUserId = userId.trim();
+
       final projectRef = FirebaseFirestore.instance
           .collection('projects')
           .doc(projectId.toString());
@@ -113,27 +126,30 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
       // Update Firestore using a transaction for data integrity
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final snapshot = await transaction.get(projectRef);
-        
+
         if (!snapshot.exists) {
           // If project doesn't exist in Firestore yet, create it
           transaction.set(projectRef, {
-            'members': [userId],
-            'roles': {userId: role},
+            'members': [cleanUserId],
+            'roles': {cleanUserId: cleanRole},
           });
         } else {
           final data = snapshot.data()!;
-          final List<String> members = List<String>.from(data['members'] ?? []);
-          final Map<String, dynamic> roles = Map<String, dynamic>.from(data['roles'] ?? {});
 
-          if (!members.contains(userId)) {
-            members.add(userId);
+          // Safely parse arrays and maps to prevent int vs String TypeErrors
+          final membersList = data['members'] as List<dynamic>? ?? [];
+          final members = membersList.map((e) => e.toString().trim()).toList();
+          final rawRoles = data['roles'] as Map<dynamic, dynamic>? ?? {};
+          final roles = rawRoles.map(
+            (k, v) => MapEntry(k.toString().trim(), v),
+          );
+
+          if (!members.contains(cleanUserId)) {
+            members.add(cleanUserId);
           }
-          roles[userId] = role;
+          roles[cleanUserId] = cleanRole;
 
-          transaction.update(projectRef, {
-            'members': members,
-            'roles': roles,
-          });
+          transaction.update(projectRef, {'members': members, 'roles': roles});
         }
       });
 
@@ -141,8 +157,28 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
       await logActivity(
         projectId,
         'Member Added',
-        'User $userId joined the project as $role',
+        'User $cleanUserId joined the project as $cleanRole',
       );
+
+      // Sync local Drift database to ensure offline UI reflects the correct role
+      try {
+        final parsedId = int.tryParse(cleanUserId);
+        if (parsedId != null) {
+          await database
+              .into(database.projectMembers)
+              .insert(
+                db.ProjectMembersCompanion.insert(
+                  projectId: projectId,
+                  userId: parsedId,
+                  role: cleanRole,
+                  joinedAt: drift.Value(DateTime.now()),
+                ),
+                mode: drift.InsertMode.insertOrReplace,
+              );
+        }
+      } catch (e) {
+        print('Drift sync error: $e');
+      }
 
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -152,9 +188,14 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
 
   /// Logs activity to the local Drift database
   Future<void> logActivity(
-      int projectId, String action, String description) async {
+    int projectId,
+    String action,
+    String description,
+  ) async {
     try {
-      await database.into(database.activityLogs).insert(
+      await database
+          .into(database.activityLogs)
+          .insert(
             db.ActivityLogsCompanion.insert(
               action: action,
               description: drift.Value(description),
@@ -176,8 +217,5 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
 
 final collaborationActionProvider =
     StateNotifierProvider<CollaborationNotifier, AsyncValue<void>>((ref) {
-  return CollaborationNotifier(
-    ref.watch(databaseProvider),
-    ref,
-  );
-});
+      return CollaborationNotifier(ref.watch(databaseProvider), ref);
+    });
