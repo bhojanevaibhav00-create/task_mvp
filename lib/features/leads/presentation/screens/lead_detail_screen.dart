@@ -13,19 +13,24 @@ class LeadDetailScreen extends ConsumerWidget {
 
   const LeadDetailScreen({super.key, required this.leadId});
 
+  /// ✅ DECOUPLED CONVERSION: Creates a project but removes all ID links
   Future<void> _convertToProject(BuildContext context, WidgetRef ref, Lead lead) async {
     final db = ref.read(databaseProvider);
+
+    // 1. Prepare independent Project data (No leadReferenceId)
     final projectData = {
       'projectName': "${lead.companyName} - Project",
       'clientName': lead.contactPersonName,
       'clientEmail': lead.email ?? "",
       'status': 'In Progress',
-      'leadReferenceId': lead.id,
+      'description': "Project initiated from former lead: ${lead.companyName}",
       'createdAt': FieldValue.serverTimestamp(),
     };
 
     try {
+      // 2. CREATE PROJECT (Cloud & Local)
       await FirebaseFirestore.instance.collection('projects').add(projectData);
+      
       await db.into(db.projects).insert(
         ProjectsCompanion.insert(
           name: "${lead.companyName} - Project",
@@ -33,10 +38,31 @@ class LeadDetailScreen extends ConsumerWidget {
         ),
       );
 
+      // 3. UPDATE LEAD STATUS (To ensure it's removed from 'Active' leads)
+      // We mark it as 'Converted' so it doesn't stay in the 'Closed' list
+      await (db.update(db.leads)..where((l) => l.id.equals(lead.id))).write(
+        const LeadsCompanion(status: drift.Value("Converted")),
+      );
+
+      // Update Firestore Lead status as well
+      final leadQuery = await FirebaseFirestore.instance
+          .collection('leads')
+          .where('mobile', isEqualTo: lead.mobile)
+          .get();
+      
+      for (var doc in leadQuery.docs) {
+        await doc.reference.update({'status': 'Converted'});
+      }
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Lead converted successfully!"), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
+          const SnackBar(
+            content: Text("Success: Data migrated to Project Module."),
+            backgroundColor: Colors.deepPurple,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
+        Navigator.pop(context); // Exit detail view after conversion
       }
     } catch (e) {
       if (context.mounted) {
@@ -63,6 +89,7 @@ class LeadDetailScreen extends ConsumerWidget {
           return const Scaffold(body: Center(child: Text("Lead not found")));
         }
 
+        // Only show conversion button if lead is specifically 'Closed'
         final bool isClosed = (lead.status ?? "").toLowerCase() == "closed";
 
         return Scaffold(
@@ -70,44 +97,7 @@ class LeadDetailScreen extends ConsumerWidget {
           body: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // ================= PREMIUM HEADER =================
-              SliverAppBar(
-                expandedHeight: 180,
-                pinned: true,
-                stretch: true,
-                backgroundColor: isDark ? AppColors.cardDark : AppColors.primary,
-                flexibleSpace: FlexibleSpaceBar(
-                  stretchModes: const [StretchMode.zoomBackground],
-                  background: Container(
-                    decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 40),
-                          CircleAvatar(
-                            radius: 35,
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            child: const Icon(Icons.business_rounded, size: 35, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_rounded, color: Colors.white),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditLeadScreen(lead: lead))),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white),
-                    onPressed: () => _confirmDelete(context, db, lead),
-                  ),
-                ],
-              ),
-
-              // ================= PROFILE CONTENT =================
+              _buildAppBar(context, db, lead, isDark),
               SliverToBoxAdapter(
                 child: Transform.translate(
                   offset: const Offset(0, -30),
@@ -120,43 +110,21 @@ class LeadDetailScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(lead.companyName, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -1)),
-                            ),
-                            _StatusChip(status: lead.status ?? "unknown"),
-                          ],
-                        ),
+                        _buildHeader(lead),
                         const SizedBox(height: 30),
-                        
                         _buildInfoSection(isDark, "CONTACT PERSON", [
                           _InfoTile("Full Name", lead.contactPersonName, Icons.person_rounded),
                           _InfoTile("Mobile", lead.mobile, Icons.phone_iphone_rounded),
                           _InfoTile("Email", lead.email ?? "No Email", Icons.alternate_email_rounded),
                         ]),
-
                         _buildInfoSection(isDark, "DEAL INTELLIGENCE", [
                           _InfoTile("Product Pitched", lead.productPitched ?? "General", Icons.auto_awesome_rounded),
                           _InfoTile("Remarks", lead.discussion ?? "None", Icons.chat_bubble_outline_rounded),
                         ]),
-
-                        _buildInfoSection(isDark, "NEXT FOLLOW-UP", [
-                          _InfoTile(
-                            "Schedule", 
-                            lead.followUpDate != null 
-                                ? "${lead.followUpDate!.day}/${lead.followUpDate!.month} at ${lead.followUpTime ?? 'TBD'}"
-                                : "No follow-up set", 
-                            Icons.calendar_today_rounded
-                          ),
-                        ]),
-
-                        const SizedBox(height: 40),
-
-                        if (isClosed)
+                        if (isClosed) ...[
+                          const SizedBox(height: 20),
                           _buildConvertButton(context, ref, lead),
-                        
+                        ],
                         const SizedBox(height: 50),
                       ],
                     ),
@@ -170,16 +138,43 @@ class LeadDetailScreen extends ConsumerWidget {
     );
   }
 
+  // --- UI HELPER COMPONENTS ---
+
+  Widget _buildAppBar(BuildContext context, AppDatabase db, Lead lead, bool isDark) {
+    return SliverAppBar(
+      expandedHeight: 180,
+      pinned: true,
+      backgroundColor: AppColors.primary,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+          child: const Center(child: Icon(Icons.business_center_rounded, size: 50, color: Colors.white24)),
+        ),
+      ),
+      actions: [
+        IconButton(icon: const Icon(Icons.edit_rounded), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditLeadScreen(lead: lead)))),
+        IconButton(icon: const Icon(Icons.delete_sweep_rounded), onPressed: () => _confirmDelete(context, db, lead)),
+      ],
+    );
+  }
+
+  Widget _buildHeader(Lead lead) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(child: Text(lead.companyName, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900))),
+        _StatusChip(status: lead.status ?? "unknown"),
+      ],
+    );
+  }
+
   Widget _buildInfoSection(bool isDark, String title, List<Widget> tiles) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary, letterSpacing: 1.5)),
-        ),
+        Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary, letterSpacing: 1.2)),
+        const SizedBox(height: 12),
         Container(
-          margin: const EdgeInsets.only(bottom: 24),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardDark : Colors.white,
@@ -188,6 +183,7 @@ class LeadDetailScreen extends ConsumerWidget {
           ),
           child: Column(children: tiles),
         ),
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -204,7 +200,7 @@ class LeadDetailScreen extends ConsumerWidget {
       child: ElevatedButton.icon(
         onPressed: () => _convertToProject(context, ref, lead),
         icon: const Icon(Icons.rocket_launch_rounded, color: Colors.white),
-        label: const Text("CONVERT TO PROJECT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+        label: const Text("FINALIZE & START PROJECT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
         style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
       ),
     );
@@ -214,54 +210,37 @@ class LeadDetailScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Archive Lead?"),
-        content: const Text("Are you sure you want to remove this lead? This action is permanent."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("CANCEL")),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("DELETE", style: TextStyle(color: Colors.red))),
         ],
       ),
     );
-
     if (confirmed == true) {
-      final query = await FirebaseFirestore.instance.collection('leads').where('mobile', isEqualTo: lead.mobile).get();
-      for (var doc in query.docs) { await doc.reference.delete(); }
       await (db.delete(db.leads)..where((l) => l.id.equals(lead.id))).go();
-      if (context.mounted) Navigator.pop(context);
+      Navigator.pop(context);
     }
   }
 }
 
 class _InfoTile extends StatelessWidget {
-  final String label;
-  final String value;
+  final String label, value;
   final IconData icon;
-
   const _InfoTile(this.label, this.value, this.icon);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, size: 20, color: AppColors.primary),
-          ),
+          Icon(icon, size: 20, color: AppColors.primary.withOpacity(0.5)),
           const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          ]),
         ],
       ),
     );
@@ -275,21 +254,12 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color color = AppColors.primary;
-    switch (status.toLowerCase()) {
-      case "hot": color = Colors.redAccent; break;
-      case "warm": color = Colors.orangeAccent; break;
-      case "cold": color = Colors.blueAccent; break;
-      case "closed": color = Colors.green; break;
-      case "lost": color = Colors.grey; break;
-    }
+    if (status.toLowerCase() == "hot") color = Colors.redAccent;
+    if (status.toLowerCase() == "closed") color = Colors.green;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Text(status.toUpperCase(), style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 11)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+      child: Text(status.toUpperCase(), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10)),
     );
   }
 }
