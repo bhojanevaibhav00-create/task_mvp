@@ -108,6 +108,11 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('Permission denied: User is not authenticated.');
+      }
+
       // Ensure role is properly formatted string (e.g., 'admin' instead of 'ProjectRole.admin' or 'Admin')
       final cleanRole = role.contains('.')
           ? role.split('.').last.toLowerCase().trim()
