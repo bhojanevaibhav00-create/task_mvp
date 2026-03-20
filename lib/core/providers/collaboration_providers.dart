@@ -57,7 +57,9 @@ final projectMembersProvider = StreamProvider.family
         final membersList = data['members'] as List<dynamic>? ?? [];
         final members = membersList.map((e) => e.toString().trim()).toList();
         final rawRoles = data['roles'] as Map<dynamic, dynamic>? ?? {};
-        final roles = rawRoles.map((k, v) => MapEntry(k.toString().trim(), v));
+        final roles = rawRoles.map<String, dynamic>(
+          (k, v) => MapEntry(k.toString().trim(), v),
+        );
 
         final result = <MemberWithUser>[];
 
@@ -140,7 +142,7 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
           final membersList = data['members'] as List<dynamic>? ?? [];
           final members = membersList.map((e) => e.toString().trim()).toList();
           final rawRoles = data['roles'] as Map<dynamic, dynamic>? ?? {};
-          final roles = rawRoles.map(
+          final roles = rawRoles.map<String, dynamic>(
             (k, v) => MapEntry(k.toString().trim(), v),
           );
 
