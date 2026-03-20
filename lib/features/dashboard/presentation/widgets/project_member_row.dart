@@ -16,6 +16,9 @@ class MemberWithUser {
 
   MemberWithUser({required this.uid, required this.name, required this.role});
 
+  // 🚀 Added to ensure UI ListTiles can uniquely identify the user without throwing errors
+  String get id => uid;
+
   // These getters fix the "member.user.name" and "member.member.role" errors
   MemberWithUser get member => this;
   _UserProxy get user => _UserProxy(name);
@@ -53,10 +56,13 @@ final projectMembersProvider = StreamProvider.family
 
         final membersList = data['members'] as List<dynamic>? ?? [];
         final members = membersList.map((e) => e.toString().trim()).toList();
-        final rawRoles = data['roles'] as Map<dynamic, dynamic>? ?? {};
-        final roles = rawRoles.map<String, dynamic>(
-          (k, v) => MapEntry(k.toString().trim(), v),
-        );
+        Map<String, dynamic> roles = {};
+        if (data['roles'] is Map) {
+          final rawRoles = data['roles'] as Map;
+          roles = rawRoles.map<String, dynamic>(
+            (k, v) => MapEntry(k.toString().trim(), v),
+          );
+        }
 
         final result = <MemberWithUser>[];
 
@@ -70,14 +76,15 @@ final projectMembersProvider = StreamProvider.family
 
           final userData = userDoc.data()!;
 
-          String rawRole = roles[uid]?.toString().trim() ?? 'member';
+          String rawRole =
+              roles[uid]?.toString().trim().toLowerCase() ?? 'member';
           if (rawRole.contains('.')) rawRole = rawRole.split('.').last;
 
           result.add(
             MemberWithUser(
               uid: uid,
               name: userData['name'] ?? 'Unknown User',
-              role: rawRole.toLowerCase(),
+              role: rawRole,
             ),
           );
         }
@@ -126,10 +133,13 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
           final data = snapshot.data()!;
           final membersList = data['members'] as List<dynamic>? ?? [];
           final members = membersList.map((e) => e.toString().trim()).toList();
-          final rawRoles = data['roles'] as Map<dynamic, dynamic>? ?? {};
-          final roles = rawRoles.map<String, dynamic>(
-            (k, v) => MapEntry(k.toString().trim(), v),
-          );
+          Map<String, dynamic> roles = {};
+          if (data['roles'] is Map) {
+            final rawRoles = data['roles'] as Map;
+            roles = rawRoles.map<String, dynamic>(
+              (k, v) => MapEntry(k.toString().trim(), v),
+            );
+          }
 
           if (!members.contains(cleanUserId)) {
             members.add(cleanUserId);
@@ -139,6 +149,29 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
           transaction.update(projectRef, {'members': members, 'roles': roles});
         }
       });
+
+      // Sync local Drift database to ensure offline UI reflects the correct role immediately
+      try {
+        final cleanRole = role.contains('.')
+            ? role.split('.').last.toLowerCase().trim()
+            : role.toLowerCase().trim();
+        final parsedId = int.tryParse(userId.trim());
+        if (parsedId != null) {
+          await database
+              .into(database.projectMembers)
+              .insert(
+                db.ProjectMembersCompanion.insert(
+                  projectId: projectId,
+                  userId: parsedId,
+                  role: cleanRole,
+                  joinedAt: drift.Value(DateTime.now()),
+                ),
+                mode: drift.InsertMode.insertOrReplace,
+              );
+        }
+      } catch (e) {
+        print('Drift sync error: $e');
+      }
 
       await logActivity(
         projectId,
