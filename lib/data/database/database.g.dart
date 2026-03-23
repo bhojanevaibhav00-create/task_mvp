@@ -92,6 +92,16 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Active'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -101,6 +111,7 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
     isArchived,
     createdAt,
     updatedAt,
+    status,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -158,6 +169,12 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
     return context;
   }
 
@@ -195,6 +212,10 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
     );
   }
 
@@ -212,6 +233,7 @@ class Project extends DataClass implements Insertable<Project> {
   final bool isArchived;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String status;
   const Project({
     required this.id,
     required this.name,
@@ -220,6 +242,7 @@ class Project extends DataClass implements Insertable<Project> {
     required this.isArchived,
     required this.createdAt,
     this.updatedAt,
+    required this.status,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -237,6 +260,7 @@ class Project extends DataClass implements Insertable<Project> {
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
     }
+    map['status'] = Variable<String>(status);
     return map;
   }
 
@@ -255,6 +279,7 @@ class Project extends DataClass implements Insertable<Project> {
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAt),
+      status: Value(status),
     );
   }
 
@@ -271,6 +296,7 @@ class Project extends DataClass implements Insertable<Project> {
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      status: serializer.fromJson<String>(json['status']),
     );
   }
   @override
@@ -284,6 +310,7 @@ class Project extends DataClass implements Insertable<Project> {
       'isArchived': serializer.toJson<bool>(isArchived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'status': serializer.toJson<String>(status),
     };
   }
 
@@ -295,6 +322,7 @@ class Project extends DataClass implements Insertable<Project> {
     bool? isArchived,
     DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
+    String? status,
   }) => Project(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -303,6 +331,7 @@ class Project extends DataClass implements Insertable<Project> {
     isArchived: isArchived ?? this.isArchived,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    status: status ?? this.status,
   );
   Project copyWithCompanion(ProjectsCompanion data) {
     return Project(
@@ -317,6 +346,7 @@ class Project extends DataClass implements Insertable<Project> {
           : this.isArchived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      status: data.status.present ? data.status.value : this.status,
     );
   }
 
@@ -329,7 +359,8 @@ class Project extends DataClass implements Insertable<Project> {
           ..write('color: $color, ')
           ..write('isArchived: $isArchived, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
@@ -343,6 +374,7 @@ class Project extends DataClass implements Insertable<Project> {
     isArchived,
     createdAt,
     updatedAt,
+    status,
   );
   @override
   bool operator ==(Object other) =>
@@ -354,7 +386,8 @@ class Project extends DataClass implements Insertable<Project> {
           other.color == this.color &&
           other.isArchived == this.isArchived &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.status == this.status);
 }
 
 class ProjectsCompanion extends UpdateCompanion<Project> {
@@ -365,6 +398,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
   final Value<bool> isArchived;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
+  final Value<String> status;
   const ProjectsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -373,6 +407,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.status = const Value.absent(),
   });
   ProjectsCompanion.insert({
     this.id = const Value.absent(),
@@ -382,6 +417,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.status = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Project> custom({
     Expression<int>? id,
@@ -391,6 +427,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     Expression<bool>? isArchived,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<String>? status,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -400,6 +437,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
       if (isArchived != null) 'is_archived': isArchived,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (status != null) 'status': status,
     });
   }
 
@@ -411,6 +449,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     Value<bool>? isArchived,
     Value<DateTime>? createdAt,
     Value<DateTime?>? updatedAt,
+    Value<String>? status,
   }) {
     return ProjectsCompanion(
       id: id ?? this.id,
@@ -420,6 +459,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      status: status ?? this.status,
     );
   }
 
@@ -447,6 +487,9 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
     return map;
   }
 
@@ -459,7 +502,8 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
           ..write('color: $color, ')
           ..write('isArchived: $isArchived, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
@@ -4698,6 +4742,7 @@ typedef $$ProjectsTableCreateCompanionBuilder =
       Value<bool> isArchived,
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
+      Value<String> status,
     });
 typedef $$ProjectsTableUpdateCompanionBuilder =
     ProjectsCompanion Function({
@@ -4708,6 +4753,7 @@ typedef $$ProjectsTableUpdateCompanionBuilder =
       Value<bool> isArchived,
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
+      Value<String> status,
     });
 
 final class $$ProjectsTableReferences
@@ -4832,6 +4878,11 @@ class $$ProjectsTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4979,6 +5030,11 @@ class $$ProjectsTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ProjectsTableAnnotationComposer
@@ -5014,6 +5070,9 @@ class $$ProjectsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 
   Expression<T> tasksRefs<T extends Object>(
     Expression<T> Function($$TasksTableAnnotationComposer a) f,
@@ -5156,6 +5215,7 @@ class $$ProjectsTableTableManager
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
               }) => ProjectsCompanion(
                 id: id,
                 name: name,
@@ -5164,6 +5224,7 @@ class $$ProjectsTableTableManager
                 isArchived: isArchived,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                status: status,
               ),
           createCompanionCallback:
               ({
@@ -5174,6 +5235,7 @@ class $$ProjectsTableTableManager
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
               }) => ProjectsCompanion.insert(
                 id: id,
                 name: name,
@@ -5182,6 +5244,7 @@ class $$ProjectsTableTableManager
                 isArchived: isArchived,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                status: status,
               ),
           withReferenceMapper: (p0) => p0
               .map(

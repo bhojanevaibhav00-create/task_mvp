@@ -36,6 +36,8 @@ final allProjectsProvider =
           name: drift.Value(data['name'] ?? ''),
           description: drift.Value(data['description']),
           color: drift.Value(data['color'] ?? 0xFF2196F3),
+          // ✅ Added status mapping from Firestore
+          status: drift.Value(data['status'] ?? 'Active'),
           createdAt: drift.Value(DateTime.now()),
         ),
       );
@@ -45,6 +47,7 @@ final allProjectsProvider =
     yield await db.select(db.projects).get();
   }
 });
+
 /// =======================================================
 /// 2. PROJECT CONTROLLER PROVIDER
 /// =======================================================
@@ -65,6 +68,8 @@ class ProjectController {
     await db.into(db.projects).insert(
       ProjectsCompanion.insert(
         name: name,
+        // ✅ Added default status for local creation
+        status: const drift.Value('Active'),
         createdAt: drift.Value(DateTime.now()),
       ),
     );
