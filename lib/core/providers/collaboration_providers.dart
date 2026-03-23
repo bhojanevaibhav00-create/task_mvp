@@ -6,9 +6,8 @@ import '../../data/database/database.dart' as db;
 import 'database_provider.dart';
 
 /// =======================================================
-/// 1️⃣ CLEAN FIREBASE MEMBER MODEL (NO DRIFT DEPENDENCY)
+/// 1️⃣ CLEAN FIREBASE MEMBER MODEL
 /// =======================================================
-
 class MemberWithUser {
   final String uid;
   final String name;
@@ -20,10 +19,7 @@ class MemberWithUser {
     required this.role,
   });
 
-  // 🚀 ADD THIS LINE TO FIX THE 'user.id' ERROR
-  String get id => uid; 
-
-  // Keep these for your other UI rows
+  String get id => uid;
   MemberWithUser get member => this;
   _UserProxy get user => _UserProxy(name);
 }
@@ -34,16 +30,14 @@ class _UserProxy {
 }
 
 /// =======================================================
-/// 2️⃣ FETCH PROJECT MEMBERS FROM FIRESTORE
+/// 2️⃣ FETCH PROJECT MEMBERS FROM FIRESTORE (FINAL FIX)
 /// =======================================================
-
-final projectMembersProvider =
-    StreamProvider.family.autoDispose<List<MemberWithUser>, int>(
-        (ref, projectId) async* {
+final projectMembersProvider = StreamProvider.family
+    .autoDispose<List<MemberWithUser>, int>((ref, projectId) {
   final firebaseUser = FirebaseAuth.instance.currentUser;
+
   if (firebaseUser == null) {
-    yield [];
-    return;
+    return Stream.value([]);
   }
 
   final projectStream = FirebaseFirestore.instance
@@ -51,45 +45,49 @@ final projectMembersProvider =
       .doc(projectId.toString())
       .snapshots();
 
-  await for (final snapshot in projectStream) {
+  return projectStream.asyncMap((snapshot) async {
     final data = snapshot.data();
-    if (data == null) {
-      yield [];
-      continue;
-    }
+    if (data == null) return [];
 
-    final members = List<String>.from(data['members'] ?? []);
-    final roles = Map<String, dynamic>.from(data['roles'] ?? {});
+    final List<dynamic> membersList = data['members'] ?? [];
+    final Map<String, dynamic> rolesMap =
+        Map<String, dynamic>.from(data['roles'] ?? {});
 
-    final result = <MemberWithUser>[];
+    // 🔥 Fetch all users in parallel (IMPORTANT FIX)
+    final futures = membersList.map((memberId) async {
+      final String uid = memberId.toString().trim();
 
-    for (final uid in members) {
+      // 🔥 ROLE FIX (MAIN BUG FIX)
+      String role = rolesMap[uid]?.toString() ?? 'member';
+
+      // sanitize role
+      if (role.contains('.')) {
+        role = role.split('.').last;
+      }
+      role = role.toLowerCase().trim();
+
+      // fetch user
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .get();
 
-      if (!userDoc.exists) continue;
+      final userData = userDoc.data();
 
-      final userData = userDoc.data()!;
-
-      result.add(
-        MemberWithUser(
-          uid: uid,
-          name: userData['name'] ?? 'Unknown User',
-          role: roles[uid] ?? 'member',
-        ),
+      return MemberWithUser(
+        uid: uid,
+        name: userData?['name'] ?? 'Unknown User',
+        role: role, // ✅ correct role
       );
-    }
+    }).toList();
 
-    yield result;
-  }
+    return await Future.wait(futures);
+  });
 });
 
 /// =======================================================
-/// 3️⃣ COLLABORATION NOTIFIER (HANDLES FIRESTORE + DRIFT)
+/// 3️⃣ COLLABORATION NOTIFIER (FIXED ROLE WRITE)
 /// =======================================================
-
 class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
   final db.AppDatabase database;
   final Ref ref;
@@ -97,60 +95,49 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
   CollaborationNotifier(this.database, this.ref)
       : super(const AsyncValue.data(null));
 
-  /// Adds a member to Firestore and logs the action in local Drift DB
   Future<void> addMember({
-    required int projectId,
-    required String userId,
-    required String role,
-  }) async {
-    state = const AsyncValue.loading();
+  required int projectId,
+  required String userId,
+  required String role,
+}) async {
+  state = const AsyncValue.loading();
 
-    try {
-      final projectRef = FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId.toString());
+  try {
+    final cleanUserId = userId.trim();
+    final cleanRole = role.toLowerCase().trim();
 
-      // Update Firestore using a transaction for data integrity
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final snapshot = await transaction.get(projectRef);
-        
-        if (!snapshot.exists) {
-          // If project doesn't exist in Firestore yet, create it
-          transaction.set(projectRef, {
-            'members': [userId],
-            'roles': {userId: role},
-          });
-        } else {
-          final data = snapshot.data()!;
-          final List<String> members = List<String>.from(data['members'] ?? []);
-          final Map<String, dynamic> roles = Map<String, dynamic>.from(data['roles'] ?? {});
+    final projectRef = FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId.toString());
 
-          if (!members.contains(userId)) {
-            members.add(userId);
-          }
-          roles[userId] = role;
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(projectRef);
 
-          transaction.update(projectRef, {
-            'members': members,
-            'roles': roles,
-          });
-        }
-      });
+      Map<String, dynamic> roles = {};
 
-      // Log activity to Drift
-      await logActivity(
-        projectId,
-        'Member Added',
-        'User $userId joined the project as $role',
+      if (snapshot.exists) {
+        final data = snapshot.data();
+        roles = Map<String, dynamic>.from(data?['roles'] ?? {});
+      }
+
+      // ✅ FINAL FIX
+      roles[cleanUserId] = cleanRole;
+
+      transaction.set(
+        projectRef,
+        {
+          'members': FieldValue.arrayUnion([cleanUserId]),
+          'roles': roles,
+        },
+        SetOptions(merge: true),
       );
+    });
 
-      state = const AsyncValue.data(null);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
+    state = const AsyncValue.data(null);
+  } catch (e, st) {
+    state = AsyncValue.error(e, st);
   }
-
-  /// Logs activity to the local Drift database
+}
   Future<void> logActivity(
       int projectId, String action, String description) async {
     try {
@@ -163,21 +150,12 @@ class CollaborationNotifier extends StateNotifier<AsyncValue<void>> {
             ),
           );
     } catch (e) {
-      // We don't set global error state here to avoid breaking the UI
-      // if only the logging fails but the Firestore update succeeded.
-      print('Failed to log activity: $e');
+      print('Log Error: $e');
     }
   }
 }
 
-/// =======================================================
-/// 4️⃣ PROVIDER BINDING
-/// =======================================================
-
 final collaborationActionProvider =
     StateNotifierProvider<CollaborationNotifier, AsyncValue<void>>((ref) {
-  return CollaborationNotifier(
-    ref.watch(databaseProvider),
-    ref,
-  );
+  return CollaborationNotifier(ref.watch(databaseProvider), ref);
 });

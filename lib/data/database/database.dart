@@ -65,7 +65,7 @@ class Projects extends Table {
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
-  TextColumn get status => text().withDefault(const Constant('Active'))();
+  
 }
 
 /// =======================

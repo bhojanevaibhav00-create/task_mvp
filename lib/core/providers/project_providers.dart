@@ -1,20 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../data/database/database.dart';
-import 'notification_providers.dart'; 
+import 'notification_providers.dart';
 import 'package:task_mvp/core/providers/database_provider.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-final allProjectsProvider =
-    StreamProvider.autoDispose<List<Project>>((ref) async* {
+final allProjectsProvider = StreamProvider.autoDispose<List<Project>>((ref) {
   final db = ref.watch(databaseProvider);
   final firebaseUser = FirebaseAuth.instance.currentUser;
 
   if (firebaseUser == null) {
-    yield [];
-    return;
+    return Stream.value([]);
   }
 
   final firestoreStream = FirebaseFirestore.instance
@@ -22,8 +20,7 @@ final allProjectsProvider =
       .where('members', arrayContains: firebaseUser.uid)
       .snapshots();
 
-  await for (final snapshot in firestoreStream) {
-
+  return firestoreStream.asyncMap((snapshot) async {
     // 🔥 First sync Firestore → Drift
     for (final doc in snapshot.docs) {
       final data = doc.data();
@@ -31,21 +28,24 @@ final allProjectsProvider =
       if (projectId == null) continue;
 
       await db.into(db.projects).insertOnConflictUpdate(
-        ProjectsCompanion(
-          id: drift.Value(projectId),
-          name: drift.Value(data['name'] ?? ''),
-          description: drift.Value(data['description']),
-          color: drift.Value(data['color'] ?? 0xFF2196F3),
-          // ✅ Added status mapping from Firestore
-          status: drift.Value(data['status'] ?? 'Active'),
-          createdAt: drift.Value(DateTime.now()),
-        ),
-      );
+            ProjectsCompanion(
+              id: drift.Value(projectId),
+              name: drift.Value(data['name'] ?? 'Untitled'),
+              description: drift.Value(data['description']),
+              color: drift.Value(data['color'] ?? 0xFF2196F3),
+              // ✅ Status removed from here to prevent DB errors
+              createdAt: drift.Value(
+                data['createdAt'] != null
+                    ? (data['createdAt'] as Timestamp).toDate()
+                    : DateTime.now(),
+              ),
+            ),
+          );
     }
 
-    // 🔥 Then return Drift stream
-    yield await db.select(db.projects).get();
-  }
+    // 🔥 Then return Drift data
+    return await db.select(db.projects).get();
+  });
 });
 
 /// =======================================================
@@ -61,40 +61,36 @@ class ProjectController {
   ProjectController(this.ref);
 
   /// ✅ CREATE PROJECT WITH NOTIFICATION
-  /// Inserts project into DB and triggers a workspace notification.
   Future<void> createProject(String name) async {
     final db = ref.read(databaseProvider);
-    
+
     await db.into(db.projects).insert(
-      ProjectsCompanion.insert(
-        name: name,
-        // ✅ Added default status for local creation
-        status: const drift.Value('Active'),
-        createdAt: drift.Value(DateTime.now()),
-      ),
-    );
-    
-    // ✅ Trigger notification via the NotificationNotifier
+          ProjectsCompanion.insert(
+            name: name,
+            // ✅ Status removed from here as well
+            createdAt: drift.Value(DateTime.now()),
+          ),
+        );
+
+    // ✅ Trigger notification
     await ref.read(notificationServiceProvider).sendNotification(
-      title: "Project Created",
-      body: "You created the project: $name",
-      type: "project_create",
-    );
+          title: "Project Created",
+          body: "You created the project: $name",
+          type: "project_create",
+        );
   }
 
   /// ✅ DELETE PROJECT WITH NOTIFICATION
-  /// Removes project from DB and alerts the user via notification.
   Future<void> deleteProject(int projectId, String projectName) async {
     final db = ref.read(databaseProvider);
-    
-    // 1. Delete the record from the projects table
+
     await (db.delete(db.projects)..where((t) => t.id.equals(projectId))).go();
-    
-    // 2. ✅ Trigger notification alerting the deletion
+
+    // ✅ Trigger notification
     await ref.read(notificationServiceProvider).sendNotification(
-      title: "Project Deleted",
-      body: "The project '$projectName' was removed.",
-      type: "project_delete",
-    );
+          title: "Project Deleted",
+          body: "The project '$projectName' was removed.",
+          type: "project_delete",
+        );
   }
 }

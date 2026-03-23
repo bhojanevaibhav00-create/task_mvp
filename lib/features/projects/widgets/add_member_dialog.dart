@@ -155,8 +155,7 @@ class _AddMemberDialogState
                             color: Colors.green,
                           ),
                           onPressed: () =>
-                              _addMemberToProject(
-                                  user),
+                              _addMemberToProject(user),
                         ),
                       );
                     },
@@ -208,7 +207,6 @@ class _AddMemberDialogState
     for (final doc in usersSnapshot.docs) {
       final uid = doc.id;
 
-      // Skip if already member
       if (members.contains(uid)) continue;
 
       final userData = doc.data();
@@ -225,7 +223,7 @@ class _AddMemberDialogState
   }
 
   /// =====================================================
-  /// ADD MEMBER
+  /// ADD MEMBER (🔥 FIXED)
   /// =====================================================
   Future<void> _addMemberToProject(
       _UserItem user) async {
@@ -256,7 +254,6 @@ class _AddMemberDialogState
       final currentUserRole =
           roles[firebaseUser.uid];
 
-      // 🔐 Permission check
       if (currentUserRole != 'owner' &&
           currentUserRole != 'admin') {
         throw Exception(
@@ -268,12 +265,14 @@ class _AddMemberDialogState
             "User already added");
       }
 
-      // 🔥 Update Firestore safely
+      // ✅ FINAL FIX (IMPORTANT)
+      roles[user.uid] =
+          selectedRole.toLowerCase();
+
       await projectRef.set({
         'members':
             FieldValue.arrayUnion([user.uid]),
-        'roles.${user.uid}':
-            selectedRole.toLowerCase(),
+        'roles': roles,
       }, SetOptions(merge: true));
 
       ref.invalidate(
