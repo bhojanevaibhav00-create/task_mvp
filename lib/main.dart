@@ -96,14 +96,18 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
       if (user != null) {
         final token = await FirebaseMessaging.instance.getToken();
         if (token != null) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .set({
-                'fcmToken': token,
-                'lastActive': FieldValue.serverTimestamp(),
-              }, SetOptions(merge: true));
-          debugPrint("✅ FCM Token Saved for ${user.uid}");
+          try {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .set({
+                  'fcmToken': token,
+                  'lastActive': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+            debugPrint("✅ FCM Token Saved for ${user.uid}");
+          } catch (e) {
+            debugPrint("❌ Failed to save FCM token: $e");
+          }
         }
       }
     });
