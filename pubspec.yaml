@@ -2,7 +2,7 @@ name: task_mvp
 description: "A new Flutter project."
 publish_to: "none"
 
-version: 1.0.0+3
+version: 1.0.0+4
 
 environment:
   sdk: ^3.8.1
@@ -33,7 +33,6 @@ dependencies:
   google_fonts: ^8.0.1
   csv: ^6.0.0
   url_launcher: ^6.3.2
- 
 
 dev_dependencies:
   flutter_test:
