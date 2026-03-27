@@ -15,6 +15,8 @@ import 'package:task_mvp/features/tasks/presentation/task_create_edit_screen.dar
 import '../project_members_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../widgets/stats_card.dart';
+import 'package:task_mvp/core/providers/statistics_provider.dart';
 
 /// ✅ LOCAL PROVIDER: Manages task sorting state for this specific screen
 final projectSortProvider = StateProvider.autoDispose<String>((ref) => 'date');
@@ -88,9 +90,100 @@ class ProjectDetailScreen extends ConsumerWidget {
                     _buildPremiumDescription(context, ref, project, isDark),
                     const SizedBox(height: 24),
 
-                    // --- 3. PROJECT PROGRESS (REAL-TIME) ---
-                    _buildModernProgressHeader(projectId, isDark),
-                    const SizedBox(height: 32),
+                    // --- 3. PROJECT PROGRESS & PREMIUM STATS (UPGRADED) ---
+Consumer(
+  builder: (context, ref, child) {
+    // Watch our custom provider for the math (Total vs Done)
+    final stats = ref.watch(projectStatsProvider(projectId));
+
+    return Column(
+      children: [
+        // 1. Premium Row with Stats Cards
+        Row(
+          children: [
+            Expanded(
+              child: StatsCard(
+                label: "Ongoing",
+                value: "${stats.pending}",
+                color: Colors.blueAccent,
+                icon: Icons.rocket_launch_rounded,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: StatsCard(
+                label: "Finished",
+                value: "${stats.completed}",
+                color: const Color(0xFF10B981), // Premium Emerald
+                icon: Icons.verified_rounded,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // 2. Modern Progress Tracker Card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark 
+                  ? Colors.white.withOpacity(0.05) 
+                  : Colors.black.withOpacity(0.05),
+            ),
+            boxShadow: [
+              if (!isDark)
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Project Completion",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    "${(stats.completionRate * 100).toInt()}%",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: stats.completionRate,
+                  minHeight: 8,
+                  backgroundColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32), // Spacing before Task List
+      ],
+    );
+  },
+),
 
                     // --- 4. SECTION HEADER & SORT INFO ---
                     Row(
